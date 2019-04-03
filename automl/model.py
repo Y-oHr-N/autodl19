@@ -6,9 +6,10 @@ os.system('pip install -r requirements.txt')
 
 import numpy as np
 import pandas as pd
+from sklearn.base import BaseEstimator, MetaEstimatorMixin
 
 
-class Model(object):
+class Model(BaseEstimator, MetaEstimatorMixin):
     def __init__(self, info: Dict[str, Any]) -> None:
         self.info = info
 
@@ -25,7 +26,6 @@ class Model(object):
         test_data: pd.DataFrame,
         time_remain: float
     ) -> pd.Series:
-
         n_samples = len(test_data)
 
         return pd.Series(np.zeros(n_samples))
