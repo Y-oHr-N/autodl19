@@ -1,8 +1,5 @@
-import os
 from typing import Any
 from typing import Dict
-
-os.system('pip install -r requirements.txt')
 
 import numpy as np
 import pandas as pd
