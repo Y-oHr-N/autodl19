@@ -1,8 +1,6 @@
 import os
 
-os.system("pip3 install hyperopt")
-os.system("pip3 install lightgbm")
-os.system("pip3 install pandas==0.24.2")
+os.system('pip3 install -r requirements.txt')
 
 import copy
 import numpy as np

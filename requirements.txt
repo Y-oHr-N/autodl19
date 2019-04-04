@@ -1,3 +1,5 @@
+hyperopt
+lightgbm
 numpy
-pandas
+pandas==0.24.2
 scikit-learn
