@@ -1,13 +1,14 @@
 import datetime
 
 import CONSTANT
-from util import log, timeit
+from util import log
+from util import timeit
 
 
 @timeit
 def clean_tables(tables):
     for tname in tables:
-        log(f"cleaning table {tname}")
+        log(f'cleaning table {tname}')
         clean_df(tables[tname])
 
 
@@ -22,13 +23,13 @@ def fillna(df):
         df[c].fillna(-1, inplace=True)
 
     for c in [c for c in df if c.startswith(CONSTANT.CATEGORY_PREFIX)]:
-        df[c].fillna("0", inplace=True)
+        df[c].fillna('0', inplace=True)
 
     for c in [c for c in df if c.startswith(CONSTANT.TIME_PREFIX)]:
         df[c].fillna(datetime.datetime(1970, 1, 1), inplace=True)
 
     for c in [c for c in df if c.startswith(CONSTANT.MULTI_CAT_PREFIX)]:
-        df[c].fillna("0", inplace=True)
+        df[c].fillna('0', inplace=True)
 
 
 @timeit

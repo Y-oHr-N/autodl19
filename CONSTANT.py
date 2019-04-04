@@ -1,22 +1,21 @@
+NUMERICAL_TYPE = 'num'
+NUMERICAL_PREFIX = 'n_'
 
-NUMERICAL_TYPE = "num"
-NUMERICAL_PREFIX = "n_"
+CATEGORY_TYPE = 'cat'
+CATEGORY_PREFIX = 'c_'
 
-CATEGORY_TYPE = "cat"
-CATEGORY_PREFIX = "c_"
+TIME_TYPE = 'time'
+TIME_PREFIX = 't_'
 
-TIME_TYPE = "time"
-TIME_PREFIX = "t_"
-
-MULTI_CAT_TYPE = "multi-cat"
-MULTI_CAT_PREFIX = "m_"
-MULTI_CAT_DELIMITER = ","
+MULTI_CAT_TYPE = 'multi-cat'
+MULTI_CAT_PREFIX = 'm_'
+MULTI_CAT_DELIMITER = ','
 
 
-MAIN_TABLE_NAME = "main"
-MAIN_TABLE_TEST_NAME = "main_test"
-TABLE_PREFIX = "table_"
+MAIN_TABLE_NAME = 'main'
+MAIN_TABLE_TEST_NAME = 'main_test'
+TABLE_PREFIX = 'table_'
 
-LABEL = "label"
+LABEL = 'label'
 
 HASH_MAX = 200
