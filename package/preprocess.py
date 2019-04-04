@@ -1,9 +1,9 @@
 import datetime
 
-from .CONSTANT import CATEGORY_PREFIX
-from .CONSTANT import MULTI_CAT_PREFIX
-from .CONSTANT import NUMERICAL_PREFIX
-from .CONSTANT import TIME_PREFIX
+from .constants import CATEGORY_PREFIX
+from .constants import MULTI_CAT_PREFIX
+from .constants import NUMERICAL_PREFIX
+from .constants import TIME_PREFIX
 from .utils import log
 from .utils import timeit
 

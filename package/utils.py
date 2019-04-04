@@ -1,13 +1,13 @@
 import time
 from typing import Any
 
-from .CONSTANT import CATEGORY_PREFIX
-from .CONSTANT import CATEGORY_TYPE
-from .CONSTANT import MULTI_CAT_PREFIX
-from .CONSTANT import MULTI_CAT_TYPE
-from .CONSTANT import NUMERICAL_PREFIX
-from .CONSTANT import NUMERICAL_TYPE
-from .CONSTANT import TIME_PREFIX
+from .constants import CATEGORY_PREFIX
+from .constants import CATEGORY_TYPE
+from .constants import MULTI_CAT_PREFIX
+from .constants import MULTI_CAT_TYPE
+from .constants import NUMERICAL_PREFIX
+from .constants import NUMERICAL_TYPE
+from .constants import TIME_PREFIX
 
 nesting_level = 0
 is_start = None

@@ -4,11 +4,11 @@ from collections import deque
 import numpy as np
 import pandas as pd
 
-from .CONSTANT import HASH_MAX
-from .CONSTANT import MAIN_TABLE_NAME
-from .CONSTANT import MULTI_CAT_PREFIX
-from .CONSTANT import NUMERICAL_PREFIX
-from .CONSTANT import TIME_PREFIX
+from .constants import HASH_MAX
+from .constants import MAIN_TABLE_NAME
+from .constants import MULTI_CAT_PREFIX
+from .constants import NUMERICAL_PREFIX
+from .constants import TIME_PREFIX
 from .utils import Config
 from .utils import log
 from .utils import timeit
