@@ -4,8 +4,8 @@ from .CONSTANT import CATEGORY_PREFIX
 from .CONSTANT import MULTI_CAT_PREFIX
 from .CONSTANT import NUMERICAL_PREFIX
 from .CONSTANT import TIME_PREFIX
-from .util import log
-from .util import timeit
+from .utils import log
+from .utils import timeit
 
 
 @timeit

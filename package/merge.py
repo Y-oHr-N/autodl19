@@ -9,10 +9,10 @@ from .CONSTANT import MAIN_TABLE_NAME
 from .CONSTANT import MULTI_CAT_PREFIX
 from .CONSTANT import NUMERICAL_PREFIX
 from .CONSTANT import TIME_PREFIX
-from .util import Config
-from .util import log
-from .util import timeit
-from .util import Timer
+from .utils import Config
+from .utils import log
+from .utils import timeit
+from .utils import Timer
 
 NUM_OP = [np.std, np.mean]
 

@@ -12,8 +12,8 @@ from package.merge import merge_table
 from package.preprocess import clean_df
 from package.preprocess import clean_tables
 from package.preprocess import feature_engineer
-from package.util import Config
-from package.util import timeit
+from package.utils import Config
+from package.utils import timeit
 
 
 class Model(object):
