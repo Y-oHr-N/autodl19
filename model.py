@@ -1,6 +1,6 @@
 import os
 
-os.system('pip3 install -r requirements.txt')
+os.system('pip3 install hyperopt numpy lightgbm pandas scikit-learn')
 
 import copy
 import pandas as pd

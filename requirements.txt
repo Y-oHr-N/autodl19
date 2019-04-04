@@ -1,5 +1,0 @@
-hyperopt
-lightgbm
-numpy
-pandas==0.24.2
-scikit-learn
