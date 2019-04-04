@@ -5,15 +5,15 @@ os.system('pip3 install -r requirements.txt')
 import copy
 import pandas as pd
 
-from automl import predict
-from automl import train
-from CONSTANT import MAIN_TABLE_NAME
-from merge import merge_table
-from preprocess import clean_df
-from preprocess import clean_tables
-from preprocess import feature_engineer
-from util import Config
-from util import timeit
+from package.automl import predict
+from package.automl import train
+from package.CONSTANT import MAIN_TABLE_NAME
+from package.merge import merge_table
+from package.preprocess import clean_df
+from package.preprocess import clean_tables
+from package.preprocess import feature_engineer
+from package.util import Config
+from package.util import timeit
 
 
 class Model(object):

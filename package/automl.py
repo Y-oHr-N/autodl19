@@ -13,9 +13,9 @@ import pandas as pd
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 
-from util import Config
-from util import log
-from util import timeit
+from .util import Config
+from .util import log
+from .util import timeit
 
 
 @timeit

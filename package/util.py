@@ -1,7 +1,13 @@
 import time
 from typing import Any
 
-import CONSTANT
+from .CONSTANT import CATEGORY_PREFIX
+from .CONSTANT import CATEGORY_TYPE
+from .CONSTANT import MULTI_CAT_PREFIX
+from .CONSTANT import MULTI_CAT_TYPE
+from .CONSTANT import NUMERICAL_PREFIX
+from .CONSTANT import NUMERICAL_TYPE
+from .CONSTANT import TIME_PREFIX
 
 nesting_level = 0
 is_start = None
@@ -79,20 +85,20 @@ class Config(object):
 
         my_nunique.__name__ = 'nunique'
         ops = {
-            CONSTANT.NUMERICAL_TYPE: ["mean", "sum"],
-            CONSTANT.CATEGORY_TYPE: ["count"],
+            NUMERICAL_TYPE: ["mean", "sum"],
+            CATEGORY_TYPE: ["count"],
             #  TIME_TYPE: ["max"],
             #  MULTI_CAT_TYPE: [my_unique]
         }
 
-        if col.startswith(CONSTANT.NUMERICAL_PREFIX):
-            return ops[CONSTANT.NUMERICAL_TYPE]
-        if col.startswith(CONSTANT.CATEGORY_PREFIX):
-            return ops[CONSTANT.CATEGORY_TYPE]
-        if col.startswith(CONSTANT.MULTI_CAT_PREFIX):
+        if col.startswith(NUMERICAL_PREFIX):
+            return ops[NUMERICAL_TYPE]
+        if col.startswith(CATEGORY_PREFIX):
+            return ops[CATEGORY_TYPE]
+        if col.startswith(MULTI_CAT_PREFIX):
             assert False, f"MultiCategory type feature's aggregate op are not supported."
-            return ops[CONSTANT.MULTI_CAT_TYPE]
-        if col.startswith(CONSTANT.TIME_PREFIX):
+            return ops[MULTI_CAT_TYPE]
+        if col.startswith(TIME_PREFIX):
             assert False, f"Time type feature's aggregate op are not implemented."
 
         assert False, f"Unknown col type {col}"

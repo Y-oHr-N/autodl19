@@ -4,17 +4,21 @@ from collections import deque
 import numpy as np
 import pandas as pd
 
-import CONSTANT
-from util import Config
-from util import log
-from util import timeit
-from util import Timer
+from .CONSTANT import HASH_MAX
+from .CONSTANT import MAIN_TABLE_NAME
+from .CONSTANT import MULTI_CAT_PREFIX
+from .CONSTANT import NUMERICAL_PREFIX
+from .CONSTANT import TIME_PREFIX
+from .util import Config
+from .util import log
+from .util import timeit
+from .util import Timer
 
 NUM_OP = [np.std, np.mean]
 
 
 def bfs(root_name, graph, tconfig):
-    tconfig[CONSTANT.MAIN_TABLE_NAME]['depth'] = 0
+    tconfig[MAIN_TABLE_NAME]['depth'] = 0
     queue = deque([root_name])
 
     while queue:
@@ -32,11 +36,11 @@ def bfs(root_name, graph, tconfig):
 def join(u, v, v_name, key, type_):
     if type_.split("_")[2] == 'many':
         agg_funcs = {col: Config.aggregate_op(col) for col in v if col != key
-                     and not col.startswith(CONSTANT.TIME_PREFIX)
-                     and not col.startswith(CONSTANT.MULTI_CAT_PREFIX)}
+                     and not col.startswith(TIME_PREFIX)
+                     and not col.startswith(MULTI_CAT_PREFIX)}
         v = v.groupby(key).agg(agg_funcs)
         v.columns = v.columns.map(
-            lambda a: f"{CONSTANT.NUMERICAL_PREFIX}{a[1].upper()}({a[0]})"
+            lambda a: f"{NUMERICAL_PREFIX}{a[1].upper()}({a[0]})"
         )
     else:
         v = v.set_index(key)
@@ -61,15 +65,15 @@ def temporal_join(u, v, v_name, key, time_col):
     timer.check("concat")
 
     rehash_key = f'rehash_{key}'
-    tmp_u[rehash_key] = tmp_u[key].apply(lambda x: hash(x) % CONSTANT.HASH_MAX)
+    tmp_u[rehash_key] = tmp_u[key].apply(lambda x: hash(x) % HASH_MAX)
     timer.check("rehash_key")
 
     tmp_u.sort_values(time_col, inplace=True)
     timer.check("sort")
 
     agg_funcs = {col: Config.aggregate_op(col) for col in v if col != key
-                 and not col.startswith(CONSTANT.TIME_PREFIX)
-                 and not col.startswith(CONSTANT.MULTI_CAT_PREFIX)}
+                 and not col.startswith(TIME_PREFIX)
+                 and not col.startswith(MULTI_CAT_PREFIX)}
 
     tmp_u = tmp_u.groupby(rehash_key).rolling(5).agg(agg_funcs)
     timer.check("group & rolling & agg")
@@ -78,7 +82,7 @@ def temporal_join(u, v, v_name, key, time_col):
     timer.check("reset_index")
 
     tmp_u.columns = tmp_u.columns.map(
-        lambda a: f"{CONSTANT.NUMERICAL_PREFIX}{a[1].upper()}_ROLLING5({v_name}.{a[0]})"
+        lambda a: f"{NUMERICAL_PREFIX}{a[1].upper()}_ROLLING5({v_name}.{a[0]})"
     )
 
     if tmp_u.empty:
@@ -147,6 +151,6 @@ def merge_table(tables, config):
             "type": '_'.join(rel['type'].split('_')[::-1])
         })
 
-    bfs(CONSTANT.MAIN_TABLE_NAME, graph, config['tables'])
+    bfs(MAIN_TABLE_NAME, graph, config['tables'])
 
-    return dfs(CONSTANT.MAIN_TABLE_NAME, config, tables, graph)
+    return dfs(MAIN_TABLE_NAME, config, tables, graph)
