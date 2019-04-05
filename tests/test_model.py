@@ -27,9 +27,9 @@ def read_train(datapath, info):
         table_dtype = {key: TYPE_MAP[val] for key, val in columns.items()}
 
         if table_name == 'main':
-            table_path = os.path.join(datapath, 'train', 'main_train.data')
+            table_path = os.path.join(datapath, 'train', 'main_train.data.gz')
         else:
-            table_path = os.path.join(datapath, 'train', f'{table_name}.data')
+            table_path = os.path.join(datapath, 'train', f'{table_name}.data.gz')
 
         date_list = [key for key, val in columns.items() if val == 'time']
 
@@ -44,7 +44,7 @@ def read_train(datapath, info):
         )
 
     train_label = pd.read_csv(
-        os.path.join(datapath, 'train', 'main_train.solution')
+        os.path.join(datapath, 'train', 'main_train.solution.gz')
     )['label']
 
     return train_data, train_label
@@ -53,7 +53,7 @@ def read_train(datapath, info):
 def read_test(datapath, info):
     main_columns = info['tables']['main']
     table_dtype = {key: TYPE_MAP[val] for key, val in main_columns.items()}
-    table_path = os.path.join(datapath, 'test', 'main_test.data')
+    table_path = os.path.join(datapath, 'test', 'main_test.data.gz')
     date_list = [key for key, val in main_columns.items() if val == 'time']
 
     test_data = pd.read_csv(
