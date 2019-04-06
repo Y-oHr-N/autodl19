@@ -1,85 +1,103 @@
-from datetime import datetime
 import json
-import os
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
 import pytest
 
+
 from model import Model
 
-ROOT_DIR = os.getcwd()
-INPUT_DIR = os.path.join(ROOT_DIR, 'data')
-TYPE_MAP = {'time': str, 'cat': str, 'multi-cat': str, 'num': float}
+TYPE_MAP = {'cat': str, 'multi-cat': str, 'num': float, 'time': str}
 
 
-def read_info(datapath):
-    with open(os.path.join(datapath, 'train', 'info.json'), 'r') as info_fp:
-        info = json.load(info_fp)
+def date_parser(x: str) -> datetime:
+    x = float(x)
+
+    if pd.isna(x):
+        return x
+
+    return datetime.fromtimestamp(x / 1000.0)
+
+
+def read_info(path: Path) -> Dict[str, Any]:
+    info_path = path / 'train' / 'info.json'
+
+    with info_path.open() as f:
+        info = json.load(f)
 
     return info
 
 
-def read_train(datapath, info):
+def read_train_data(path: Path, info: Dict[str, Any]) -> pd.DataFrame:
     train_data = {}
 
-    for table_name, columns in info['tables'].items():
-        table_dtype = {key: TYPE_MAP[val] for key, val in columns.items()}
-
+    for table_name, column_types in info['tables'].items():
         if table_name == 'main':
-            table_path = os.path.join(datapath, 'train', 'main_train.data.gz')
+            table_path = path / 'train' / 'main_train.data.gz'
         else:
-            table_path = os.path.join(datapath, 'train', f'{table_name}.data.gz')
+            table_path = path / 'train' / f'{table_name}.data.gz'
 
-        date_list = [key for key, val in columns.items() if val == 'time']
+        dtype = {}
+        parse_dates = []
+
+        for column_name, column_type in column_types.items():
+            dtype[column_name] = TYPE_MAP[column_type]
+
+            if column_type == 'time':
+                parse_dates.append(column_name)
 
         train_data[table_name] = pd.read_csv(
             table_path,
-            sep='\t',
-            dtype=table_dtype,
-            parse_dates=date_list,
-            date_parser=lambda millisecs: millisecs \
-                if np.isnan(float(millisecs)) \
-                else datetime.fromtimestamp(float(millisecs)/1000)
+            date_parser=date_parser,
+            dtype=dtype,
+            parse_dates=parse_dates,
+            sep='\t'
         )
 
-    train_label = pd.read_csv(
-        os.path.join(datapath, 'train', 'main_train.solution.gz')
-    )['label']
-
-    return train_data, train_label
+    return train_data
 
 
-def read_test(datapath, info):
-    main_columns = info['tables']['main']
-    table_dtype = {key: TYPE_MAP[val] for key, val in main_columns.items()}
-    table_path = os.path.join(datapath, 'test', 'main_test.data.gz')
-    date_list = [key for key, val in main_columns.items() if val == 'time']
+def read_train_label(path: Path) -> pd.Series:
+    label_path = path / 'train' / 'main_train.solution.gz'
 
-    test_data = pd.read_csv(
+    return pd.read_csv(label_path, squeeze=True)
+
+
+def read_test_data(path: Path, info: Dict[str, Any]) -> pd.DataFrame:
+    column_types = info['tables']['main']
+    table_path = path / 'test' / 'main_test.data.gz'
+    dtype = {}
+    parse_dates = []
+
+    for column_name, column_type in column_types.items():
+        dtype[column_name] = TYPE_MAP[column_type]
+
+        if column_type == 'time':
+            parse_dates.append(column_name)
+
+    return pd.read_csv(
         table_path,
-        sep='\t',
-        dtype=table_dtype,
-        parse_dates=date_list,
-        date_parser=lambda millisecs: millisecs \
-            if np.isnan(float(millisecs)) \
-            else datetime.fromtimestamp(float(millisecs) / 1000)
+        dtype=dtype,
+        date_parser=date_parser,
+        parse_dates=parse_dates,
+        sep='\t'
     )
 
-    return test_data
 
-
-@pytest.mark.filterwarnings('ignore::UserWarning')
 def test_model() -> None:
-    datanames = sorted(os.listdir(INPUT_DIR))
+    data_path = Path('data')
 
-    for dataname in datanames:
-        datapath = os.path.join(INPUT_DIR, dataname)
-        info = read_info(datapath)
-        train_data, train_label = read_train(datapath, info)
-        test_data = read_test(datapath, info)
+    for path in data_path.iterdir():
+        info = read_info(path)
+        train_data = read_train_data(path, info)
+        train_label = read_train_label(path)
+        test_data = read_test_data(path, info)
 
         model = Model(info)
 
         model.fit(train_data, train_label, np.inf)
+
         model.predict(test_data, np.inf)
