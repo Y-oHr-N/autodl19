@@ -1,6 +1,6 @@
 import os
 
-os.system('pip3 install hyperopt numpy lightgbm pandas scikit-learn')
+os.system('pip3 install hyperopt numpy lightgbm pandas>=0.24.2 scikit-learn')
 
 import copy
 import pandas as pd
