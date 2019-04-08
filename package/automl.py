@@ -31,15 +31,6 @@ def predict(X: pd.DataFrame, config: Config) -> List:
 
 
 @timeit
-def validate(preds, y_path) -> np.float64:
-    score = roc_auc_score(pd.read_csv(y_path)['label'].values, preds)
-
-    log('Score: {:0.4f}'.format(score))
-
-    return score
-
-
-@timeit
 def train_lightgbm(X: pd.DataFrame, y: pd.Series, config: Config):
     params = {
         'objective': 'binary',
