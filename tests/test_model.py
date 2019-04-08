@@ -10,8 +10,7 @@ from sklearn.metrics import roc_auc_score
 
 
 from model import Model
-
-TYPE_MAP = {'cat': str, 'multi-cat': str, 'num': float, 'time': str}
+from package.constants import TYPE_MAP
 
 
 def date_parser(x: str) -> datetime:
