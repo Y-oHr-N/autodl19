@@ -12,8 +12,6 @@ from .utils import log
 from .utils import timeit
 from .utils import Timer
 
-NUM_OP = [np.std, np.mean]
-
 
 def bfs(root_name, graph, tconfig):
     tconfig[MAIN_TABLE_NAME]['depth'] = 0
