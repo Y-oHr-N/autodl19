@@ -1,7 +1,6 @@
 from collections import defaultdict
 from collections import deque
 
-import numpy as np
 import pandas as pd
 
 from .constants import MAIN_TABLE_NAME
