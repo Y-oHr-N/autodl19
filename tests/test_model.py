@@ -1,11 +1,12 @@
-import json
 from datetime import datetime
+import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
+from typing import Dict
 
 import numpy as np
 import pandas as pd
-import pytest
+from sklearn.metrics import roc_auc_score
 
 
 from model import Model
@@ -87,8 +88,16 @@ def read_test_data(path: Path, info: Dict[str, Any]) -> pd.DataFrame:
     )
 
 
+def read_test_label(path: Path) -> pd.Series:
+    label_path = path / 'main_test.solution.gz'
+
+    return pd.read_csv(label_path, squeeze=True)
+
+
 def test_model() -> None:
     data_path = Path('data')
+    ref_path = Path('ref')
+    probabilities = {}
 
     for path in data_path.iterdir():
         info = read_info(path)
@@ -100,4 +109,9 @@ def test_model() -> None:
 
         model.fit(train_data, train_label, np.inf)
 
-        model.predict(test_data, np.inf)
+        probabilities[path.name] = model.predict(test_data, np.inf)
+
+    for path in ref_path.iterdir():
+        test_label = read_test_label(path)
+
+        roc_auc_score(test_label, probabilities[path.name])
