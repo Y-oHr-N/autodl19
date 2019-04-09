@@ -12,35 +12,34 @@ from .constants import TIME_PREFIX
 logger = logging.getLogger(__name__)
 
 
+def timeit(func):
+    def timed(*args, **kwargs):
+        logger.info(f'Start [{func.__name__}].')
+
+        start_time = time.perf_counter()
+        res = func(*args, **kwargs)
+        elapsed_time = time.perf_counter() - start_time
+
+        logger.info(
+            f'End [{func.__name__}]. Time elapsed: {elapsed_time:0.3f} sec.'
+        )
+
+        return res
+
+    return timed
+
+
 class Timer(object):
     def __init__(self):
-        self.start = time.time()
+        self.start = time.perf_counter()
         self.history = [self.start]
 
     def check(self, info):
-        current = time.time()
+        current = time.perf_counter()
 
-        logger.info(f"[{info}] spend {current - self.history[-1]:0.2f} sec")
+        logger.info(f'[{info}] spend {current - self.history[-1]:0.3f} sec')
 
         self.history.append(current)
-
-
-def timeit(method, start_log=None):
-    def timed(*args, **kw):
-        logger.info(f'Start [{method.__name__}].')
-
-        start_time = time.time()
-        result = method(*args, **kw)
-        end_time = time.time()
-
-        logger.info(
-            f'End   [{method.__name__}]. Time elapsed: '
-            f'{end_time - start_time:0.2f} sec.'
-        )
-
-        return result
-
-    return timed
 
 
 class Config(object):
