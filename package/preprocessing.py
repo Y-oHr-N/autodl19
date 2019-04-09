@@ -1,17 +1,19 @@
 import datetime
+import logging
 
 from .constants import CATEGORICAL_PREFIX
 from .constants import MULTI_VALUE_CATEGORICAL_PREFIX
 from .constants import NUMERICAL_PREFIX
 from .constants import TIME_PREFIX
-from .utils import log
 from .utils import timeit
+
+logger = logging.getLogger(__name__)
 
 
 @timeit
 def clean_tables(tables):
     for tname in tables:
-        log(f'cleaning table {tname}')
+        logger.info(f'cleaning table {tname}')
         clean_df(tables[tname])
 
 
