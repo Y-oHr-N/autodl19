@@ -1,3 +1,4 @@
+import logging
 from typing import Dict
 from typing import List
 
@@ -13,8 +14,9 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from .utils import Config
-from .utils import log
 from .utils import timeit
+
+logger = logging.getLogger(__name__)
 
 
 @timeit
@@ -103,7 +105,8 @@ def hyperopt_lightgbm(
                          rstate=np.random.RandomState(1))
 
     hyperparams = space_eval(space, best)
-    log(f"auc = {-trials.best_trial['result']['loss']:0.4f} {hyperparams}")
+
+    logger.info(f"auc = {-trials.best_trial['result']['loss']:0.4f} {hyperparams}")
 
     return hyperparams
 

@@ -1,5 +1,6 @@
 from collections import defaultdict
 from collections import deque
+import logging
 
 import pandas as pd
 
@@ -8,9 +9,10 @@ from .constants import MULTI_VALUE_CATEGORICAL_PREFIX
 from .constants import NUMERICAL_PREFIX
 from .constants import TIME_PREFIX
 from .utils import Config
-from .utils import log
 from .utils import timeit
 from .utils import Timer
+
+logger = logging.getLogger(__name__)
 
 
 def bfs(root_name, graph, tconfig):
@@ -82,7 +84,7 @@ def temporal_join(u, v, v_name, key, time_col):
     )
 
     if tmp_u.empty:
-        log("empty tmp_u, return u")
+        logger.info("empty tmp_u, return u")
 
         return u
 
@@ -98,7 +100,7 @@ def temporal_join(u, v, v_name, key, time_col):
 def dfs(u_name, config, tables, graph):
     u = tables[u_name]
 
-    log(f"enter {u_name}")
+    logger.info(f"enter {u_name}")
 
     for edge in graph[u_name]:
         v_name = edge['to']
@@ -114,15 +116,15 @@ def dfs(u_name, config, tables, graph):
             continue
 
         if config['time_col'] in u and config['time_col'] in v:
-            log(f"join {u_name} <--{type_}--t {v_name}")
+            logger.info(f"join {u_name} <--{type_}--t {v_name}")
             u = temporal_join(u, v, v_name, key, config['time_col'])
         else:
-            log(f"join {u_name} <--{type_}--nt {v_name}")
+            logger.info(f"join {u_name} <--{type_}--nt {v_name}")
             u = join(u, v, v_name, key, type_)
 
         del v
 
-    log(f"leave {u_name}")
+    logger.info(f"leave {u_name}")
 
     return u
 
