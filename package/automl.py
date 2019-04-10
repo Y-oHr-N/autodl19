@@ -21,18 +21,6 @@ logger = logging.getLogger(__name__)
 
 @timeit
 def train(X: pd.DataFrame, y: pd.Series, config: Config):
-    train_lightgbm(X, y, config)
-
-
-@timeit
-def predict(X: pd.DataFrame, config: Config) -> List:
-    preds = predict_lightgbm(X, config)
-
-    return preds
-
-
-@timeit
-def train_lightgbm(X: pd.DataFrame, y: pd.Series, config: Config):
     params = {
         'objective': 'binary',
         'metric': 'auc',
@@ -44,7 +32,12 @@ def train_lightgbm(X: pd.DataFrame, y: pd.Series, config: Config):
     X_sample, y_sample = data_sample(X, y, 30000)
     hyperparams = hyperopt_lightgbm(X_sample, y_sample, params, config)
 
-    X_train, X_val, y_train, y_val = data_split(X, y, 0.1)
+    X_train, X_val, y_train, y_val = train_test_split(
+        X,
+        y,
+        random_state=0,
+        test_size=0.1
+    )
     train_data = lgb.Dataset(X_train, label=y_train)
     valid_data = lgb.Dataset(X_val, label=y_val)
 
@@ -57,7 +50,7 @@ def train_lightgbm(X: pd.DataFrame, y: pd.Series, config: Config):
 
 
 @timeit
-def predict_lightgbm(X: pd.DataFrame, config: Config) -> List:
+def predict(X: pd.DataFrame, config: Config) -> List:
     return config['model'].predict(X)
 
 
@@ -68,7 +61,12 @@ def hyperopt_lightgbm(
     params: Dict,
     config: Config
 ):
-    X_train, X_val, y_train, y_val = data_split(X, y, test_size=0.5)
+    X_train, X_val, y_train, y_val = train_test_split(
+        X,
+        y,
+        random_state=0,
+        test_size=0.5
+    )
     train_data = lgb.Dataset(X_train, label=y_train)
     valid_data = lgb.Dataset(X_val, label=y_val)
 
@@ -109,11 +107,6 @@ def hyperopt_lightgbm(
     logger.info(f"auc = {-trials.best_trial['result']['loss']:0.4f} {hyperparams}")
 
     return hyperparams
-
-
-def data_split(X: pd.DataFrame, y: pd.Series, test_size: float = 0.2):
-    #  -> (pd.DataFrame, pd.Series, pd.DataFrame, pd.Series):
-    return train_test_split(X, y, test_size=test_size, random_state=1)
 
 
 def data_sample(X: pd.DataFrame, y: pd.Series, nrows: int = 5000):

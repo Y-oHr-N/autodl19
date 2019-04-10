@@ -19,11 +19,6 @@ def clean_tables(tables):
 
 @timeit
 def clean_df(df):
-    fillna(df)
-
-
-@timeit
-def fillna(df):
     for c in [c for c in df if c.startswith(NUMERICAL_PREFIX)]:
         df[c].fillna(-1, inplace=True)
 
