@@ -10,7 +10,6 @@ from .constants import NUMERICAL_PREFIX
 from .constants import TIME_PREFIX
 from .utils import Config
 from .utils import timeit
-from .utils import Timer
 
 logger = logging.getLogger(__name__)
 
@@ -50,34 +49,26 @@ def join(u, v, v_name, key, type_):
 
 @timeit
 def temporal_join(u, v, v_name, key, time_col):
-    timer = Timer()
-
     if isinstance(key, list):
         assert len(key) == 1
         key = key[0]
 
     tmp_u = u[[time_col, key]]
-    timer.check("select")
 
     tmp_u = pd.concat([tmp_u, v], keys=['u', 'v'], sort=False)
-    timer.check("concat")
 
     rehash_key = f'rehash_{key}'
     tmp_u[rehash_key] = tmp_u[key].apply(lambda x: hash(x) % 200)
-    timer.check("rehash_key")
 
     tmp_u.sort_values(time_col, inplace=True)
-    timer.check("sort")
 
     agg_funcs = {col: Config.aggregate_op(col) for col in v if col != key
                  and not col.startswith(TIME_PREFIX)
                  and not col.startswith(MULTI_VALUE_CATEGORICAL_PREFIX)}
 
     tmp_u = tmp_u.groupby(rehash_key).rolling(5).agg(agg_funcs)
-    timer.check("group & rolling & agg")
 
     tmp_u.reset_index(0, drop=True, inplace=True)  # drop rehash index
-    timer.check("reset_index")
 
     tmp_u.columns = tmp_u.columns.map(
         lambda a: f"{NUMERICAL_PREFIX}{a[1].upper()}_ROLLING5({v_name}.{a[0]})"
@@ -89,8 +80,6 @@ def temporal_join(u, v, v_name, key, time_col):
         return u
 
     ret = pd.concat([u, tmp_u.loc['u']], axis=1, sort=False)
-
-    timer.check("final concat")
 
     del tmp_u
 

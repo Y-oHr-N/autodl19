@@ -16,43 +16,50 @@ def timeit(func):
     def timed(*args, **kwargs):
         logger.info(f'Start [{func.__name__}].')
 
-        start_time = time.perf_counter()
-        res = func(*args, **kwargs)
-        elapsed_time = time.perf_counter() - start_time
+        timer = Timer()
+        ret = func(*args, **kwargs)
 
         logger.info(
-            f'End [{func.__name__}]. Time elapsed: {elapsed_time:0.3f} sec.'
+            f'End [{func.__name__}]. '
+            f'The elapsed time is {timer.elapsed_time():0.3f} seconds.'
         )
 
-        return res
+        return ret
 
     return timed
 
 
 class Timer(object):
-    def __init__(self):
-        self.start = time.perf_counter()
-        self.history = [self.start]
+    def __init__(self, time_budget: float = None) -> None:
+        self.time_budget = time_budget
 
-    def check(self, info):
-        current = time.perf_counter()
+        self._start_time = time.perf_counter()
 
-        logger.info(f'[{info}] spend {current - self.history[-1]:0.3f} sec')
+    def elapsed_time(self) -> float:
+        return time.perf_counter() - self._start_time
 
-        self.history.append(current)
+    def remaining_time(self) -> float:
+        if self.time_budget is None:
+            raise RuntimeError('`time_budget` should be set.')
+
+        ret = self.time_budget - self.elapsed_time()
+
+        if ret <= 0.0:
+            raise TimeoutError('The time limit has been exceeded.')
+
+        return ret
 
 
 class Config(object):
     def __init__(self, info):
-        self.data = {
-            "start_time": time.time(),
-            **info
-        }
-        self.data["tables"] = {}
+        self.data = {**info}
+        self.data['tables'] = {}
 
         for tname, ttype in info['tables'].items():
             self.data['tables'][tname] = {}
             self.data['tables'][tname]['type'] = ttype
+
+        self._timer = Timer(info['time_budget'])
 
     @staticmethod
     def aggregate_op(col):
@@ -81,7 +88,7 @@ class Config(object):
         assert False, f"Unknown col type {col}"
 
     def time_left(self):
-        return self["time_budget"] - (time.time() - self["start_time"])
+        return self._timer.remaining_time()
 
     def __getitem__(self, key):
         return self.data[key]
