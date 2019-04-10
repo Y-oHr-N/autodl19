@@ -4,13 +4,13 @@ from pathlib import Path
 from typing import Any
 from typing import Dict
 
-import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 
 
 from model import Model
 from package.constants import TYPE_MAP
+from package.utils import Timer
 
 
 def date_parser(x: str) -> datetime:
@@ -104,11 +104,17 @@ def test_model() -> None:
         train_label = read_train_label(path)
         test_data = read_test_data(path, info)
 
+        timer = Timer(info['time_budget'])
         model = Model(info)
 
-        model.fit(train_data, train_label, np.inf)
+        model.fit(train_data, train_label, timer.remaining_time())
 
-        probabilities[path.name] = model.predict(test_data, np.inf)
+        probabilities[path.name] = model.predict(
+            test_data,
+            timer.remaining_time()
+        )
+
+        timer.remaining_time()
 
     for path in ref_path.iterdir():
         test_label = read_test_label(path)
