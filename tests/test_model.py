@@ -3,7 +3,9 @@ import json
 from pathlib import Path
 from typing import Any
 from typing import Dict
+from typing import Union
 
+import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 
@@ -13,11 +15,11 @@ from package.constants import TYPE_MAP
 from package.utils import Timer
 
 
-def date_parser(x: str) -> datetime:
+def date_parser(x: Union[float, str]) -> datetime:
     x = float(x)
 
-    if pd.isna(x):
-        return x
+    if np.isnan(x):
+        return np.nan
 
     return datetime.fromtimestamp(x / 1000.0)
 
