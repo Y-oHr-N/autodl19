@@ -1,3 +1,5 @@
+from scipy.stats import kurtosis
+
 MAIN_TABLE_NAME = 'main'
 
 CATEGORICAL_PREFIX = 'c_'
@@ -18,4 +20,11 @@ TYPE_MAP = {
     MULTI_VALUE_CATEGORICAL_TYPE: str,
     NUMERICAL_TYPE: float,
     TIME_TYPE: str
+}
+
+AGGREGATE_FUNCTIONS_MAP = {
+    CATEGORICAL_TYPE: ['nunique'],
+    MULTI_VALUE_CATEGORICAL_TYPE: [],
+    NUMERICAL_TYPE: ['min', 'max', 'mean', 'var', 'skew', kurtosis],
+    TIME_TYPE: []
 }
