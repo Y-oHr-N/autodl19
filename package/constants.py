@@ -1,3 +1,4 @@
+import pandas as pd
 from scipy.stats import kurtosis
 
 MAIN_TABLE_NAME = 'main'
@@ -23,7 +24,7 @@ TYPE_MAP = {
 }
 
 AGGREGATE_FUNCTIONS_MAP = {
-    CATEGORICAL_TYPE: ['nunique'],
+    CATEGORICAL_TYPE: [pd.Series.nunique],
     MULTI_VALUE_CATEGORICAL_TYPE: [],
     NUMERICAL_TYPE: ['min', 'max', 'mean', 'var', 'skew', kurtosis],
     TIME_TYPE: []
