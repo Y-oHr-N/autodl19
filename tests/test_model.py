@@ -121,4 +121,6 @@ def test_model() -> None:
     for path in ref_path.iterdir():
         test_label = read_test_label(path)
 
-        roc_auc_score(test_label, probabilities[path.name])
+        score = roc_auc_score(test_label, probabilities[path.name])
+
+        assert score > 0.5
