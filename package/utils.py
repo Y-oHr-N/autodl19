@@ -1,6 +1,7 @@
 import logging
 import time
 
+from .constants import AGGREGATE_FUNCTIONS_MAP
 from .constants import CATEGORICAL_PREFIX
 from .constants import CATEGORICAL_TYPE
 from .constants import MULTI_VALUE_CATEGORICAL_PREFIX
@@ -63,25 +64,13 @@ class Config(object):
 
     @staticmethod
     def aggregate_op(col):
-
-        def my_nunique(x):
-            return x.nunique()
-
-        my_nunique.__name__ = 'nunique'
-        ops = {
-            NUMERICAL_TYPE: ["mean", "sum"],
-            CATEGORICAL_TYPE: ["count"],
-            #  TIME_TYPE: ["max"],
-            #  MULTI_VALUE_CATEGORICAL_TYPE: [my_unique]
-        }
-
         if col.startswith(NUMERICAL_PREFIX):
-            return ops[NUMERICAL_TYPE]
+            return AGGREGATE_FUNCTIONS_MAP[NUMERICAL_TYPE]
         if col.startswith(CATEGORICAL_PREFIX):
-            return ops[CATEGORICAL_TYPE]
+            return AGGREGATE_FUNCTIONS_MAP[CATEGORICAL_TYPE]
         if col.startswith(MULTI_VALUE_CATEGORICAL_PREFIX):
             assert False, f"MultiCategory type feature's aggregate op are not supported."
-            return ops[MULTI_VALUE_CATEGORICAL_TYPE]
+            return AGGREGATE_FUNCTIONS_MAP[MULTI_VALUE_CATEGORICAL_TYPE]
         if col.startswith(TIME_PREFIX):
             assert False, f"Time type feature's aggregate op are not implemented."
 
