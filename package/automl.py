@@ -1,3 +1,4 @@
+from collections import Counter
 import logging
 from typing import Dict
 from typing import List
@@ -8,6 +9,7 @@ from hyperopt import space_eval
 from hyperopt import STATUS_OK
 from hyperopt import tpe
 from hyperopt import Trials
+from imblearn.under_sampling import RandomUnderSampler
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
@@ -21,60 +23,75 @@ logger = logging.getLogger(__name__)
 
 @timeit
 def train(X: pd.DataFrame, y: pd.Series, config: Config):
-    params = {
-        'objective': 'binary',
-        'metric': 'auc',
-        'verbosity': -1,
-        'seed': 1,
-        'num_threads': 4
-    }
+    learning_rate = 0.01
+    max_depth = 7
+    metric = 'auc'
+    n_estimators = 1000
+    random_state = 0
+    test_size = 0.25
+    early_stopping_rounds = 10
 
-    X_sample, y_sample = data_sample(X, y, 30000)
-    hyperparams = hyperopt_lightgbm(X_sample, y_sample, params, config)
+    sampler = RandomUnderSampler(random_state=random_state)
 
-    X_train, X_val, y_train, y_val = train_test_split(
-        X,
-        y,
-        random_state=0,
-        test_size=0.1
+    logger.info(f'Original dataset shape {Counter(y)}')
+
+    X_res, y_res = sampler.fit_resample(X, y)
+
+    logger.info(f'Resampled dataset shape {Counter(y_res)}')
+
+    classifier = lgb.LGBMClassifier(
+        learning_rate=learning_rate,
+        max_depth=max_depth,
+        metric=metric,
+        n_estimators=n_estimators,
+        random_state=random_state
     )
-    train_data = lgb.Dataset(X_train, label=y_train)
-    valid_data = lgb.Dataset(X_val, label=y_val)
 
-    config['model'] = lgb.train({**params, **hyperparams},
-                                train_data,
-                                500,
-                                valid_data,
-                                early_stopping_rounds=30,
-                                verbose_eval=100)
+    best_params = hyperopt_lightgbm(classifier, X_res, y_res)
+
+    classifier.set_params(**best_params)
+
+    X_train, X_valid, y_train, y_valid = train_test_split(
+        X_res,
+        y_res,
+        random_state=random_state,
+        test_size=test_size
+    )
+
+    classifier.fit(
+        X_train,
+        y_train,
+        early_stopping_rounds=early_stopping_rounds,
+        eval_set=[(X_valid, y_valid)]
+    )
+
+    config['model'] = classifier
 
 
 @timeit
 def predict(X: pd.DataFrame, config: Config) -> List:
-    return config['model'].predict(X)
+    return config['model'].predict_proba(X)[:, 1]
 
 
 @timeit
 def hyperopt_lightgbm(
+    estimator,
     X: pd.DataFrame,
     y: pd.Series,
-    params: Dict,
-    config: Config
 ):
-    X_train, X_val, y_train, y_val = train_test_split(
+    metric = 'auc'
+    random_state = 0
+    test_size = 0.5
+    early_stopping_rounds = 10
+
+    X_train, X_valid, y_train, y_valid = train_test_split(
         X,
         y,
-        random_state=0,
-        test_size=0.5
+        random_state=random_state,
+        test_size=test_size
     )
-    train_data = lgb.Dataset(X_train, label=y_train)
-    valid_data = lgb.Dataset(X_val, label=y_val)
 
     space = {
-        'learning_rate': hp.loguniform(
-            'learning_rate', np.log(0.01), np.log(0.5)
-        ),
-        'max_depth': hp.choice('max_depth', [-1, 2, 3, 4, 5, 6]),
         'num_leaves': hp.choice(
             'num_leaves', np.linspace(10, 200, 50, dtype=int)
         ),
@@ -88,13 +105,18 @@ def hyperopt_lightgbm(
         'min_child_weight': hp.uniform('min_child_weight', 0.5, 10),
     }
 
-    def objective(hyperparams):
-        model = lgb.train({**params, **hyperparams}, train_data, 300,
-                          valid_data, early_stopping_rounds=30, verbose_eval=0)
+    def objective(params):
+        estimator.set_params(**params)
 
-        score = model.best_score['valid_0'][params['metric']]
+        estimator.fit(
+            X_train,
+            y_train,
+            early_stopping_rounds=early_stopping_rounds,
+            eval_set=[(X_valid, y_valid)]
+        )
 
-        # in classification, less is better
+        score = estimator.best_score_['valid_0'][metric]
+
         return {'loss': -score, 'status': STATUS_OK}
 
     trials = Trials()
@@ -107,15 +129,3 @@ def hyperopt_lightgbm(
     logger.info(f"auc = {-trials.best_trial['result']['loss']:0.4f} {hyperparams}")
 
     return hyperparams
-
-
-def data_sample(X: pd.DataFrame, y: pd.Series, nrows: int = 5000):
-    # -> (pd.DataFrame, pd.Series):
-    if len(X) > nrows:
-        X_sample = X.sample(nrows, random_state=1)
-        y_sample = y[X_sample.index]
-    else:
-        X_sample = X
-        y_sample = y
-
-    return X_sample, y_sample

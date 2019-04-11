@@ -3,6 +3,7 @@ from typing import Any
 from typing import Dict
 
 os.system("pip3 install hyperopt")
+os.system("pip3 install imbalanced-learn")
 os.system("pip3 install lightgbm")
 os.system("pip3 install pandas==0.24.2")
 
