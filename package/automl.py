@@ -47,10 +47,6 @@ def train(X: pd.DataFrame, y: pd.Series, config: Config):
         random_state=random_state
     )
 
-    best_params = hyperopt_lightgbm(classifier, X_res, y_res)
-
-    classifier.set_params(**best_params)
-
     X_train, X_valid, y_train, y_valid = train_test_split(
         X_res,
         y_res,
@@ -58,12 +54,16 @@ def train(X: pd.DataFrame, y: pd.Series, config: Config):
         test_size=test_size
     )
 
+    logger.info(f'remaining_time={config._timer.remaining_time()}')
+
     classifier.fit(
         X_train,
         y_train,
         early_stopping_rounds=early_stopping_rounds,
         eval_set=[(X_valid, y_valid)]
     )
+
+    logger.info(f'remaining_time={config._timer.remaining_time()}')
 
     config['model'] = classifier
 
