@@ -109,14 +109,14 @@ def test_model() -> None:
         timer = Timer(info['time_budget'])
         model = Model(info)
 
-        model.fit(train_data, train_label, timer.remaining_time())
+        model.fit(train_data, train_label, timer.get_remaining_time())
 
         probabilities[path.name] = model.predict(
             test_data,
-            timer.remaining_time()
+            timer.get_remaining_time()
         )
 
-        timer.remaining_time()
+        timer.check_remaining_time()
 
     for path in ref_path.iterdir():
         test_label = read_test_label(path)

@@ -1,6 +1,8 @@
 import logging
 import time
 
+import numpy as np
+
 from .constants import AGGREGATE_FUNCTIONS_MAP
 from .constants import CATEGORICAL_PREFIX
 from .constants import CATEGORICAL_TYPE
@@ -15,15 +17,13 @@ logger = logging.getLogger(__name__)
 
 def timeit(func):
     def timed(*args, **kwargs):
-        logger.info(f'Start [{func.__name__}].')
+        logger.info(f'Start {func}.')
 
         timer = Timer()
         ret = func(*args, **kwargs)
+        elapsed_time = timer.get_elapsed_time()
 
-        logger.info(
-            f'End [{func.__name__}]. '
-            f'The elapsed time is {timer.elapsed_time():0.3f} seconds.'
-        )
+        logger.info(f'End {func}. ({elapsed_time:.3f} sec.)')
 
         return ret
 
@@ -36,19 +36,20 @@ class Timer(object):
 
         self._start_time = time.perf_counter()
 
-    def elapsed_time(self) -> float:
+    def get_elapsed_time(self) -> float:
         return time.perf_counter() - self._start_time
 
-    def remaining_time(self) -> float:
+    def get_remaining_time(self) -> float:
         if self.time_budget is None:
             raise RuntimeError('`time_budget` should be set.')
 
-        ret = self.time_budget - self.elapsed_time()
+        remaining_time = self.time_budget - self.get_elapsed_time()
 
-        if ret <= 0.0:
-            raise TimeoutError('The time limit has been exceeded.')
+        return np.maximum(0.0, remaining_time)
 
-        return ret
+    def check_remaining_time(self) -> None:
+        if self.get_remaining_time() == 0.0:
+            raise RuntimeError('Execution time limit has been exceeded.')
 
 
 class Config(object):
