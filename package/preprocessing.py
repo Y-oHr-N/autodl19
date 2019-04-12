@@ -76,4 +76,4 @@ def transform_categorical_hash(df):
     )
 
     for c in multi_value_categorical_feature_names:
-        df[c] = df[c].str.split(',', expand=True)[0]
+        df[c] = df[c].apply(lambda x: int(x.split(',')[0]))
