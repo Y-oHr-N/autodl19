@@ -117,10 +117,12 @@ def test_model() -> None:
 
         model.fit(train_data, train_label, timer.get_remaining_time())
 
-        probabilities[path.name] = model.predict(
-            test_data,
-            timer.get_remaining_time()
-        )
+        y_score = model.predict(test_data, timer.get_remaining_time())
+
+        assert len(test_data) == len(y_score)
+        assert y_score.isnull().sum() == 0
+
+        probabilities[path.name] = y_score
 
         timer.check_remaining_time()
 
