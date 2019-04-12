@@ -9,6 +9,9 @@ os.system("pip3 install pandas==0.24.2")
 import copy
 import pandas as pd
 
+from sklearn.base import BaseEstimator
+from sklearn.base import MetaEstimatorMixin
+
 from package.automl import predict
 from package.automl import train
 from package.constants import MAIN_TABLE_NAME
@@ -20,7 +23,7 @@ from package.utils import Config
 from package.utils import timeit
 
 
-class Model(object):
+class Model(BaseEstimator, MetaEstimatorMixin):
     def __init__(self, info: Dict[str, Any]) -> None:
         self.info = info
 
