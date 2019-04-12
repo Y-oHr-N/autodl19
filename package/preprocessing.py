@@ -14,40 +14,66 @@ logger = logging.getLogger(__name__)
 def clean_tables(tables):
     for tname in tables:
         logger.info(f'cleaning table {tname}')
+
         clean_df(tables[tname])
 
 
 @timeit
 def clean_df(df):
-    for c in [c for c in df if c.startswith(NUMERICAL_PREFIX)]:
-        df[c].fillna(-1, inplace=True)
+    categorical_feature_names = (
+        df.columns[df.columns.str.startswith(CATEGORICAL_PREFIX)]
+    )
+    multi_value_categorical_feature_names = (
+        df.columns[df.columns.str.startswith(MULTI_VALUE_CATEGORICAL_PREFIX)]
+    )
+    numerical_feature_names = (
+        df.columns[df.columns.str.startswith(NUMERICAL_PREFIX)]
+    )
+    time_feature_names = (
+        df.columns[df.columns.str.startswith(TIME_PREFIX)]
+    )
 
-    for c in [c for c in df if c.startswith(CATEGORICAL_PREFIX)]:
-        df[c].fillna('0', inplace=True)
+    value = {}
 
-    for c in [c for c in df if c.startswith(TIME_PREFIX)]:
-        df[c].fillna(datetime.datetime(1970, 1, 1), inplace=True)
+    value.update({c: '0' for c in categorical_feature_names})
+    value.update({c: '0' for c in multi_value_categorical_feature_names})
+    value.update({c: -1 for c in numerical_feature_names})
+    value.update(
+        {c: datetime.datetime(1970, 1, 1) for c in time_feature_names}
+    )
 
-    for c in [c for c in df if c.startswith(MULTI_VALUE_CATEGORICAL_PREFIX)]:
-        df[c].fillna('0', inplace=True)
+    df.fillna(value, inplace=True)
 
 
 @timeit
 def feature_engineer(df, config):
     transform_categorical_hash(df)
-    transform_datetime(df, config)
+    transform_datetime(df)
+
+    logger.info(f'X.shape={df.shape}')
 
 
 @timeit
-def transform_datetime(df, config):
-    for c in [c for c in df if c.startswith(TIME_PREFIX)]:
-        df.drop(c, axis=1, inplace=True)
+def transform_datetime(df):
+    time_feature_names = (
+        df.columns[df.columns.str.startswith(TIME_PREFIX)]
+    )
+
+    df.drop(columns=time_feature_names, inplace=True)
 
 
 @timeit
 def transform_categorical_hash(df):
-    for c in [c for c in df if c.startswith(CATEGORICAL_PREFIX)]:
-        df[c] = df[c].apply(lambda x: int(x))
+    categorical_feature_names = (
+        df.columns[df.columns.str.startswith(CATEGORICAL_PREFIX)]
+    )
+    multi_value_categorical_feature_names = (
+        df.columns[df.columns.str.startswith(MULTI_VALUE_CATEGORICAL_PREFIX)]
+    )
 
-    for c in [c for c in df if c.startswith(MULTI_VALUE_CATEGORICAL_PREFIX)]:
+    df[categorical_feature_names] = df[categorical_feature_names].astype(
+        'uint'
+    )
+
+    for c in multi_value_categorical_feature_names:
         df[c] = df[c].apply(lambda x: int(x.split(',')[0]))
