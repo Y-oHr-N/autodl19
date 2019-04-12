@@ -53,14 +53,12 @@ class Timer(object):
 
 class Config(object):
     def __init__(self, info):
-        self.data = {**info}
+        self.data = info.copy()
         self.data['tables'] = {}
 
         for tname, ttype in info['tables'].items():
             self.data['tables'][tname] = {}
             self.data['tables'][tname]['type'] = ttype
-
-        self._timer = Timer(info['time_budget'])
 
     @staticmethod
     def aggregate_op(col):
@@ -76,23 +74,11 @@ class Config(object):
 
         assert False, f"Unknown col type {col}"
 
-    def time_left(self):
-        return self._timer.remaining_time()
-
     def __getitem__(self, key):
         return self.data[key]
 
     def __setitem__(self, key, value):
         self.data[key] = value
 
-    def __delitem__(self, key):
-        del self.data[key]
-
     def __contains__(self, key):
         return key in self.data
-
-    def __len__(self):
-        return len(self.data)
-
-    def __repr__(self):
-        return repr(self.data)
