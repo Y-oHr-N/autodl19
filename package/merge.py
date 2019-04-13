@@ -5,10 +5,8 @@ import logging
 import pandas as pd
 
 from .constants import MAIN_TABLE_NAME
-from .constants import MULTI_VALUE_CATEGORICAL_PREFIX
 from .constants import NUMERICAL_PREFIX
-from .constants import TIME_PREFIX
-from .utils import Config
+from .utils import aggregate_functions
 from .utils import timeit
 
 logger = logging.getLogger(__name__)
@@ -32,10 +30,9 @@ def bfs(root_name, graph, tconfig):
 @timeit
 def join(u, v, v_name, key, type_):
     if type_.split("_")[2] == 'many':
-        agg_funcs = {col: Config.aggregate_op(col) for col in v if col != key
-                     and not col.startswith(TIME_PREFIX)
-                     and not col.startswith(MULTI_VALUE_CATEGORICAL_PREFIX)}
-        v = v.groupby(key).agg(agg_funcs)
+        columns = v.columns.drop(key)
+        func = aggregate_functions(columns)
+        v = v.groupby(key).agg(func)
         v.columns = v.columns.map(
             lambda a: f"{NUMERICAL_PREFIX}{a[1].upper()}({a[0]})"
         )
@@ -54,19 +51,15 @@ def temporal_join(u, v, v_name, key, time_col):
         key = key[0]
 
     tmp_u = u[[time_col, key]]
-
     tmp_u = pd.concat([tmp_u, v], keys=['u', 'v'], sort=False)
-
     rehash_key = f'rehash_{key}'
     tmp_u[rehash_key] = tmp_u[key].apply(lambda x: hash(x) % 200)
 
     tmp_u.sort_values(time_col, inplace=True)
 
-    agg_funcs = {col: Config.aggregate_op(col) for col in v if col != key
-                 and not col.startswith(TIME_PREFIX)
-                 and not col.startswith(MULTI_VALUE_CATEGORICAL_PREFIX)}
-
-    tmp_u = tmp_u.groupby(rehash_key).rolling(5).agg(agg_funcs)
+    columns = v.columns.drop(key)
+    func = aggregate_functions(columns)
+    tmp_u = tmp_u.groupby(rehash_key).rolling(5).agg(func)
 
     tmp_u.reset_index(0, drop=True, inplace=True)  # drop rehash index
 
