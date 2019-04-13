@@ -13,7 +13,6 @@ import pandas as pd
 from sklearn.base import BaseEstimator
 from sklearn.base import MetaEstimatorMixin
 
-from package.automl import predict
 from package.automl import train
 from package.constants import MAIN_TABLE_NAME
 from package.merge import merge_table
@@ -44,7 +43,8 @@ class Model(BaseEstimator, MetaEstimatorMixin):
 
         clean_df(X)
         feature_engineer(X, self.config_)
-        train(X, y, self.config_)
+
+        self.estimator_ = train(X, y)
 
         return self
 
@@ -68,6 +68,6 @@ class Model(BaseEstimator, MetaEstimatorMixin):
 
         X.sort_index(inplace=True)
 
-        result = predict(X, self.config_)
+        result = self.estimator_.predict_proba(X)
 
-        return pd.Series(result)
+        return pd.Series(result[:, 1])

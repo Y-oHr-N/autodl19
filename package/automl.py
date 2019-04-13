@@ -1,7 +1,5 @@
 from collections import Counter
 import logging
-from typing import Dict
-from typing import List
 
 import hyperopt
 from hyperopt import hp
@@ -15,14 +13,13 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-from .utils import Config
 from .utils import timeit
 
 logger = logging.getLogger(__name__)
 
 
 @timeit
-def train(X: pd.DataFrame, y: pd.Series, config: Config):
+def train(X: pd.DataFrame, y: pd.Series):
     learning_rate = 0.01
     max_depth = 7
     metric = 'auc'
@@ -65,12 +62,7 @@ def train(X: pd.DataFrame, y: pd.Series, config: Config):
         eval_set=[(X_valid, y_valid)]
     )
 
-    config['model'] = classifier
-
-
-@timeit
-def predict(X: pd.DataFrame, config: Config) -> List:
-    return config['model'].predict_proba(X)[:, 1]
+    return classifier
 
 
 @timeit
