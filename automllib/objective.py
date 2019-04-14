@@ -91,6 +91,7 @@ class Objective(object):
             self.X,
             self.y,
             cv=self.cv,
+            error_score='raise',
             scoring='roc_auc'
         )
 
