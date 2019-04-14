@@ -1,121 +1,109 @@
 import logging
-from typing import Dict
-from typing import List
 
-import hyperopt
+from typing import Any
+from typing import Dict
+
+import lightgbm as lgb
+import numpy as np
+import pandas as pd
+
+from hyperopt import fmin
 from hyperopt import hp
 from hyperopt import space_eval
 from hyperopt import STATUS_OK
 from hyperopt import tpe
 from hyperopt import Trials
-import lightgbm as lgb
-import numpy as np
-import pandas as pd
+from imblearn.ensemble import BalancedBaggingClassifier
+from sklearn.base import BaseEstimator
+from sklearn.metrics import check_scoring
 from sklearn.model_selection import train_test_split
 
-from .utils import Config
 from .utils import timeit
 
 logger = logging.getLogger(__name__)
 
 
 @timeit
-def train(X: pd.DataFrame, y: pd.Series, config: Config):
-    params = {
-        'objective': 'binary',
-        'metric': 'auc',
-        'verbosity': -1,
-        'seed': 1,
-        'num_threads': 4
-    }
-
-    X_sample, y_sample = data_sample(X, y, 30000)
-    hyperparams = hyperopt_lightgbm(X_sample, y_sample, params, config)
-
-    X_train, X_val, y_train, y_val = train_test_split(
-        X,
-        y,
-        random_state=0,
-        test_size=0.1
+def train(X: pd.DataFrame, y: pd.Series) -> BaseEstimator:
+    gbdt = lgb.LGBMClassifier(
+        learning_rate=0.01,
+        max_depth=7,
+        metric='auc',
+        random_state=0
     )
-    train_data = lgb.Dataset(X_train, label=y_train)
-    valid_data = lgb.Dataset(X_val, label=y_val)
 
-    config['model'] = lgb.train({**params, **hyperparams},
-                                train_data,
-                                500,
-                                valid_data,
-                                early_stopping_rounds=30,
-                                verbose_eval=100)
+    classifier = BalancedBaggingClassifier(gbdt)
 
+    best_params = hyperopt_lightgbm(classifier, X, y)
 
-@timeit
-def predict(X: pd.DataFrame, config: Config) -> List:
-    return config['model'].predict(X)
+    classifier.set_params(**best_params)
+
+    classifier.fit(X, y)
+
+    return classifier
 
 
 @timeit
 def hyperopt_lightgbm(
+    estimator: BaseEstimator,
     X: pd.DataFrame,
     y: pd.Series,
-    params: Dict,
-    config: Config
-):
-    X_train, X_val, y_train, y_val = train_test_split(
+) -> Dict[str, Any]:
+    scorer = check_scoring(estimator, scoring='roc_auc')
+
+    X_train, X_valid, y_train, y_valid = train_test_split(
         X,
         y,
         random_state=0,
+        shuffle=False,
         test_size=0.5
     )
-    train_data = lgb.Dataset(X_train, label=y_train)
-    valid_data = lgb.Dataset(X_val, label=y_val)
 
     space = {
-        'learning_rate': hp.loguniform(
-            'learning_rate', np.log(0.01), np.log(0.5)
+        'base_estimator__num_leaves': hp.choice(
+            'base_estimator__num_leaves', np.linspace(10, 200, 50, dtype=int)
         ),
-        'max_depth': hp.choice('max_depth', [-1, 2, 3, 4, 5, 6]),
-        'num_leaves': hp.choice(
-            'num_leaves', np.linspace(10, 200, 50, dtype=int)
+        'base_estimator__feature_fraction': hp.quniform(
+            'base_estimator__feature_fraction', 0.5, 1.0, 0.1
         ),
-        'feature_fraction': hp.quniform('feature_fraction', 0.5, 1.0, 0.1),
-        'bagging_fraction': hp.quniform('bagging_fraction', 0.5, 1.0, 0.1),
-        'bagging_freq': hp.choice(
-            'bagging_freq', np.linspace(0, 50, 10, dtype=int)
+        'base_estimator__bagging_fraction': hp.quniform(
+            'base_estimator__bagging_fraction', 0.5, 1.0, 0.1
         ),
-        'reg_alpha': hp.uniform('reg_alpha', 0, 2),
-        'reg_lambda': hp.uniform('reg_lambda', 0, 2),
-        'min_child_weight': hp.uniform('min_child_weight', 0.5, 10),
+        'base_estimator__bagging_freq': hp.choice(
+            'base_estimator__bagging_freq', np.linspace(0, 50, 10, dtype=int)
+        ),
+        'base_estimator__reg_alpha': hp.uniform(
+            'base_estimator__reg_alpha', 0, 2
+        ),
+        'base_estimator__reg_lambda': hp.uniform(
+            'base_estimator__reg_lambda', 0, 2
+        ),
+        'base_estimator__min_child_weight': hp.uniform(
+            'base_estimator__min_child_weight', 0.5, 10
+        )
     }
 
-    def objective(hyperparams):
-        model = lgb.train({**params, **hyperparams}, train_data, 300,
-                          valid_data, early_stopping_rounds=30, verbose_eval=0)
+    def objective(params):
+        estimator.set_params(**params)
 
-        score = model.best_score['valid_0'][params['metric']]
+        estimator.fit(X_train, y_train)
 
-        # in classification, less is better
+        score = scorer(estimator, X_valid, y_valid)
+
         return {'loss': -score, 'status': STATUS_OK}
 
     trials = Trials()
-    best = hyperopt.fmin(fn=objective, space=space, trials=trials,
-                         algo=tpe.suggest, max_evals=10, verbose=1,
-                         rstate=np.random.RandomState(1))
+    best = fmin(
+        fn=objective,
+        space=space,
+        trials=trials,
+        algo=tpe.suggest,
+        max_evals=10,
+        rstate=np.random.RandomState(1)
+    )
 
     hyperparams = space_eval(space, best)
 
     logger.info(f"auc = {-trials.best_trial['result']['loss']:0.4f} {hyperparams}")
 
     return hyperparams
-
-
-def data_sample(X: pd.DataFrame, y: pd.Series, nrows: int = 5000):
-    # -> (pd.DataFrame, pd.Series):
-    if len(X) > nrows:
-        X_sample = X.sample(nrows, random_state=1)
-        y_sample = y[X_sample.index]
-    else:
-        X_sample = X
-        y_sample = y
-
-    return X_sample, y_sample
