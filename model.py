@@ -13,14 +13,14 @@ import pandas as pd
 from sklearn.base import BaseEstimator
 from sklearn.base import MetaEstimatorMixin
 
-from package.automl import train
-from package.constants import MAIN_TABLE_NAME
-from package.merge import merge_table
-from package.preprocessing import clean_df
-from package.preprocessing import clean_tables
-from package.preprocessing import feature_engineer
-from package.utils import Config
-from package.utils import timeit
+from automllib.constants import MAIN_TABLE_NAME
+from automllib.merge import merge_table
+from automllib.preprocessing import clean_df
+from automllib.preprocessing import clean_tables
+from automllib.preprocessing import feature_engineer
+from automllib.train import train
+from automllib.utils import Config
+from automllib.utils import timeit
 
 
 class Model(BaseEstimator, MetaEstimatorMixin):

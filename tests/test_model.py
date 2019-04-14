@@ -12,9 +12,9 @@ import pandas as pd
 
 from sklearn.metrics import roc_auc_score
 
+from automllib.constants import TYPE_MAP
+from automllib.utils import Timer
 from model import Model
-from package.constants import TYPE_MAP
-from package.utils import Timer
 
 logger = logging.getLogger(__name__)
 
