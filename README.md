@@ -5,5 +5,5 @@
 ## Testing
 
 ```
-pytest
+python setup.py test
 ```
