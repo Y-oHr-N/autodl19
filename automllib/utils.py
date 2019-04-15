@@ -71,22 +71,3 @@ class Timer(object):
     def check_remaining_time(self) -> None:
         if self.get_remaining_time() == 0.0:
             raise RuntimeError('Execution time limit has been exceeded.')
-
-
-class Config(object):
-    def __init__(self, info):
-        self.data = info.copy()
-        self.data['tables'] = {}
-
-        for tname, ttype in info['tables'].items():
-            self.data['tables'][tname] = {}
-            self.data['tables'][tname]['type'] = ttype
-
-    def __getitem__(self, key):
-        return self.data[key]
-
-    def __setitem__(self, key, value):
-        self.data[key] = value
-
-    def __contains__(self, key):
-        return key in self.data
