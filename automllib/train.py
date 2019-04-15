@@ -1,11 +1,14 @@
-import collections
 import logging
 
+from typing import Union
+
 import lightgbm as lgb
+import numpy as np
 import optuna
 import pandas as pd
 
 from imblearn.under_sampling import RandomUnderSampler
+from sklearn.utils import check_random_state
 
 from .objective import Objective
 from .utils import timeit
@@ -14,26 +17,52 @@ logger = logging.getLogger(__name__)
 
 
 @timeit
-def train(X: pd.DataFrame, y: pd.Series) -> lgb.LGBMClassifier:
-    logger.info(f'{collections.Counter(y)}')
+def train(
+    X: pd.DataFrame,
+    y: pd.Series,
+    error_score: Union[float, str] = np.nan,
+    max_samples: Union[int, float] = 100,
+    n_jobs: int = 1,
+    n_trials: int = 10,
+    random_state: Union[int, np.random.RandomState] = None,
+    timeout: float = None
+) -> lgb.LGBMClassifier:
+    random_state = check_random_state(random_state)
+    seed = random_state.randint(0, np.iinfo('int32').max)
 
-    rus = RandomUnderSampler(random_state=0)
-    X, y = rus.fit_resample(X, y)
+    logger.info(f'The shape of X before under-sampling is {X.shape}')
 
-    logger.info(f'{collections.Counter(y)}')
+    if type(max_samples) is float:
+        max_samples = int(max_samples * len(X))
 
-    gbdt = lgb.LGBMClassifier(metric='auc', random_state=0)
+    # classes = np.unique(y)
+    # n_classes = len(classes)
+    # max_samples_per_class = max_samples // n_classes
 
-    sampler = optuna.samplers.TPESampler(seed=0)
+    resampler = RandomUnderSampler(
+        random_state=random_state,
+        # sampling_strategy=sampling_strategy
+    )
+
+    X, y = resampler.fit_resample(X, y)
+
+    logger.info(f'The shape of X after under-sampling is {X.shape}')
+
+    sampler = optuna.samplers.TPESampler(seed=seed)
     study = optuna.create_study(sampler=sampler)
-    objective = Objective(gbdt, X, y, error_score='raise')
+    classifier = lgb.LGBMClassifier(metric='auc', random_state=seed)
+    objective = Objective(classifier, X, y, error_score=error_score)
 
-    study.optimize(objective, n_jobs=-1, n_trials=10)
+    study.optimize(
+        objective,
+        n_jobs=n_jobs,
+        n_trials=n_trials,
+        timeout=timeout
+    )
 
-    logger.info(f'CV score is {-study.best_value:.3f}.')
+    logger.info(f'The best score is {-study.best_value:.3f}.')
 
-    gbdt.set_params(**study.best_params)
+    classifier.set_params(**study.best_params)
+    classifier.fit(X, y)
 
-    gbdt.fit(X, y)
-
-    return gbdt
+    return classifier

@@ -44,7 +44,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         clean_df(X)
         feature_engineer(X, self.config_)
 
-        self.estimator_ = train(X, y)
+        self.estimator_ = train(X, y, n_jobs=-1, random_state=0)
 
         return self
 

@@ -43,7 +43,7 @@ class Objective(object):
 
         params['boosting_type'] = trial.suggest_categorical(
             'boosting_type',
-            choices=['gbdt', 'goss', 'dart', 'rf']
+            choices=['dart', 'gbdt', 'goss']
         )
 
         params['colsample_bytree'] = trial.suggest_uniform(
