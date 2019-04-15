@@ -21,7 +21,6 @@ def train(
     X: pd.DataFrame,
     y: pd.Series,
     error_score: Union[float, str] = np.nan,
-    max_samples: Union[int, float] = 100,
     n_jobs: int = 1,
     n_trials: int = 10,
     random_state: Union[int, np.random.RandomState] = None,
@@ -29,24 +28,6 @@ def train(
 ) -> lgb.LGBMClassifier:
     random_state = check_random_state(random_state)
     seed = random_state.randint(0, np.iinfo('int32').max)
-
-    logger.info(f'The shape of X before under-sampling is {X.shape}')
-
-    if type(max_samples) is float:
-        max_samples = int(max_samples * len(X))
-
-    # classes = np.unique(y)
-    # n_classes = len(classes)
-    # max_samples_per_class = max_samples // n_classes
-
-    resampler = RandomUnderSampler(
-        random_state=random_state,
-        # sampling_strategy=sampling_strategy
-    )
-
-    X, y = resampler.fit_resample(X, y)
-
-    logger.info(f'The shape of X after under-sampling is {X.shape}')
 
     sampler = optuna.samplers.TPESampler(seed=seed)
     study = optuna.create_study(sampler=sampler)
@@ -66,3 +47,31 @@ def train(
     classifier.fit(X, y)
 
     return classifier
+
+
+@timeit
+def resample(
+    X: pd.DataFrame,
+    y: pd.Series,
+    max_samples: Union[int, float] = 100,
+    random_state: Union[int, np.random.RandomState] = None,
+):
+    logger.info(f'The shape of X before under-sampling is {X.shape}')
+
+    if type(max_samples) is float:
+        max_samples = int(max_samples * len(X))
+
+    # classes = np.unique(y)
+    # n_classes = len(classes)
+    # max_samples_per_class = max_samples // n_classes
+
+    resampler = RandomUnderSampler(
+        random_state=random_state,
+        # sampling_strategy=sampling_strategy
+    )
+
+    X, y = resampler.fit_resample(X, y)
+
+    logger.info(f'The shape of X after under-sampling is {X.shape}')
+
+    return resampler.sample_indices_

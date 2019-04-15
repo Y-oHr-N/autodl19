@@ -8,6 +8,7 @@ os.system("pip3 install optuna")
 os.system("pip3 install pandas==0.24.2")
 
 import copy
+import numpy as np
 import pandas as pd
 
 from sklearn.base import BaseEstimator
@@ -19,6 +20,7 @@ from automllib.merge import merge_table
 from automllib.preprocessing import clean_df
 from automllib.preprocessing import clean_tables
 from automllib.preprocessing import feature_engineer
+from automllib.train import resample
 from automllib.train import train
 from automllib.utils import timeit
 
@@ -39,12 +41,18 @@ class Model(BaseEstimator, MetaEstimatorMixin):
 
         clean_tables(Xs)
 
+        indices = resample(Xs[MAIN_TABLE_NAME], y, random_state=0)
+        indices = np.sort(indices)
+        Xs[MAIN_TABLE_NAME] = Xs[MAIN_TABLE_NAME].loc[indices]
+        self.tables_[MAIN_TABLE_NAME] = Xs[MAIN_TABLE_NAME].loc[indices]
+        y = y.loc[indices]
+
         X = merge_table(Xs, self.config_)
 
         clean_df(X)
         feature_engineer(X, self.config_)
 
-        self.estimator_ = train(X, y, n_jobs=-1, random_state=0)
+        self.estimator_ = train(X, y, n_jobs=-1, n_trials=16, random_state=0)
 
         return self
 
