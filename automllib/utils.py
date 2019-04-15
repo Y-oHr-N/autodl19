@@ -38,13 +38,13 @@ def aggregate_functions(columns: pd.Index) -> Dict[str, Callable]:
 
 def timeit(func):
     def timed(*args, **kwargs):
-        logger.info(f'==== Start {func}. ====')
+        logger.info(f'==> Start {func}.')
 
         timer = Timer()
         ret = func(*args, **kwargs)
         elapsed_time = timer.get_elapsed_time()
 
-        logger.info(f'==== End {func}. ({elapsed_time:.3f} sec.) ====')
+        logger.info(f'==> End {func}. ({elapsed_time:.3f} sec.)')
 
         return ret
 
