@@ -25,12 +25,16 @@ TYPE_MAP = {
 }
 
 AGGREGATE_FUNCTIONS_MAP = {
-    CATEGORICAL_TYPE: [pd.Series.nunique],
+    CATEGORICAL_TYPE: [
+        pd.Series.nunique
+    ],
     MULTI_VALUE_CATEGORICAL_TYPE: [],
     NUMERICAL_TYPE: [
         # 'min',
         # 'max',
         'mean',
+        # 'median',
+        # 'sum',
         'var',
         # 'skew',
         # kurtosis
