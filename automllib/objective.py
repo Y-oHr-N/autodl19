@@ -1,80 +1,104 @@
 from typing import Any
+from typing import Callable
 from typing import Dict
+from typing import Union
 
+import lightgbm as lgb
 import numpy as np
 import optuna
 import pandas as pd
-from sklearn.base import BaseEstimator
+
+from sklearn.base import clone
+from sklearn.model_selection import BaseCrossValidator
 from sklearn.model_selection import cross_val_score
 
 
 class Objective(object):
     def __init__(
         self,
-        estimator: BaseEstimator,
+        estimator: lgb.LGBMModel,
         X: pd.DataFrame,
         y: pd.Series,
-        cv: int = 5
+        cv: Union[int, BaseCrossValidator] = 5,
+        error_score: Union[str, float] = np.nan,
+        groups: pd.Series = None,
+        scoring: Union[str, Callable] = None,
     ) -> None:
         self.estimator = estimator
         self.X = X
         self.y = y
         self.cv = cv
+        self.error_score = error_score
+        self.groups = groups
+        self.scoring = scoring
 
     def _get_params(self, trial: optuna.trial.Trial) -> Dict[str, Any]:
         params = {
-            'base_estimator__boosting_type': trial.suggest_categorical(
-                'base_estimator__boosting_type',
-                choices=['gbdt', 'goss', 'dart', 'rf']
-            ),
-            'base_estimator__num_leaves': trial.suggest_int(
-                'base_estimator__num_leaves',
-                low=2,
-                high=123
-            ),
-            'base_estimator__reg_alpha': trial.suggest_loguniform(
-                'base_estimator__reg_alpha',
-                low=1e-06,
-                high=10.0
-            ),
-            'base_estimator__reg_lambda': trial.suggest_loguniform(
-                'base_estimator__reg_lambda',
-                low=1e-06,
-                high=10.0
-            ),
-            'base_estimator__subsample': trial.suggest_uniform(
-                'base_estimator__subsample',
-                low=0.5,
-                high=1.0
-            )
+            'learning_rate': 0.01,
+            # 'max_depth': 7,
+            # 'n_estimators': 1000,
+            'n_jobs': 1,
+            'subsample_freq': 1
         }
 
-        if params['base_estimator__boosting_type'] == 'goss':
-            params['base_estimator__top_rate'] = trial.suggest_uniform(
-                'base_estimator__top_rate',
+        params['boosting_type'] = trial.suggest_categorical(
+            'boosting_type',
+            choices=['gbdt', 'goss', 'dart', 'rf']
+        )
+
+        params['colsample_bytree'] = trial.suggest_uniform(
+            'colsample_bytree',
+            low=0.5,
+            high=1.0
+        )
+
+        params['num_leaves'] = trial.suggest_int(
+            'num_leaves',
+            low=2,
+            high=123
+        )
+
+        params['reg_alpha'] = trial.suggest_loguniform(
+            'reg_alpha',
+            low=1e-06,
+            high=10.0
+        )
+
+        params['reg_lambda'] = trial.suggest_loguniform(
+            'reg_lambda',
+            low=1e-06,
+            high=10.0
+        )
+
+        if params['boosting_type'] == 'goss':
+            params['other_rate'] = trial.suggest_uniform(
+                'other_rate',
                 low=0.0,
                 high=1.0
             )
-            params['base_estimator__other_rate'] = trial.suggest_uniform(
-                'base_estimator__other_rate',
+
+            params['top_rate'] = trial.suggest_uniform(
+                'top_rate',
                 low=0.0,
-                high=1.0-params['base_estimator__top_rate']
+                high=1.0-params['other_rate']
             )
+
         else:
-            params['base_estimator__colsample_bytree'] = trial.suggest_uniform(
-                'base_estimator__colsample_bytree',
+            params['subsample'] = trial.suggest_uniform(
+                'subsample',
                 low=0.5,
                 high=1.0
             )
 
-            if params['base_estimator__boosting_type'] == 'dart':
-                params['base_estimator__drop_rate'] = trial.suggest_uniform(
-                    'base_estimator__drop_rate',
+            if params['boosting_type'] == 'dart':
+                params['drop_rate'] = trial.suggest_uniform(
+                    'drop_rate',
                     low=0.0,
                     high=1.0
                 )
-                params['base_estimator__skip_drop'] = trial.suggest_uniform(
-                    'base_estimator__skip_drop',
+
+                params['skip_drop'] = trial.suggest_uniform(
+                    'skip_drop',
                     low=0.0,
                     high=1.0
                 )
@@ -82,17 +106,19 @@ class Objective(object):
         return params
 
     def __call__(self, trial: optuna.trial.Trial) -> float:
+        estimator = clone(self.estimator)
         params = self._get_params(trial)
 
-        self.estimator.set_params(**params)
+        estimator.set_params(**params)
 
         scores = cross_val_score(
-            self.estimator,
+            estimator,
             self.X,
             self.y,
             cv=self.cv,
-            error_score='raise',
-            scoring='roc_auc'
+            error_score=self.error_score,
+            groups=self.groups,
+            scoring=self.scoring
         )
 
         return - np.average(scores)
