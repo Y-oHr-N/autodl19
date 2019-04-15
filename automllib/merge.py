@@ -68,7 +68,7 @@ def temporal_join(u, v, v_name, key, time_col):
     )
 
     if tmp_u.empty:
-        logger.info("empty tmp_u, return u")
+        logger.info('Return u because temp_u is empty.')
 
         return u
 
@@ -82,7 +82,7 @@ def temporal_join(u, v, v_name, key, time_col):
 def dfs(u_name, config, tables, graph):
     u = tables[u_name]
 
-    logger.info(f"enter {u_name}")
+    logger.info(f'Enter {u_name}.')
 
     for edge in graph[u_name]:
         v_name = edge['to']
@@ -98,15 +98,15 @@ def dfs(u_name, config, tables, graph):
             continue
 
         if config['time_col'] in u and config['time_col'] in v:
-            logger.info(f"join {u_name} <--{type_}--t {v_name}")
+            logger.info(f'Join {u_name} <--{type_}--t {v_name}.')
             u = temporal_join(u, v, v_name, key, config['time_col'])
         else:
-            logger.info(f"join {u_name} <--{type_}--nt {v_name}")
+            logger.info(f'Join {u_name} <--{type_}--nt {v_name}.')
             u = join(u, v, v_name, key, type_)
 
         del v
 
-    logger.info(f"leave {u_name}")
+    logger.info(f'Leave {u_name}.')
 
     return u
 

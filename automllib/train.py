@@ -34,7 +34,7 @@ def train(X: pd.DataFrame, y: pd.Series) -> lgb.LGBMClassifier:
 
     study.optimize(objective, n_trials=10)
 
-    logger.info(f"ROCAUC = {-study.best_value:.3f}")
+    logger.info(f'The AUC is {-study.best_value:.3f}.')
 
     clf.set_params(**study.best_params)
 

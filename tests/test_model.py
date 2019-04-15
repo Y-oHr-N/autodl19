@@ -110,7 +110,7 @@ def test_model() -> None:
         train_label = load_train_label(path)
         test_data = load_test_data(path, info)
 
-        logger.info(f'Loaded data from {path.as_posix()}')
+        logger.info(f'Loaded data from {path.as_posix()}.')
 
         timer = Timer(info['time_budget'])
         model = Model(info)
@@ -129,8 +129,10 @@ def test_model() -> None:
     for path in ref_path.iterdir():
         test_label = load_test_label(path)
 
-        logger.info(f'Loaded ref from {path.as_posix()}')
+        logger.info(f'Loaded ref from {path.as_posix()}.')
 
         score = roc_auc_score(test_label, probabilities[path.name])
+
+        logger.info(f'The AUC is {score:.3f}.')
 
         assert score > 0.5

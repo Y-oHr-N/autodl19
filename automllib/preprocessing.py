@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 @timeit
 def clean_tables(tables):
     for tname in tables:
-        logger.info(f'cleaning table {tname}')
+        logger.info(f'Clean table {tname}.')
 
         clean_df(tables[tname])
 
@@ -50,7 +50,7 @@ def feature_engineer(df, config):
     transform_categorical_hash(df)
     transform_datetime(df)
 
-    logger.info(f'X.shape={df.shape}')
+    logger.info(f'The shape of X is {df.shape}.')
 
 
 @timeit
