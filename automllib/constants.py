@@ -28,7 +28,7 @@ AGGREGATE_FUNCTIONS_MAP = {
     CATEGORICAL_TYPE: [
         pd.Series.nunique
     ],
-    MULTI_VALUE_CATEGORICAL_TYPE: [],
+    # MULTI_VALUE_CATEGORICAL_TYPE: [],
     NUMERICAL_TYPE: [
         # 'min',
         # 'max',
@@ -39,5 +39,5 @@ AGGREGATE_FUNCTIONS_MAP = {
         # 'skew',
         # kurtosis
     ],
-    TIME_TYPE: []
+    # TIME_TYPE: []
 }
