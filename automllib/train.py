@@ -9,6 +9,7 @@ import pandas as pd
 
 from imblearn.under_sampling import RandomUnderSampler
 from sklearn.utils import check_random_state
+from sklearn.utils import safe_indexing
 
 from .objective import Objective
 from .utils import timeit
@@ -70,8 +71,11 @@ def resample(
         # sampling_strategy=sampling_strategy
     )
 
-    X, y = resampler.fit_resample(X, y)
+    resampler.fit_resample(X, y)
 
     logger.info(f'The shape of X after under-sampling is {X.shape}')
 
-    return resampler.sample_indices_
+    X = safe_indexing(X, resampler.sample_indices_)
+    y = safe_indexing(y, resampler.sample_indices_)
+
+    return X, y
