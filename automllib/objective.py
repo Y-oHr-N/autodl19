@@ -58,6 +58,17 @@ class Objective(object):
             high=0.1
         )
 
+        params['max_depth'] = trial.suggest_categorical(
+            'max_depth',
+            choices=[7]
+        )
+
+        params['min_child_samples'] = trial.suggest_int(
+            'min_child_samples',
+            low=1,
+            high=100
+        )
+
         params['num_leaves'] = trial.suggest_int(
             'num_leaves',
             low=2,
