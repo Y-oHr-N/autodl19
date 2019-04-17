@@ -21,6 +21,7 @@ class Objective(object):
         y: pd.Series,
         cv: Union[int, BaseCrossValidator] = 5,
         error_score: Union[str, float] = np.nan,
+        fit_params: Dict[str, Any] = None,
         groups: pd.Series = None,
         scoring: Union[str, Callable] = None,
     ) -> None:
@@ -29,6 +30,7 @@ class Objective(object):
         self.y = y
         self.cv = cv
         self.error_score = error_score
+        self.fit_params = fit_params
         self.groups = groups
         self.scoring = scoring
 
@@ -126,6 +128,7 @@ class Objective(object):
             self.y,
             cv=self.cv,
             error_score=self.error_score,
+            fit_params=self.fit_params,
             groups=self.groups,
             scoring=self.scoring
         )

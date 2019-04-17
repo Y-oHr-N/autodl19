@@ -8,6 +8,7 @@ import optuna
 import pandas as pd
 
 from imblearn.under_sampling import RandomUnderSampler
+from sklearn.model_selection import train_test_split
 from sklearn.utils import check_random_state
 from sklearn.utils import safe_indexing
 
@@ -30,10 +31,31 @@ def train(
     random_state = check_random_state(random_state)
     seed = random_state.randint(0, np.iinfo('int32').max)
 
+    classifier = lgb.LGBMClassifier(
+        metric='auc',
+        # n_estimators=1000,
+        random_state=seed
+    )
+    X_train, X_valid, y_train, y_valid = train_test_split(
+        X,
+        y,
+        random_state=random_state
+    )
+    fit_params = {
+        'early_stopping_rounds': 10,
+        'eval_set': [(X_valid, y_valid)],
+        'verbose': False
+    }
+
     sampler = optuna.samplers.TPESampler(seed=seed)
     study = optuna.create_study(sampler=sampler)
-    classifier = lgb.LGBMClassifier(metric='auc', random_state=seed)
-    objective = Objective(classifier, X, y, error_score=error_score)
+    objective = Objective(
+        classifier,
+        X_train,
+        y_train,
+        error_score=error_score,
+        fit_params=fit_params
+    )
 
     study.optimize(
         objective,
@@ -45,7 +67,7 @@ def train(
     logger.info(f'The best score is {-study.best_value:.3f}.')
 
     classifier.set_params(**study.best_params)
-    classifier.fit(X, y)
+    classifier.fit(X, y, **fit_params)
 
     return classifier
 
