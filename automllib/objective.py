@@ -33,23 +33,27 @@ class Objective(object):
         self.scoring = scoring
 
     def _get_params(self, trial: optuna.trial.Trial) -> Dict[str, Any]:
-        params = {
-            'learning_rate': 0.01,
-            # 'max_depth': 7,
-            # 'n_estimators': 1000,
-            'n_jobs': 1,
-            'subsample_freq': 1
-        }
+        params = {'n_jobs': 1}
 
         params['boosting_type'] = trial.suggest_categorical(
             'boosting_type',
-            choices=['dart', 'gbdt', 'goss']
+            choices=[
+                # 'dart',
+                'gbdt',
+                # 'goss'
+            ]
         )
 
         params['colsample_bytree'] = trial.suggest_uniform(
             'colsample_bytree',
             low=0.5,
             high=1.0
+        )
+
+        params['learning_rate'] = trial.suggest_loguniform(
+            'learning_rate',
+            low=0.001,
+            high=0.1
         )
 
         params['num_leaves'] = trial.suggest_int(
@@ -88,6 +92,11 @@ class Objective(object):
                 'subsample',
                 low=0.5,
                 high=1.0
+            )
+
+            params['subsample_freq'] = trial.suggest_categorical(
+                'subsample_freq',
+                choices=[1]
             )
 
             if params['boosting_type'] == 'dart':
