@@ -1,6 +1,10 @@
 import datetime
 import logging
 
+from typing import Dict
+
+from automllib.merge import Config
+from automllib.constants import MAIN_TRAIN_TABLE_NAME
 from .constants import CATEGORICAL_PREFIX
 from .constants import MULTI_VALUE_CATEGORICAL_PREFIX
 from .constants import NUMERICAL_PREFIX
@@ -46,12 +50,15 @@ def clean_df(df):
 
 
 @timeit
-def feature_engineer(df, config):
-    transform_categorical_hash(df)
-    transform_datetime(df)
-
     logger.info(f'The shape of X is {df.shape}.')
 
+@timeit
+def feature_engineer(tables: Dict[str, pd.DataFrame], config: Config) -> None:
+    for tname in tables:
+        logger.info(f'feature engineering {tname}')
+        transform_categorical_hash(tables[tname], tname, config)
+        transform_datetime(tables[tname])
+        logger.info(f'X.shape={tables[tname].shape}')
 
 @timeit
 def transform_datetime(df):

@@ -2,9 +2,12 @@ from collections import defaultdict
 from collections import deque
 import logging
 
+from typing import Dict
+from typing import Any
+
 import pandas as pd
 
-from .constants import MAIN_TABLE_NAME
+from .constants import MAIN_TRAIN_TABLE_NAME
 from .constants import NUMERICAL_PREFIX
 from .utils import aggregate_functions
 from .utils import timeit
@@ -40,7 +43,7 @@ def join(u, v, v_name, key, type_):
         v = v.set_index(key)
 
     v.columns = v.columns.map(lambda a: f"{a.split('_', 1)[0]}_{v_name}.{a}")
-
+    config['agg_tables'][v_name] = v
     return u.join(v, on=key)
 
 
@@ -135,11 +138,18 @@ def merge_table(tables, config):
 
     return dfs(MAIN_TABLE_NAME, config, tables, graph)
 
+@timeit
+def merge_table_test(df: pd.DataFrame, config: Any) -> pd.DataFrame:
+    for rel in config['relations']:
+        if rel['table_A'] == MAIN_TABLE_NAME:
+            df = df.join(config['agg_tables'][rel['table_B']], on=rel['key'])
+    return df
 
 class Config(object):
     def __init__(self, info):
         self.data = info.copy()
         self.data['tables'] = {}
+        self.data['agg_tables'] = {}
 
         for tname, ttype in info['tables'].items():
             self.data['tables'][tname] = {}
