@@ -2,11 +2,9 @@
 name: Survey
 about: Survey previous research related to this project
 title: ''
-labels: survey
+labels: 'type: survey'
 assignees: ''
 
 ---
-
-**Title**
 
 **Link**
