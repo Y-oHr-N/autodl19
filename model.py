@@ -21,6 +21,7 @@ from automllib.merge import merge_table_test
 from automllib.preprocessing import clean_df
 from automllib.preprocessing import clean_tables
 from automllib.preprocessing import feature_engineer
+from automllib.preprocessing import delete_columns
 from automllib.train import resample
 from automllib.train import train
 from automllib.utils import timeit
@@ -61,7 +62,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         X = merge_table_test(Xs[MAIN_TEST_TABLE_NAME], self.config_)
 
         clean_df(X)
-
+        delete_columns(X)
         result = self.estimator_.predict_proba(X)
 
         return pd.Series(result[:, 1])

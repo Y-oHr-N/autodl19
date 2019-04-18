@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def bfs(root_name, graph, tconfig):
-    tconfig[MAIN_TABLE_NAME]['depth'] = 0
+    tconfig[MAIN_TRAIN_TABLE_NAME]['depth'] = 0
     queue = deque([root_name])
 
     while queue:
@@ -31,7 +31,7 @@ def bfs(root_name, graph, tconfig):
 
 
 @timeit
-def join(u, v, v_name, key, type_):
+def join(u, v, v_name, key, type_, config):
     if type_.split("_")[2] == 'many':
         columns = v.columns.drop(key)
         func = aggregate_functions(columns)
@@ -105,7 +105,7 @@ def dfs(u_name, config, tables, graph):
             # u = temporal_join(u, v, v_name, key, config['time_col'])
         else:
             logger.info(f'Join {u_name} <--{type_}--nt {v_name}.')
-            u = join(u, v, v_name, key, type_)
+            u = join(u, v, v_name, key, type_, config)
 
         del v
 
@@ -134,14 +134,14 @@ def merge_table(tables, config):
             "type": '_'.join(rel['type'].split('_')[::-1])
         })
 
-    bfs(MAIN_TABLE_NAME, graph, config['tables'])
+    bfs(MAIN_TRAIN_TABLE_NAME, graph, config['tables'])
 
-    return dfs(MAIN_TABLE_NAME, config, tables, graph)
+    return dfs(MAIN_TRAIN_TABLE_NAME, config, tables, graph)
 
 @timeit
 def merge_table_test(df: pd.DataFrame, config: Any) -> pd.DataFrame:
     for rel in config['relations']:
-        if rel['table_A'] == MAIN_TABLE_NAME:
+        if rel['table_A'] == MAIN_TRAIN_TABLE_NAME:
             df = df.join(config['agg_tables'][rel['table_B']], on=rel['key'])
     return df
 

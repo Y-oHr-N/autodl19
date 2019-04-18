@@ -50,6 +50,15 @@ def clean_df(df):
     df.fillna(value, inplace=True)
 
 @timeit
+def delete_columns(df: pd.DataFrame) -> None:
+    columns = df.columns
+    for c in columns:
+        dtype = df[c].dtype
+        if dtype == "object":
+            del df[c]
+    logger.info(f'The shape of X is {df.shape}.')
+
+@timeit
 def feature_engineer(tables: Dict[str, pd.DataFrame], config: Config) -> None:
     for tname in tables:
         logger.info(f'feature engineering {tname}')
@@ -75,9 +84,9 @@ def transform_categorical_hash(df):
         df.columns[df.columns.str.startswith(MULTI_VALUE_CATEGORICAL_PREFIX)]
     )
 
-    df[categorical_feature_names] = df[categorical_feature_names].astype(
-        'uint'
-    )
+    #df[categorical_feature_names] = df[categorical_feature_names].astype(
+    #    'uint'
+    #)
 
     for c in multi_value_categorical_feature_names:
         df[c] = df[c].apply(lambda x: int(x.split(',')[0]))
