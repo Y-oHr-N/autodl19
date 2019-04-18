@@ -22,7 +22,6 @@ from automllib.preprocessing import clean_df
 from automllib.preprocessing import clean_tables
 from automllib.preprocessing import feature_engineer
 from automllib.preprocessing import delete_columns
-from automllib.train import resample
 from automllib.train import train
 from automllib.utils import timeit
 
@@ -47,8 +46,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         X = merge_table(Xs, self.config_)
         clean_df(X)
         delete_columns(X)
-        X, y = resample(X, y, random_state=0)
-        self.estimator_ = train(X, y, n_jobs=-1, n_trials=16, random_state=0)
+        self.estimator_ = train(X, y)
 
         return self
 
