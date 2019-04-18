@@ -48,10 +48,6 @@ def clean_df(df):
 
     df.fillna(value, inplace=True)
 
-
-@timeit
-    logger.info(f'The shape of X is {df.shape}.')
-
 @timeit
 def feature_engineer(tables: Dict[str, pd.DataFrame], config: Config) -> None:
     for tname in tables:
