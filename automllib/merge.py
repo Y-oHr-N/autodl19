@@ -2,9 +2,12 @@ from collections import defaultdict
 from collections import deque
 import logging
 
+from typing import Dict
+from typing import Any
+
 import pandas as pd
 
-from .constants import MAIN_TABLE_NAME
+from .constants import MAIN_TRAIN_TABLE_NAME
 from .constants import NUMERICAL_PREFIX
 from .utils import aggregate_functions
 from .utils import timeit
@@ -13,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def bfs(root_name, graph, tconfig):
-    tconfig[MAIN_TABLE_NAME]['depth'] = 0
+    tconfig[MAIN_TRAIN_TABLE_NAME]['depth'] = 0
     queue = deque([root_name])
 
     while queue:
@@ -28,7 +31,7 @@ def bfs(root_name, graph, tconfig):
 
 
 @timeit
-def join(u, v, v_name, key, type_):
+def join(u, v, v_name, key, type_, config):
     if type_.split("_")[2] == 'many':
         columns = v.columns.drop(key)
         func = aggregate_functions(columns)
@@ -40,7 +43,7 @@ def join(u, v, v_name, key, type_):
         v = v.set_index(key)
 
     v.columns = v.columns.map(lambda a: f"{a.split('_', 1)[0]}_{v_name}.{a}")
-
+    config['agg_tables'][v_name] = v
     return u.join(v, on=key)
 
 
@@ -102,7 +105,7 @@ def dfs(u_name, config, tables, graph):
             # u = temporal_join(u, v, v_name, key, config['time_col'])
         else:
             logger.info(f'Join {u_name} <--{type_}--nt {v_name}.')
-            u = join(u, v, v_name, key, type_)
+            u = join(u, v, v_name, key, type_, config)
 
         del v
 
@@ -131,15 +134,22 @@ def merge_table(tables, config):
             "type": '_'.join(rel['type'].split('_')[::-1])
         })
 
-    bfs(MAIN_TABLE_NAME, graph, config['tables'])
+    bfs(MAIN_TRAIN_TABLE_NAME, graph, config['tables'])
 
-    return dfs(MAIN_TABLE_NAME, config, tables, graph)
+    return dfs(MAIN_TRAIN_TABLE_NAME, config, tables, graph)
 
+@timeit
+def merge_table_test(df: pd.DataFrame, config: Any) -> pd.DataFrame:
+    for rel in config['relations']:
+        if rel['table_A'] == MAIN_TRAIN_TABLE_NAME:
+            df = df.join(config['agg_tables'][rel['table_B']], on=rel['key'])
+    return df
 
 class Config(object):
     def __init__(self, info):
         self.data = info.copy()
         self.data['tables'] = {}
+        self.data['agg_tables'] = {}
 
         for tname, ttype in info['tables'].items():
             self.data['tables'][tname] = {}

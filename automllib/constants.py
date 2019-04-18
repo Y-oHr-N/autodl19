@@ -2,7 +2,8 @@ import pandas as pd
 
 # from scipy.stats import kurtosis
 
-MAIN_TABLE_NAME = 'main'
+MAIN_TRAIN_TABLE_NAME = 'main'
+MAIN_TEST_TABLE_NAME = 'test'
 
 CATEGORICAL_PREFIX = 'c_'
 CATEGORICAL_TYPE = 'cat'
