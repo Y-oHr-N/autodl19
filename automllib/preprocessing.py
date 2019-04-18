@@ -1,5 +1,6 @@
 import datetime
 import logging
+import pandas as pd
 
 from typing import Dict
 
@@ -52,7 +53,7 @@ def clean_df(df):
 def feature_engineer(tables: Dict[str, pd.DataFrame], config: Config) -> None:
     for tname in tables:
         logger.info(f'feature engineering {tname}')
-        transform_categorical_hash(tables[tname], tname, config)
+        transform_categorical_hash(tables[tname])
         transform_datetime(tables[tname])
         logger.info(f'X.shape={tables[tname].shape}')
 
