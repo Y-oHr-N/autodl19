@@ -7,7 +7,7 @@ from imblearn.under_sampling import RandomUnderSampler
 from .model_selection import OptunaSearchCV
 
 
-def make_classifier() -> Pipeline:
+def make_model() -> Pipeline:
     under_sampler = RandomUnderSampler(
         random_state=0,
         # sampling_strategy=sampling_strategy

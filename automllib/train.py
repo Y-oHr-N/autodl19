@@ -5,7 +5,7 @@ import pandas as pd
 from imblearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
 
-from .compose import make_classifier
+from .compose import make_model
 from .utils import timeit
 
 logger = logging.getLogger(__name__)
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 @timeit
 def train(X: pd.DataFrame, y: pd.Series) -> Pipeline:
-    classifier = make_classifier()
+    model = make_model()
 
     X_train, X_valid, y_train, y_valid = train_test_split(
         X,
@@ -27,10 +27,10 @@ def train(X: pd.DataFrame, y: pd.Series) -> Pipeline:
         'optuna_search_cv__verbose': False
     }
 
-    classifier.fit(X_train, y_train, **fit_params)
+    model.fit(X_train, y_train, **fit_params)
 
-    best_score = classifier.named_steps['optuna_search_cv'].best_score_
+    best_score = model.named_steps['optuna_search_cv'].best_score_
 
     logger.info(f'The best score is {best_score:.3f}')
 
-    return classifier
+    return model
