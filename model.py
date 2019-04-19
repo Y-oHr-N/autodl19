@@ -19,7 +19,6 @@ from automllib.merge import merge_table
 from automllib.preprocessing import clean_df
 from automllib.preprocessing import clean_tables
 from automllib.preprocessing import feature_engineer
-from automllib.train import resample
 from automllib.train import train
 from automllib.utils import timeit
 
@@ -41,12 +40,11 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         clean_tables(Xs)
 
         X = merge_table(Xs, self.config_)
-        X, y = resample(X, y, random_state=0)
 
         clean_df(X)
         feature_engineer(X, self.config_)
 
-        self.estimator_ = train(X, y, n_jobs=-1, n_trials=16, random_state=0)
+        self.estimator_ = train(X, y)
 
         return self
 
