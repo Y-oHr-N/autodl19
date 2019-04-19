@@ -13,15 +13,12 @@ import pandas as pd
 from sklearn.base import BaseEstimator
 from sklearn.base import MetaEstimatorMixin
 
-from automllib.constants import MAIN_TRAIN_TABLE_NAME
-from automllib.constants import MAIN_TEST_TABLE_NAME
+from automllib.constants import MAIN_TABLE_NAME
 from automllib.merge import Config
 from automllib.merge import merge_table
-from automllib.merge import merge_table_test
 from automllib.preprocessing import clean_df
 from automllib.preprocessing import clean_tables
 from automllib.preprocessing import feature_engineer
-from automllib.preprocessing import delete_columns
 from automllib.train import train
 from automllib.utils import timeit
 
@@ -42,25 +39,35 @@ class Model(BaseEstimator, MetaEstimatorMixin):
 
         clean_tables(Xs)
 
-        feature_engineer(Xs, self.config_)
         X = merge_table(Xs, self.config_)
+
         clean_df(X)
-        delete_columns(X)
+        feature_engineer(X, self.config_)
+
         self.estimator_ = train(X, y)
 
         return self
 
     @timeit
     def predict(self, X_test: pd.DataFrame, time_remain: float) -> pd.Series:
-        Xs = {}
-        Xs[MAIN_TEST_TABLE_NAME] = X_test
+        Xs = self.tables_
+        main_table = Xs[MAIN_TABLE_NAME]
+        main_table = pd.concat([main_table, X_test], keys=['train', 'test'])
+        main_table.index = main_table.index.map(lambda x: f'{x[0]}_{x[1]}')
+        Xs[MAIN_TABLE_NAME] = main_table
+
         clean_tables(Xs)
 
-        feature_engineer(Xs, self.config_)
-        X = merge_table_test(Xs[MAIN_TEST_TABLE_NAME], self.config_)
+        X = merge_table(Xs, self.config_)
 
         clean_df(X)
-        delete_columns(X)
+        feature_engineer(X, self.config_)
+
+        X = X[X.index.str.startswith('test')]
+        X.index = X.index.map(lambda x: int(x.split('_')[1]))
+
+        X.sort_index(inplace=True)
+
         result = self.estimator_.predict_proba(X)
 
         return pd.Series(result[:, 1])
