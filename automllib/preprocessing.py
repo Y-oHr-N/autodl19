@@ -6,10 +6,10 @@ import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.base import TransformerMixin
 
-from .constants import CATEGORICAL_PREFIX
-from .constants import MULTI_VALUE_CATEGORICAL_PREFIX
-from .constants import NUMERICAL_PREFIX
-from .constants import TIME_PREFIX
+from .utils import get_categorical_columns
+from .utils import get_multi_value_categorical_columns
+from .utils import get_numerical_columns
+from .utils import get_time_columns
 from .utils import timeit
 
 logger = logging.getLogger(__name__)
@@ -25,26 +25,18 @@ def clean_tables(tables):
 
 @timeit
 def clean_df(df):
-    categorical_feature_names = (
-        df.columns[df.columns.str.startswith(CATEGORICAL_PREFIX)]
-    )
-    multi_value_categorical_feature_names = (
-        df.columns[df.columns.str.startswith(MULTI_VALUE_CATEGORICAL_PREFIX)]
-    )
-    numerical_feature_names = (
-        df.columns[df.columns.str.startswith(NUMERICAL_PREFIX)]
-    )
-    time_feature_names = (
-        df.columns[df.columns.str.startswith(TIME_PREFIX)]
-    )
+    c_feature_names = get_categorical_columns(df)
+    m_feature_names = get_multi_value_categorical_columns(df)
+    n_feature_names = get_numerical_columns(df)
+    t_feature_names = get_time_columns(df)
 
     value = {}
 
-    value.update({c: '0' for c in categorical_feature_names})
-    value.update({c: '0' for c in multi_value_categorical_feature_names})
-    value.update({c: -1 for c in numerical_feature_names})
+    value.update({name: '0' for name in c_feature_names})
+    value.update({name: '0' for name in m_feature_names})
+    value.update({name: -1 for name in n_feature_names})
     value.update(
-        {c: datetime.datetime(1970, 1, 1) for c in time_feature_names}
+        {name: datetime.datetime(1970, 1, 1) for name in t_feature_names}
     )
 
     df.fillna(value, inplace=True)
@@ -60,28 +52,20 @@ def feature_engineer(df, config):
 
 @timeit
 def transform_datetime(df):
-    time_feature_names = (
-        df.columns[df.columns.str.startswith(TIME_PREFIX)]
-    )
+    t_feature_names = get_time_columns(df)
 
-    df.drop(columns=time_feature_names, inplace=True)
+    df.drop(columns=t_feature_names, inplace=True)
 
 
 @timeit
 def transform_categorical_hash(df):
-    categorical_feature_names = (
-        df.columns[df.columns.str.startswith(CATEGORICAL_PREFIX)]
-    )
-    multi_value_categorical_feature_names = (
-        df.columns[df.columns.str.startswith(MULTI_VALUE_CATEGORICAL_PREFIX)]
-    )
+    c_feature_names = get_categorical_columns(df)
+    m_feature_names = get_multi_value_categorical_columns(df)
 
-    df[categorical_feature_names] = df[categorical_feature_names].astype(
-        'uint'
-    )
+    df[c_feature_names] = df[c_feature_names].astype('uint')
 
-    for c in multi_value_categorical_feature_names:
-        df[c] = df[c].apply(lambda x: int(x.split(',')[0]))
+    for name in m_feature_names:
+        df[name] = df[name].apply(lambda x: int(x.split(',')[0]))
 
 
 class Clip(BaseEstimator, TransformerMixin):
