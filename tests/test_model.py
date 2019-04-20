@@ -118,10 +118,10 @@ def test_model() -> None:
             project_name='automl-kddcup19'
         )
 
-        branch = os.getenv('TRAVIS_BRANCH')
+        build_number = os.getenv('TRAVIS_BUILD_NUMBER')
 
-        if branch is not None:
-            experiment.log_other('Branch', branch)
+        if build_number is not None:
+            experiment.log_other('Build Number', build_number)
 
     except Exception:
         experiment = None
