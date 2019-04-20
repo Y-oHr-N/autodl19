@@ -8,6 +8,7 @@ os.system("pip3 install optuna")
 os.system("pip3 install pandas==0.24.2")
 
 import copy
+import numpy as np
 import pandas as pd
 
 from sklearn.base import BaseEstimator
@@ -21,6 +22,8 @@ from automllib.preprocessing import clean_tables
 from automllib.preprocessing import feature_engineer
 from automllib.train import train
 from automllib.utils import timeit
+
+np.random.seed(0)
 
 
 class Model(BaseEstimator, MetaEstimatorMixin):
