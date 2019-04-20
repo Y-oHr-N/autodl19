@@ -110,6 +110,22 @@ def test_model() -> None:
     ref_path = pathlib.Path('ref')
     probabilities = {}
 
+    try:
+        api_key = os.getenv('COMET_API_KEY')
+
+        experiment = Experiment(
+            api_key=api_key,
+            project_name='automl-kddcup19'
+        )
+
+        branch = os.getenv('TRAVIS_BRANCH')
+
+        if branch is not None:
+            experiment.log_other('Branch', branch)
+
+    except Exception:
+        experiment = None
+
     for path in data_path.iterdir():
         info = load_info(path)
         train_data = load_train_data(path, info)
@@ -131,17 +147,6 @@ def test_model() -> None:
         probabilities[path.name] = y_score
 
         timer.check_remaining_time()
-
-    try:
-        api_key = os.getenv('COMET_API_KEY')
-
-        experiment = Experiment(
-            api_key=api_key,
-            project_name='automl-kddcup19'
-        )
-
-    except Exception:
-        experiment = None
 
     for path in ref_path.iterdir():
         test_label = load_test_label(path)
