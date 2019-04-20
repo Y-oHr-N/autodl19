@@ -1,6 +1,6 @@
 import pandas as pd
 
-# from scipy.stats import kurtosis
+from scipy.stats import kurtosis
 
 MAIN_TABLE_NAME = 'main'
 
@@ -30,14 +30,14 @@ AGGREGATE_FUNCTIONS_MAP = {
     ],
     # MULTI_VALUE_CATEGORICAL_TYPE: [],
     NUMERICAL_TYPE: [
-        # 'min',
-        # 'max',
+        'min',
+        'max',
         'mean',
         # 'median',
         # 'sum',
         'var',
-        # 'skew',
-        # kurtosis
+        'skew',
+        kurtosis
     ],
     # TIME_TYPE: []
 }
