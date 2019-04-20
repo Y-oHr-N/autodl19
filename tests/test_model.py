@@ -105,11 +105,7 @@ def load_test_label(path: pathlib.Path) -> pd.Series:
     return pd.read_csv(label_path, squeeze=True)
 
 
-def test_model() -> None:
-    data_path = pathlib.Path('data')
-    ref_path = pathlib.Path('ref')
-    probabilities = {}
-
+def make_experiment():
     try:
         api_key = os.getenv('COMET_API_KEY')
 
@@ -125,6 +121,15 @@ def test_model() -> None:
 
     except Exception:
         experiment = None
+
+    return experiment
+
+
+def test_model() -> None:
+    data_path = pathlib.Path('data')
+    ref_path = pathlib.Path('ref')
+    probabilities = {}
+    experiment = make_experiment()
 
     for path in data_path.iterdir():
         info = load_info(path)
