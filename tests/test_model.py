@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import os
 import pathlib
 
 from typing import Any
@@ -9,6 +10,11 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
+
+try:
+    from comet_ml import Experiment
+except ImportError:
+    Experiment = None
 
 from sklearn.metrics import roc_auc_score
 
@@ -110,7 +116,7 @@ def test_model() -> None:
         train_label = load_train_label(path)
         test_data = load_test_data(path, info)
 
-        logger.info(f'Loaded data from {path.as_posix()}.')
+        logger.info(f'Loaded data from {path.name}.')
 
         timer = Timer(info['time_budget'])
         model = Model(info)
@@ -126,13 +132,27 @@ def test_model() -> None:
 
         timer.check_remaining_time()
 
+    try:
+        api_key = os.getenv('COMET_API_KEY')
+
+        experiment = Experiment(
+            api_key=api_key,
+            project_name='automl-kddcup19'
+        )
+
+    except Exception:
+        experiment = None
+
     for path in ref_path.iterdir():
         test_label = load_test_label(path)
 
-        logger.info(f'Loaded ref from {path.as_posix()}.')
+        logger.info(f'Loaded ref from {path.name}.')
 
         score = roc_auc_score(test_label, probabilities[path.name])
 
         logger.info(f'The AUC is {score:.3f}.')
 
         assert score > 0.5
+
+        if experiment is not None:
+            experiment.log_metric(f'AUC of {path.name}', score)
