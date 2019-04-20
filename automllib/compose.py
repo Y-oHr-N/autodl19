@@ -5,19 +5,14 @@ from imblearn.pipeline import Pipeline
 from imblearn.under_sampling import RandomUnderSampler
 
 from .model_selection import OptunaSearchCV
+from .preprocessing import Clip
 
 
 def make_model() -> Pipeline:
-    under_sampler = RandomUnderSampler(
-        random_state=0,
-        # sampling_strategy=sampling_strategy
-    )
-
-    optuna_search_cv = make_optuna_search_cv()
-
     return Pipeline([
-        ('under_sampler', under_sampler),
-        ('optuna_search_cv', optuna_search_cv)
+        ('transformer', Clip()),
+        ('under_sampler', RandomUnderSampler(random_state=0)),
+        ('optuna_search_cv', make_optuna_search_cv())
     ])
 
 

@@ -1,6 +1,11 @@
 import datetime
 import logging
 
+import numpy as np
+
+from sklearn.base import BaseEstimator
+from sklearn.base import TransformerMixin
+
 from .constants import CATEGORICAL_PREFIX
 from .constants import MULTI_VALUE_CATEGORICAL_PREFIX
 from .constants import NUMERICAL_PREFIX
@@ -77,3 +82,24 @@ def transform_categorical_hash(df):
 
     for c in multi_value_categorical_feature_names:
         df[c] = df[c].apply(lambda x: int(x.split(',')[0]))
+
+
+class Clip(BaseEstimator, TransformerMixin):
+    def __init__(self, low: float = 0.1, high: float = 99.9) -> None:
+        self.low = low
+        self.high = high
+
+    def fit(self, X: np.ndarray, y: np.ndarray = None) -> 'Clip':
+        self.data_min_, self.data_max_ = np.nanpercentile(
+            X,
+            [self.low, self.high],
+            axis=0
+        )
+
+        return self
+
+    def transform(self, X: np.ndarray) -> np.ndarray:
+        if hasattr(X, 'values'):
+            return X.clip(self.data_min_, self.data_max_, axis=1)
+        else:
+            return X.clip(self.data_min_, self.data_max_)
