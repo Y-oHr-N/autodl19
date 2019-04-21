@@ -39,8 +39,12 @@ def aggregate_functions(X: pd.DataFrame) -> Dict[str, Callable]:
 
 def get_columns_by_prefix(X: pd.DataFrame, prefix: str) -> List[str]:
     columns = X.columns
+    is_startwith = columns.str.startswith(prefix)
+    n_features = is_startwith.sum()
 
-    return list(columns[columns.str.startswith(prefix)])
+    logger.info(f'Number of features starting with {prefix} is {n_features}')
+
+    return list(columns[is_startwith])
 
 
 def get_categorical_columns(X: pd.DataFrame) -> List[str]:
