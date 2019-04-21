@@ -1,19 +1,60 @@
 import lightgbm as lgb
 import optuna
 
+from category_encoders import OrdinalEncoder
 from imblearn.pipeline import Pipeline
 from imblearn.under_sampling import RandomUnderSampler
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
 
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
+from .utils import get_categorical_columns
+from .utils import get_numerical_columns
 
 
-def make_model() -> Pipeline:
+def make_categorical_transformer() -> Pipeline:
     return Pipeline([
-        ('transformer', Clip()),
-        ('under_sampler', RandomUnderSampler(random_state=0)),
-        ('optuna_search_cv', make_optuna_search_cv())
+        (
+            'imputer',
+            SimpleImputer(fill_value='missing', strategy='constant')
+        ),
+        (
+            'transformer',
+            OrdinalEncoder()
+        )
     ])
+
+
+def make_numerical_transformer() -> Pipeline:
+    return Pipeline([
+        (
+            'imputer',
+            SimpleImputer(strategy='median')
+        ),
+        (
+            'transformer',
+            Clip()
+        )
+    ])
+
+
+def make_mixed_transformer() -> ColumnTransformer:
+    return ColumnTransformer(
+        [
+            (
+                'categorical_transformer',
+                make_categorical_transformer(),
+                get_categorical_columns
+            ),
+            (
+                'numerical_transformer',
+                make_numerical_transformer(),
+                get_numerical_columns
+            )
+        ],
+        n_jobs=4
+    )
 
 
 def make_optuna_search_cv() -> OptunaSearchCV:
@@ -68,3 +109,10 @@ def make_optuna_search_cv() -> OptunaSearchCV:
         sampler=sampler,
         scoring='roc_auc'
     )
+
+
+def make_model() -> Pipeline:
+    return Pipeline([
+        ('under_sampler', RandomUnderSampler(random_state=0)),
+        ('optuna_search_cv', make_optuna_search_cv())
+    ])
