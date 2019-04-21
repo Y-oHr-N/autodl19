@@ -22,16 +22,16 @@ def make_categorical_transformer() -> Pipeline:
     ])
 
 
-def make_numerical_transformer() -> Pipeline:
-    return Pipeline([
+def make_numerical_transformer() -> FeatureUnion:
+    return FeatureUnion([
         (
-            'imputer',
-            FeatureUnion([
+            'transformer',
+            Pipeline([
                 ('imputer', SimpleImputer(strategy='median')),
-                ('indicator', MissingIndicator())
+                ('transformer', Clip())
             ])
         ),
-        ('transformer', Clip())
+        ('indicator', MissingIndicator())
     ])
 
 
