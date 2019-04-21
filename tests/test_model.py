@@ -105,7 +105,7 @@ def load_test_label(path: pathlib.Path) -> pd.Series:
     return pd.read_csv(label_path, squeeze=True)
 
 
-def make_experiment():
+def make_experiment() -> Experiment:
     try:
         api_key = os.getenv('COMET_API_KEY')
 
