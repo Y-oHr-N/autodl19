@@ -42,32 +42,6 @@ def clean_df(df):
     df.fillna(value, inplace=True)
 
 
-@timeit
-def feature_engineer(df, config):
-    transform_categorical_hash(df)
-    transform_datetime(df)
-
-    logger.info(f'The shape of X is {df.shape}.')
-
-
-@timeit
-def transform_datetime(df):
-    t_feature_names = get_time_columns(df)
-
-    df.drop(columns=t_feature_names, inplace=True)
-
-
-@timeit
-def transform_categorical_hash(df):
-    c_feature_names = get_categorical_columns(df)
-    m_feature_names = get_multi_value_categorical_columns(df)
-
-    df[c_feature_names] = df[c_feature_names].astype('uint')
-
-    for name in m_feature_names:
-        df[name] = df[name].apply(lambda x: int(x.split(',')[0]))
-
-
 class Clip(BaseEstimator, TransformerMixin):
     def __init__(self, low: float = 0.1, high: float = 99.9) -> None:
         self.low = low

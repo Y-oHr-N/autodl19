@@ -14,12 +14,12 @@ import pandas as pd
 from sklearn.base import BaseEstimator
 from sklearn.base import MetaEstimatorMixin
 
+from automllib.compose import make_mixed_transformer
 from automllib.constants import MAIN_TABLE_NAME
 from automllib.merge import Config
 from automllib.merge import merge_table
 from automllib.preprocessing import clean_df
 from automllib.preprocessing import clean_tables
-from automllib.preprocessing import feature_engineer
 from automllib.train import train
 from automllib.utils import timeit
 
@@ -45,7 +45,10 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         X = merge_table(Xs, self.config_)
 
         clean_df(X)
-        feature_engineer(X, self.config_)
+
+        self.preprocessor_ = make_mixed_transformer()
+
+        X = self.preprocessor_.fit_transform(X)
 
         self.estimator_ = train(X, y)
 
@@ -64,12 +67,13 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         X = merge_table(Xs, self.config_)
 
         clean_df(X)
-        feature_engineer(X, self.config_)
 
         X = X[X.index.str.startswith('test')]
         X.index = X.index.map(lambda x: int(x.split('_')[1]))
 
         X.sort_index(inplace=True)
+
+        X = self.preprocessor_.transform(X)
 
         result = self.estimator_.predict_proba(X)
 
