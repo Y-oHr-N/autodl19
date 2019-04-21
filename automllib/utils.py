@@ -3,6 +3,7 @@ import time
 
 from typing import Callable
 from typing import Dict
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -36,25 +37,25 @@ def aggregate_functions(X: pd.DataFrame) -> Dict[str, Callable]:
     return func
 
 
-def get_columns_by_prefix(X: pd.DataFrame, prefix: str):
+def get_columns_by_prefix(X: pd.DataFrame, prefix: str) -> List[str]:
     columns = X.columns
 
     return list(columns[columns.str.startswith(prefix)])
 
 
-def get_categorical_columns(X: pd.DataFrame):
+def get_categorical_columns(X: pd.DataFrame) -> List[str]:
     return get_columns_by_prefix(X, C_PREFIX)
 
 
-def get_multi_value_categorical_columns(X: pd.DataFrame):
+def get_multi_value_categorical_columns(X: pd.DataFrame) -> List[str]:
     return get_columns_by_prefix(X, M_PREFIX)
 
 
-def get_numerical_columns(X: pd.DataFrame):
+def get_numerical_columns(X: pd.DataFrame) -> List[str]:
     return get_columns_by_prefix(X, N_PREFIX)
 
 
-def get_time_columns(X: pd.DataFrame):
+def get_time_columns(X: pd.DataFrame) -> List[str]:
     return get_columns_by_prefix(X, T_PREFIX)
 
 

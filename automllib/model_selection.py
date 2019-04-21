@@ -92,11 +92,11 @@ class OptunaSearchCV(BaseEstimator):
         return self.study_.best_value
 
     @property
-    def predict(self) ->Callable:
+    def predict(self) -> Callable:
         return self.best_estimator_.predict
 
     @property
-    def predict_proba(self) ->Callable:
+    def predict_proba(self) -> Callable:
         return self.best_estimator_.predict_proba
 
     def __init__(
