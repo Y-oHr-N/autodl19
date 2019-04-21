@@ -18,8 +18,6 @@ from automllib.compose import make_mixed_transformer
 from automllib.constants import MAIN_TABLE_NAME
 from automllib.merge import Config
 from automllib.merge import merge_table
-from automllib.preprocessing import clean_df
-from automllib.preprocessing import clean_tables
 from automllib.train import train
 from automllib.utils import timeit
 
@@ -40,11 +38,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         self.config_ = Config(self.info)
         self.tables_ = copy.deepcopy(Xs)
 
-        clean_tables(Xs)
-
         X = merge_table(Xs, self.config_)
-
-        clean_df(X)
 
         self.preprocessor_ = make_mixed_transformer()
 
@@ -62,11 +56,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         main_table.index = main_table.index.map(lambda x: f'{x[0]}_{x[1]}')
         Xs[MAIN_TABLE_NAME] = main_table
 
-        clean_tables(Xs)
-
         X = merge_table(Xs, self.config_)
-
-        clean_df(X)
 
         X = X[X.index.str.startswith('test')]
         X.index = X.index.map(lambda x: int(x.split('_')[1]))

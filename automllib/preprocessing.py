@@ -1,4 +1,3 @@
-import datetime
 import logging
 
 import numpy as np
@@ -6,40 +5,7 @@ import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.base import TransformerMixin
 
-from .utils import get_categorical_columns
-from .utils import get_multi_value_categorical_columns
-from .utils import get_numerical_columns
-from .utils import get_time_columns
-from .utils import timeit
-
 logger = logging.getLogger(__name__)
-
-
-@timeit
-def clean_tables(tables):
-    for tname in tables:
-        logger.info(f'Clean table {tname}.')
-
-        clean_df(tables[tname])
-
-
-@timeit
-def clean_df(df):
-    c_feature_names = get_categorical_columns(df)
-    m_feature_names = get_multi_value_categorical_columns(df)
-    n_feature_names = get_numerical_columns(df)
-    t_feature_names = get_time_columns(df)
-
-    value = {}
-
-    value.update({name: '0' for name in c_feature_names})
-    value.update({name: '0' for name in m_feature_names})
-    value.update({name: -1 for name in n_feature_names})
-    value.update(
-        {name: datetime.datetime(1970, 1, 1) for name in t_feature_names}
-    )
-
-    df.fillna(value, inplace=True)
 
 
 class Clip(BaseEstimator, TransformerMixin):
