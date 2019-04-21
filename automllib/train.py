@@ -22,14 +22,14 @@ def train(X: pd.DataFrame, y: pd.Series) -> Pipeline:
     )
 
     fit_params = {
-        'optuna_search_cv__early_stopping_rounds': 10,
-        'optuna_search_cv__eval_set': [(X_valid, y_valid)],
-        'optuna_search_cv__verbose': False
+        'search_cv__early_stopping_rounds': 10,
+        'search_cv__eval_set': [(X_valid, y_valid)],
+        'search_cv__verbose': False
     }
 
     model.fit(X_train, y_train, **fit_params)
 
-    best_score = model.named_steps['optuna_search_cv'].best_score_
+    best_score = model.named_steps['search_cv'].best_score_
 
     logger.info(f'The best score is {best_score:.3f}')
 

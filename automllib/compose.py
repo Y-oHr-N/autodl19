@@ -15,27 +15,15 @@ from .utils import get_numerical_columns
 
 def make_categorical_transformer() -> Pipeline:
     return Pipeline([
-        (
-            'imputer',
-            SimpleImputer(fill_value='missing', strategy='constant')
-        ),
-        (
-            'transformer',
-            OrdinalEncoder()
-        )
+        ('imputer', SimpleImputer(fill_value='missing', strategy='constant')),
+        ('transformer', OrdinalEncoder())
     ])
 
 
 def make_numerical_transformer() -> Pipeline:
     return Pipeline([
-        (
-            'imputer',
-            SimpleImputer(strategy='median')
-        ),
-        (
-            'transformer',
-            Clip()
-        )
+        ('imputer', SimpleImputer(strategy='median')),
+        ('transformer', Clip())
     ])
 
 
@@ -57,9 +45,8 @@ def make_mixed_transformer() -> ColumnTransformer:
     )
 
 
-def make_optuna_search_cv() -> OptunaSearchCV:
+def make_search_cv() -> OptunaSearchCV:
     estimator = lgb.LGBMClassifier(
-        boosting_type='gbdt',
         max_depth=7,
         metric='auc',
         # n_estimators=1000,
@@ -113,6 +100,6 @@ def make_optuna_search_cv() -> OptunaSearchCV:
 
 def make_model() -> Pipeline:
     return Pipeline([
-        ('under_sampler', RandomUnderSampler(random_state=0)),
-        ('optuna_search_cv', make_optuna_search_cv())
+        ('sampler', RandomUnderSampler(random_state=0)),
+        ('search_cv', make_search_cv())
     ])
