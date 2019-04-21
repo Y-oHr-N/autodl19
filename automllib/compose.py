@@ -5,7 +5,9 @@ from category_encoders import OrdinalEncoder
 from imblearn.pipeline import Pipeline
 from imblearn.under_sampling import RandomUnderSampler
 from sklearn.compose import ColumnTransformer
+from sklearn.impute import MissingIndicator
 from sklearn.impute import SimpleImputer
+from sklearn.pipeline import FeatureUnion
 
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
@@ -20,10 +22,16 @@ def make_categorical_transformer() -> Pipeline:
     ])
 
 
-def make_numerical_transformer() -> Pipeline:
-    return Pipeline([
-        ('imputer', SimpleImputer(strategy='median')),
-        ('transformer', Clip())
+def make_numerical_transformer() -> FeatureUnion:
+    return FeatureUnion([
+        (
+            'transformer',
+            Pipeline([
+                ('imputer', SimpleImputer(strategy='median')),
+                ('transformer', Clip())
+            ])
+        ),
+        ('indicator', MissingIndicator())
     ])
 
 
