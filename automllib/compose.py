@@ -9,10 +9,12 @@ from sklearn.impute import MissingIndicator
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import FeatureUnion
 
+from .feature_extraction import TimeVectorizer
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .utils import get_categorical_columns
 from .utils import get_numerical_columns
+from .utils import get_time_columns
 
 
 def make_categorical_transformer() -> Pipeline:
@@ -35,6 +37,13 @@ def make_numerical_transformer() -> FeatureUnion:
     ])
 
 
+def make_time_transformer() -> Pipeline:
+    return Pipeline([
+        ('vectorizer', TimeVectorizer()),
+        ('imputer', SimpleImputer(strategy='most_frequent'))
+    ])
+
+
 def make_mixed_transformer() -> ColumnTransformer:
     return ColumnTransformer(
         [
@@ -47,6 +56,11 @@ def make_mixed_transformer() -> ColumnTransformer:
                 'numerical_transformer',
                 make_numerical_transformer(),
                 get_numerical_columns
+            ),
+            (
+                'time_transformer',
+                make_time_transformer(),
+                get_time_columns
             )
         ],
         n_jobs=4
