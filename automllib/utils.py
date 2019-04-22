@@ -42,7 +42,7 @@ def get_columns_by_prefix(X: pd.DataFrame, prefix: str) -> List[str]:
     is_startwith = columns.str.startswith(prefix)
     n_features = is_startwith.sum()
 
-    logger.info(f'Number of features starting with {prefix} is {n_features}')
+    logger.info(f'Number of features starting with {prefix} is {n_features}.')
 
     return list(columns[is_startwith])
 
@@ -65,13 +65,13 @@ def get_time_columns(X: pd.DataFrame) -> List[str]:
 
 def timeit(func):
     def timed(*args, **kwargs):
-        logger.info(f'==> Start {func}.')
+        logger.info(f'==> Start {func.__name__}.')
 
         timer = Timer()
         ret = func(*args, **kwargs)
         elapsed_time = timer.get_elapsed_time()
 
-        logger.info(f'==> End {func}. ({elapsed_time:.3f} sec.)')
+        logger.info(f'==> End {func.__name__}. ({elapsed_time:.3f} sec.)')
 
         return ret
 
