@@ -9,6 +9,8 @@ from sklearn.impute import MissingIndicator
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import FeatureUnion
 
+from .feature_selection import NAProportionThreshold
+from .feature_selection import NUniqueThreshold
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .utils import get_categorical_columns
@@ -51,6 +53,14 @@ def make_mixed_transformer() -> ColumnTransformer:
         ],
         n_jobs=-1
     )
+
+
+def make_preprocessor() -> Pipeline:
+    return Pipeline([
+        ('na_proportion_threshold', NAProportionThreshold()),
+        ('nunique_threshold', NUniqueThreshold()),
+        ('mixed_transformer', make_mixed_transformer())
+    ])
 
 
 def make_search_cv() -> OptunaSearchCV:

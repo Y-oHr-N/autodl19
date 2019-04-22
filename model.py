@@ -15,7 +15,8 @@ import pandas as pd
 from sklearn.base import BaseEstimator
 from sklearn.base import MetaEstimatorMixin
 
-from automllib.compose import make_mixed_transformer
+from automllib.compose import make_model
+from automllib.compose import make_preprocessor
 from automllib.constants import MAIN_TABLE_NAME
 from automllib.merge import Config
 from automllib.merge import merge_table
@@ -41,7 +42,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
 
         X = merge_table(Xs, self.config_)
 
-        self.preprocessor_ = make_mixed_transformer()
+        self.preprocessor_ = make_preprocessor()
 
         X = self.preprocessor_.fit_transform(X)
 
