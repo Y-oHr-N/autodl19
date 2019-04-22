@@ -51,7 +51,7 @@ def make_mixed_transformer() -> ColumnTransformer:
                 get_numerical_columns
             )
         ],
-        n_jobs=-1
+        n_jobs=4
     )
 
 
@@ -67,7 +67,7 @@ def make_search_cv() -> OptunaSearchCV:
     estimator = lgb.LGBMClassifier(
         max_depth=7,
         metric='auc',
-        n_estimators=1000,
+        # n_estimators=1000,
         n_jobs=1,
         random_state=0,
         subsample_freq=1
@@ -110,7 +110,7 @@ def make_search_cv() -> OptunaSearchCV:
         estimator,
         param_distributions,
         n_trials=20,
-        n_jobs=-1,
+        n_jobs=4,
         sampler=sampler,
         scoring='roc_auc'
     )
