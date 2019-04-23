@@ -1,9 +1,12 @@
 import logging
 import time
 
+from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import List
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -21,7 +24,9 @@ from .constants import TIME_PREFIX as T_PREFIX
 logger = logging.getLogger(__name__)
 
 
-def aggregate_functions(X: pd.DataFrame) -> Dict[str, Callable]:
+def aggregate_functions(
+    X: pd.DataFrame
+) -> Dict[str, List[Union[str, Callable]]]:
     func = {}
 
     c_feature_names = get_categorical_columns(X)
@@ -63,8 +68,8 @@ def get_time_columns(X: pd.DataFrame) -> List[str]:
     return get_columns_by_prefix(X, T_PREFIX)
 
 
-def timeit(func):
-    def timed(*args, **kwargs):
+def timeit(func: Callable) -> Callable:
+    def timed(*args: Tuple[Any], **kwargs: Dict[str, Any]) -> Any:
         logger.info(f'==> Start {func.__name__}.')
 
         timer = Timer()
