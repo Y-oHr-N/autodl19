@@ -28,12 +28,12 @@ class NAProportionThreshold(BaseSelector, TransformerMixin):
     ) -> 'NAProportionThreshold':
         n_samples = len(X)
 
-        self.na_propotions_ = X.isnull().sum() / n_samples
+        self.na_propotion_ = X.isnull().sum() / n_samples
 
         return self
 
     def get_support(self) -> np.ndarray:
-        return self.na_propotions_ < self.threshold
+        return self.na_propotion_ < self.threshold
 
 
 class NUniqueThreshold(BaseSelector, TransformerMixin):
