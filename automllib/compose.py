@@ -125,6 +125,7 @@ def make_search_cv() -> OptunaSearchCV:
         param_distributions,
         n_trials=20,
         n_jobs=4,
+        random_state=0,
         sampler=sampler,
         scoring='roc_auc'
     )
