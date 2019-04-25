@@ -14,10 +14,13 @@ try:
     from sklearn.base import clone
     from sklearn.base import is_classifier
     from sklearn.metrics import check_scoring
+    from sklearn.model_selection._validation import _index_param_value
     from sklearn.model_selection import BaseCrossValidator  # NOQA
     from sklearn.model_selection import check_cv
     from sklearn.model_selection import cross_validate
+    from sklearn.model_selection import train_test_split
     from sklearn.utils.metaestimators import _safe_split
+    from sklearn.utils import safe_indexing as sklearn_safe_indexing
     from sklearn.utils.validation import check_is_fitted
 
     _available = True
@@ -47,6 +50,8 @@ if types.TYPE_CHECKING:
     from typing import Optional  # NOQA
     from typing import Union  # NOQA
 
+logger = logging.get_logger(__name__)
+
 
 def _check_sklearn_availability():
     # type: () -> None
@@ -59,6 +64,14 @@ def _check_sklearn_availability():
             'please refer to the installation guide of scikit-learn. (The '
             'actual import error is as follows: ' + str(_import_error) + ')'
         )
+
+
+def safe_indexing(X, indices):
+    # type: (np.ndarray, np.ndarray) -> np.ndarray
+    if X is None:
+        return X
+    else:
+        return sklearn_safe_indexing(X, indices)
 
 
 class Objective(object):
@@ -363,6 +376,13 @@ class OptunaSearchCV(BaseEstimator):
             :obj:`None`, :class:`~optuna.pruners.MedianPruner` is used as the
             default.
 
+        random_state:
+            Seed of the pseudo random number generator. If int, this is the
+            seed used by the random number generator. If
+            ``numpy.random.RandomState`` object, this is the random number
+            generator. If :obj:`None`, the global random state from
+            ``numpy.random`` is used.
+
         refit:
             If :obj:`True`, refit the estimator with the best found
             hyperparameters. The refitted estimator is made available at the
@@ -394,6 +414,9 @@ class OptunaSearchCV(BaseEstimator):
         study_name:
             name of the :class:`~optuna.study.Study`. If :obj:`None`, a unique
             name is generated automatically.
+
+        subsample:
+            Proportion of samples that are used during hyperparameter search.
 
         timeout:
             Time limit in seconds for the search of appropriate models. If
@@ -648,12 +671,14 @@ class OptunaSearchCV(BaseEstimator):
         n_jobs=1,  # type: int
         n_trials=10,  # type: int
         pruner=None,  # type: Optional[pruners.BasePruner]
+        random_state=None,  # type: Optional[Union[int, np.random.RandomState]]
         refit=True,  # type: bool
         return_train_score=False,  # type: bool
         sampler=None,  # type: Optional[samplers.BaseSampler]
         scoring=None,  # type: Union[str, Callable[..., float], None]
         storage=None,  # type: Union[str, storages.BaseStorage, None]
         study_name=None,  # type: Optional[str]
+        subsample=1.0,  # type: Union[int, float]
         timeout=None,  # type: Optional[float]
         verbose=0  # type: int
     ):
@@ -671,12 +696,14 @@ class OptunaSearchCV(BaseEstimator):
         self.n_jobs = n_jobs
         self.param_distributions = param_distributions
         self.pruner = pruner
+        self.random_state = random_state
         self.refit = refit
         self.return_train_score = return_train_score
         self.sampler = sampler
         self.scoring = scoring
         self.storage = storage
         self.study_name = study_name
+        self.subsample = subsample
         self.timeout = timeout
         self.verbose = verbose
 
@@ -719,13 +746,16 @@ class OptunaSearchCV(BaseEstimator):
         self,
         X,  # type: np.ndarray
         y=None,  # type: Optional[np.ndarray]
-        **fit_params  # Dict[str, Any]
+        **fit_params  # type: Dict[str, Any]
     ):
         # type: (...) -> 'OptunaSearchCV'
 
         self.best_estimator_ = clone(self.estimator)
 
-        self.best_estimator_.set_params(**self.study_.best_params)
+        try:
+            self.best_estimator_.set_params(**self.study_.best_params)
+        except ValueError:
+            logger.warning('No trials are completed yet.')
 
         start_time = time()
 
@@ -777,10 +807,39 @@ class OptunaSearchCV(BaseEstimator):
         self._check_params()
         self._set_verbosity()
 
-        classifier = is_classifier(self.estimator)
-        cv = check_cv(self.cv, y, classifier)
+        n_samples = len(X)
+        indices = np.arange(n_samples)
+        train_size = self.subsample
 
-        self.n_splits_ = cv.get_n_splits(X, y, groups=groups)
+        if type(train_size) is float:
+            train_size = int(train_size * n_samples)
+
+        if train_size < n_samples:
+            indices, _ = train_test_split(
+                indices,
+                random_state=self.random_state,
+                shuffle=False,
+                train_size=train_size
+            )
+
+        X_res = safe_indexing(X, indices)
+        y_res = safe_indexing(y, indices)
+        groups_res = safe_indexing(groups, indices)
+        fit_params_res = fit_params
+
+        if fit_params_res is not None:
+            fit_params_res = {
+                key: _index_param_value(
+                    X,
+                    value,
+                    indices
+                ) for key, value in fit_params.items()
+            }
+
+        classifier = is_classifier(self.estimator)
+        cv = check_cv(self.cv, y_res, classifier)
+
+        self.n_splits_ = cv.get_n_splits(X_res, y_res, groups=groups_res)
         self.scorer_ = check_scoring(self.estimator, scoring=self.scoring)
         self.study_ = study.create_study(
             load_if_exists=self.load_if_exists,
@@ -793,13 +852,13 @@ class OptunaSearchCV(BaseEstimator):
         objective = Objective(
             self.estimator,
             self.param_distributions,
-            X,
-            y,
+            X_res,
+            y_res,
             cv,
             self.enable_pruning,
             self.error_score,
-            fit_params,
-            groups,
+            fit_params_res,
+            groups_res,
             self.max_iter,
             self.return_train_score,
             self.scorer_
