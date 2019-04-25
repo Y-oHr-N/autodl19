@@ -35,7 +35,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         self,
         Xs: Dict[str, pd.DataFrame],
         y: pd.Series,
-        time_ramain: float
+        timeout: float = None
     ) -> 'Model':
         self.config_ = Config(self.info)
         self.tables_ = copy.deepcopy(Xs)
@@ -51,7 +51,11 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         return self
 
     @timeit
-    def predict(self, X_test: pd.DataFrame, time_remain: float) -> pd.Series:
+    def predict(
+        self,
+        X_test: pd.DataFrame,
+        timeout: float = None
+    ) -> pd.Series:
         Xs = self.tables_
         main_table = Xs[MAIN_TABLE_NAME]
         main_table = pd.concat([main_table, X_test], keys=['train', 'test'])
