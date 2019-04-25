@@ -50,6 +50,8 @@ if types.TYPE_CHECKING:
     from typing import Optional  # NOQA
     from typing import Union  # NOQA
 
+logger = logging.get_logger(__name__)
+
 
 def _check_sklearn_availability():
     # type: () -> None
@@ -756,7 +758,10 @@ class OptunaSearchCV(BaseEstimator):
 
         self.best_estimator_ = clone(self.estimator)
 
-        self.best_estimator_.set_params(**self.study_.best_params)
+        try:
+            self.best_estimator_.set_params(**self.study_.best_params)
+        except ValueError:
+            logger.warning('No trials are completed yet.')
 
         start_time = time()
 
