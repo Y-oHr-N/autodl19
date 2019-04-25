@@ -32,7 +32,7 @@ def make_numerical_transformer() -> FeatureUnion:
             'transformer',
             Pipeline([
                 ('imputer', SimpleImputer(strategy='median')),
-                ('transformer', Clip())
+                ('transformer', Clip(copy=False))
             ])
         ),
         ('indicator', MissingIndicator())

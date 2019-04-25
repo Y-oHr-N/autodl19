@@ -1,20 +1,25 @@
-import logging
-
 import numpy as np
 
 from sklearn.base import BaseEstimator
 from sklearn.base import TransformerMixin
-
-logger = logging.getLogger(__name__)
+from sklearn.utils import check_array
 
 
 class Clip(BaseEstimator, TransformerMixin):
-    def __init__(self, low: float = 0.1, high: float = 99.9) -> None:
+    def __init__(
+        self,
+        copy: bool = True,
+        low: float = 0.1,
+        high: float = 99.9
+    ) -> None:
+        self.copy = copy
         self.low = low
         self.high = high
 
     def fit(self, X: np.ndarray, y: np.ndarray = None) -> 'Clip':
-        self.data_min_, self.data_max_ = np.nanpercentile(
+        X = check_array(X)
+
+        self.data_min_, self.data_max_ = np.percentile(
             X,
             [self.low, self.high],
             axis=0
@@ -23,7 +28,11 @@ class Clip(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X: np.ndarray) -> np.ndarray:
-        if hasattr(X, 'values'):
-            return X.clip(self.data_min_, self.data_max_, axis=1)
+        X = check_array(X)
+
+        if self.copy:
+            out = None
         else:
-            return X.clip(self.data_min_, self.data_max_)
+            out = X
+
+        return np.clip(X, self.data_min_, self.data_max_, out=out)
