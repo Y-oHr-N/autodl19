@@ -29,8 +29,12 @@ def train(X: pd.DataFrame, y: pd.Series) -> Pipeline:
 
     model.fit(X_train, y_train, **fit_params)
 
-    best_score = model.named_steps['search_cv'].best_score_
+    try:
+        best_score = model.named_steps['search_cv'].best_score_
 
-    logger.info(f'The best score is {best_score:.3f}')
+        logger.info(f'The best score is {best_score:.3f}')
+
+    except:
+        logger.warning(f'No trials are completed yet.')
 
     return model

@@ -755,7 +755,7 @@ class OptunaSearchCV(BaseEstimator):
         try:
             self.best_estimator_.set_params(**self.study_.best_params)
         except ValueError:
-            logger.warning('No trials are completed yet.')
+            logger.warning(f'No trials are completed yet.')
 
         start_time = time()
 
@@ -821,6 +821,10 @@ class OptunaSearchCV(BaseEstimator):
                 shuffle=False,
                 train_size=train_size
             )
+
+        logger.info(
+            f'{len(indices)} samples are used during hyperparameter search.'
+        )
 
         X_res = safe_indexing(X, indices)
         y_res = safe_indexing(y, indices)
