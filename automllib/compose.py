@@ -21,28 +21,34 @@ from .utils import get_time_columns
 
 def make_categorical_transformer() -> Pipeline:
     return Pipeline([
-        ('imputer', SimpleImputer(fill_value='missing', strategy='constant')),
-        ('transformer', OrdinalEncoder())
+        (
+            'categorical_imputer',
+            SimpleImputer(
+                fill_value='missing',
+                strategy='constant'
+            )
+        ),
+        ('categorical_transformer', OrdinalEncoder())
     ])
 
 
 def make_numerical_transformer() -> FeatureUnion:
     return FeatureUnion([
         (
-            'transformer',
+            'numerical_transformer',
             Pipeline([
-                ('imputer', SimpleImputer(strategy='median')),
-                ('transformer', Clip(copy=False))
+                ('numerical_imputer', SimpleImputer(strategy='median')),
+                ('numerical_transformer', Clip(copy=False))
             ])
         ),
-        ('indicator', MissingIndicator())
+        ('numerical_indicator', MissingIndicator())
     ])
 
 
 def make_time_transformer() -> Pipeline:
     return Pipeline([
-        ('vectorizer', TimeVectorizer()),
-        ('imputer', SimpleImputer(strategy='most_frequent'))
+        ('time_vectorizer', TimeVectorizer()),
+        ('time_imputer', SimpleImputer(strategy='most_frequent'))
     ])
 
 
@@ -65,14 +71,14 @@ def make_mixed_transformer() -> ColumnTransformer:
                 get_time_columns
             )
         ],
-        n_jobs=4
+        n_jobs=-1
     )
 
 
 def make_preprocessor() -> Pipeline:
     return Pipeline([
-        ('na_proportion_threshold', NAProportionThreshold()),
-        ('nunique_threshold', NUniqueThreshold()),
+        ('1st_selector', NAProportionThreshold()),
+        ('2nd_selector', NUniqueThreshold()),
         ('mixed_transformer', make_mixed_transformer())
     ])
 
@@ -123,11 +129,13 @@ def make_search_cv() -> OptunaSearchCV:
     return OptunaSearchCV(
         estimator,
         param_distributions,
+        error_score='raise',
         n_trials=20,
         n_jobs=4,
         random_state=0,
         sampler=sampler,
-        scoring='roc_auc'
+        scoring='roc_auc',
+        subsample=100_000
     )
 
 
