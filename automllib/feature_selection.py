@@ -1,5 +1,10 @@
 import logging
 
+from abc import ABC
+from abc import abstractmethod
+from typing import Any
+from typing import Dict
+
 import numpy as np
 
 from sklearn.base import BaseEstimator
@@ -8,11 +13,32 @@ from sklearn.base import TransformerMixin
 logger = logging.getLogger(__name__)
 
 
-class BaseSelector(BaseEstimator):
-    def transform(self, X: np.ndarray) -> np.ndarray:
-        support = self.get_support()
+class BaseSelector(BaseEstimator, ABC):
+    @abstractmethod
+    def __init__(self, **params: Dict[str, Any]) -> None:
+        pass
 
-        logger.info(f'{support.sum()} features are selected.')
+    @abstractmethod
+    def fit(
+        self,
+        X: np.ndarray,
+        y: np.ndarray = None
+    ) -> 'BaseSelector':
+        pass
+
+    @abstractmethod
+    def get_support(self) -> np.ndarray:
+        pass
+
+    def transform(self, X: np.ndarray) -> np.ndarray:
+        _, n_features = X.shape
+        support = self.get_support()
+        n_selected_features = np.sum(support)
+
+        logger.info(
+            f'{n_selected_features} features are selected and '
+            f'{n_features - n_selected_features} features are dropped.'
+        )
 
         return X.loc[:, support]
 
