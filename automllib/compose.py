@@ -8,8 +8,10 @@ from sklearn.compose import ColumnTransformer
 from sklearn.impute import MissingIndicator
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import FeatureUnion
+from sklearn.decomposition import TruncatedSVD
 
 from .feature_extraction import TimeVectorizer
+from .feature_extraction import CountMatrixVectorizer
 from .feature_selection import NAProportionThreshold
 from .feature_selection import NUniqueThreshold
 from .model_selection import OptunaSearchCV
@@ -17,6 +19,7 @@ from .preprocessing import Clip
 from .utils import get_categorical_columns
 from .utils import get_numerical_columns
 from .utils import get_time_columns
+from .utils import get_multi_value_categorical_columns
 
 
 def make_categorical_transformer() -> Pipeline:
@@ -45,6 +48,11 @@ def make_time_transformer() -> Pipeline:
         ('imputer', SimpleImputer(strategy='most_frequent'))
     ])
 
+def make_multi_categorical_transformer() -> Pipeline:
+    return Pipeline([
+        ('count_matrix_transformer', CountMatrixVectorizer()),
+        ('matrix_decomposition_transformer', TruncatedSVD(n_components=5))
+    ])
 
 def make_mixed_transformer() -> ColumnTransformer:
     return ColumnTransformer(
@@ -63,6 +71,11 @@ def make_mixed_transformer() -> ColumnTransformer:
                 'time_transformer',
                 make_time_transformer(),
                 get_time_columns
+            ),
+            (
+                'multi_value_categorical_transformer',
+                make_multi_categorical_transformer(),
+                get_multi_value_categorical_columns
             )
         ],
         n_jobs=4
