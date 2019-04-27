@@ -18,7 +18,7 @@ try:
     from sklearn.model_selection import BaseCrossValidator  # NOQA
     from sklearn.model_selection import check_cv
     from sklearn.model_selection import cross_validate
-    from sklearn.model_selection import train_test_split
+    from sklearn.utils import check_random_state
     from sklearn.utils.metaestimators import _safe_split
     from sklearn.utils import safe_indexing as sklearn_safe_indexing
     from sklearn.utils.validation import check_is_fitted
@@ -823,20 +823,18 @@ class OptunaSearchCV(BaseEstimator):
         self._check_params()
         self._set_verbosity()
 
+        random_state = check_random_state(self.random_state)
+        max_samples = self.subsample
         n_samples = len(X)
         indices = np.arange(n_samples)
-        train_size = self.subsample
 
-        if type(train_size) is float:
-            train_size = int(train_size * n_samples)
+        if type(max_samples) is float:
+            max_samples = int(max_samples * n_samples)
 
-        if train_size < n_samples:
-            indices, _ = train_test_split(
-                indices,
-                random_state=self.random_state,
-                shuffle=False,
-                train_size=train_size
-            )
+        if max_samples < n_samples:
+            indices = random_state.choice(indices, max_samples, replace=False)
+
+            indices.sort()
 
         X_res = safe_indexing(X, indices)
         y_res = safe_indexing(y, indices)
