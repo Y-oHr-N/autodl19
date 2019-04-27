@@ -18,6 +18,8 @@ from sklearn.base import MetaEstimatorMixin
 from automllib.compose import make_model
 from automllib.compose import make_preprocessor
 from automllib.constants import MAIN_TABLE_NAME
+from automllib.constants import ONE_DIM_ARRAY_TYPE
+from automllib.constants import TWO_DIM_ARRAY_TYPE
 from automllib.merge import Config
 from automllib.merge import merge_table
 from automllib.train import train
@@ -33,8 +35,8 @@ class Model(BaseEstimator, MetaEstimatorMixin):
     @timeit
     def fit(
         self,
-        Xs: Dict[str, pd.DataFrame],
-        y: pd.Series,
+        Xs: Dict[str, TWO_DIM_ARRAY_TYPE],
+        y: ONE_DIM_ARRAY_TYPE,
         timeout: float = None
     ) -> 'Model':
         self.config_ = Config(self.info)
@@ -53,9 +55,9 @@ class Model(BaseEstimator, MetaEstimatorMixin):
     @timeit
     def predict(
         self,
-        X_test: pd.DataFrame,
+        X_test: TWO_DIM_ARRAY_TYPE,
         timeout: float = None
-    ) -> pd.Series:
+    ) -> ONE_DIM_ARRAY_TYPE:
         Xs = self.tables_
         main_table = Xs[MAIN_TABLE_NAME]
         main_table = pd.concat([main_table, X_test], keys=['train', 'test'])

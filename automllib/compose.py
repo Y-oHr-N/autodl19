@@ -4,6 +4,7 @@ import optuna
 from category_encoders import OrdinalEncoder
 from imblearn.pipeline import Pipeline
 from imblearn.under_sampling import RandomUnderSampler
+from sklearn.base import BaseEstimator
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import MissingIndicator
 from sklearn.impute import SimpleImputer
@@ -20,7 +21,7 @@ from .utils import get_numerical_columns
 from .utils import get_time_columns
 
 
-def make_categorical_transformer() -> Pipeline:
+def make_categorical_transformer() -> BaseEstimator:
     return Pipeline([
         ('categorical_selector', DropUniqueKey()),
         (
@@ -31,7 +32,7 @@ def make_categorical_transformer() -> Pipeline:
     ])
 
 
-def make_numerical_transformer() -> FeatureUnion:
+def make_numerical_transformer() -> BaseEstimator:
     return FeatureUnion([
         (
             'numerical_transformer',
@@ -44,14 +45,14 @@ def make_numerical_transformer() -> FeatureUnion:
     ])
 
 
-def make_time_transformer() -> Pipeline:
+def make_time_transformer() -> BaseEstimator:
     return Pipeline([
         ('time_vectorizer', TimeVectorizer()),
         ('time_imputer', SimpleImputer(strategy='most_frequent'))
     ])
 
 
-def make_mixed_transformer() -> ColumnTransformer:
+def make_mixed_transformer() -> BaseEstimator:
     return ColumnTransformer(
         [
             (
@@ -74,7 +75,7 @@ def make_mixed_transformer() -> ColumnTransformer:
     )
 
 
-def make_preprocessor() -> Pipeline:
+def make_preprocessor() -> BaseEstimator:
     return Pipeline([
         ('1st_selector', NAProportionThreshold()),
         ('2nd_selector', NUniqueThreshold()),
@@ -138,7 +139,7 @@ def make_search_cv() -> OptunaSearchCV:
     )
 
 
-def make_model() -> Pipeline:
+def make_model() -> BaseEstimator:
     return Pipeline([
         ('sampler', RandomUnderSampler(random_state=0)),
         ('search_cv', make_search_cv())

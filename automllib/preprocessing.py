@@ -4,6 +4,9 @@ from sklearn.base import BaseEstimator
 from sklearn.base import TransformerMixin
 from sklearn.utils import check_array
 
+from .constants import ONE_DIM_ARRAY_TYPE
+from .constants import TWO_DIM_ARRAY_TYPE
+
 
 class Clip(BaseEstimator, TransformerMixin):
     def __init__(
@@ -16,7 +19,11 @@ class Clip(BaseEstimator, TransformerMixin):
         self.low = low
         self.high = high
 
-    def fit(self, X: np.ndarray, y: np.ndarray = None) -> 'Clip':
+    def fit(
+        self,
+        X: TWO_DIM_ARRAY_TYPE,
+        y: ONE_DIM_ARRAY_TYPE = None
+    ) -> 'Clip':
         X = check_array(X)
 
         self.data_min_, self.data_max_ = np.percentile(
@@ -27,7 +34,7 @@ class Clip(BaseEstimator, TransformerMixin):
 
         return self
 
-    def transform(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
         X = check_array(X)
 
         if self.copy:

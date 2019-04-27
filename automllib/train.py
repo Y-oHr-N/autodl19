@@ -1,18 +1,18 @@
 import logging
 
-import pandas as pd
-
 from imblearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
 
 from .compose import make_model
+from .constants import ONE_DIM_ARRAY_TYPE
+from .constants import TWO_DIM_ARRAY_TYPE
 from .utils import timeit
 
 logger = logging.getLogger(__name__)
 
 
 @timeit
-def train(X: pd.DataFrame, y: pd.Series) -> Pipeline:
+def train(X: TWO_DIM_ARRAY_TYPE, y: ONE_DIM_ARRAY_TYPE) -> Pipeline:
     model = make_model()
 
     X_train, X_valid, y_train, y_valid = train_test_split(

@@ -10,6 +10,9 @@ import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.base import TransformerMixin
 
+from .constants import ONE_DIM_ARRAY_TYPE
+from .constants import TWO_DIM_ARRAY_TYPE
+
 logger = logging.getLogger(__name__)
 
 
@@ -21,16 +24,16 @@ class BaseSelector(BaseEstimator, ABC):
     @abstractmethod
     def fit(
         self,
-        X: np.ndarray,
-        y: np.ndarray = None
+        X: TWO_DIM_ARRAY_TYPE,
+        y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'BaseSelector':
         pass
 
     @abstractmethod
-    def get_support(self) -> np.ndarray:
+    def get_support(self) -> ONE_DIM_ARRAY_TYPE:
         pass
 
-    def transform(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
         _, n_features = X.shape
         support = self.get_support()
         n_selected_features = np.sum(support)
@@ -50,15 +53,15 @@ class DropUniqueKey(BaseSelector, TransformerMixin):
 
     def fit(
         self,
-        X: np.ndarray,
-        y: np.ndarray = None
+        X: TWO_DIM_ARRAY_TYPE,
+        y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'DropUniqueKey':
         self.n_samples_ = len(X)
         self.nunique_ = X.nunique()
 
         return self
 
-    def get_support(self) -> np.ndarray:
+    def get_support(self) -> ONE_DIM_ARRAY_TYPE:
         return self.nunique_ != self.n_samples_
 
 
@@ -68,8 +71,8 @@ class NAProportionThreshold(BaseSelector, TransformerMixin):
 
     def fit(
         self,
-        X: np.ndarray,
-        y: np.ndarray = None
+        X: TWO_DIM_ARRAY_TYPE,
+        y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'NAProportionThreshold':
         n_samples = len(X)
 
@@ -77,7 +80,7 @@ class NAProportionThreshold(BaseSelector, TransformerMixin):
 
         return self
 
-    def get_support(self) -> np.ndarray:
+    def get_support(self) -> ONE_DIM_ARRAY_TYPE:
         return self.na_propotion_ < self.threshold
 
 
@@ -87,12 +90,12 @@ class NUniqueThreshold(BaseSelector, TransformerMixin):
 
     def fit(
         self,
-        X: np.ndarray,
-        y: np.ndarray = None
+        X: TWO_DIM_ARRAY_TYPE,
+        y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'NUniqueThreshold':
         self.nunique_ = X.nunique()
 
         return self
 
-    def get_support(self) -> np.ndarray:
+    def get_support(self) -> ONE_DIM_ARRAY_TYPE:
         return self.nunique_ > self.threshold
