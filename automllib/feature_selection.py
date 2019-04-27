@@ -34,13 +34,32 @@ class BaseSelector(BaseEstimator, ABC):
         _, n_features = X.shape
         support = self.get_support()
         n_selected_features = np.sum(support)
+        n_dropped_features = n_features - n_selected_features
 
         logger.info(
             f'{n_selected_features} features are selected and '
-            f'{n_features - n_selected_features} features are dropped.'
+            f'{n_dropped_features} features are dropped.'
         )
 
         return X.loc[:, support]
+
+
+class DropUniqueKey(BaseSelector, TransformerMixin):
+    def __init__(self) -> None:
+        pass
+
+    def fit(
+        self,
+        X: np.ndarray,
+        y: np.ndarray = None
+    ) -> 'DropUniqueKey':
+        self.n_samples_ = len(X)
+        self.nunique_ = X.nunique()
+
+        return self
+
+    def get_support(self) -> np.ndarray:
+        return self.nunique_ != self.n_samples_
 
 
 class NAProportionThreshold(BaseSelector, TransformerMixin):

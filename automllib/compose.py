@@ -10,6 +10,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import FeatureUnion
 
 from .feature_extraction import TimeVectorizer
+from .feature_selection import DropUniqueKey
 from .feature_selection import NAProportionThreshold
 from .feature_selection import NUniqueThreshold
 from .model_selection import OptunaSearchCV
@@ -21,12 +22,10 @@ from .utils import get_time_columns
 
 def make_categorical_transformer() -> Pipeline:
     return Pipeline([
+        ('categorical_selector', DropUniqueKey()),
         (
             'categorical_imputer',
-            SimpleImputer(
-                fill_value='missing',
-                strategy='constant'
-            )
+            SimpleImputer(fill_value='missing', strategy='constant')
         ),
         ('categorical_transformer', OrdinalEncoder())
     ])
