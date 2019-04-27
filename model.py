@@ -23,8 +23,8 @@ from automllib.compose import make_preprocessor
 from automllib.constants import MAIN_TABLE_NAME
 from automllib.constants import ONE_DIM_ARRAY_TYPE
 from automllib.constants import TWO_DIM_ARRAY_TYPE
-from automllib.merge import Config
-from automllib.merge import merge_table
+from automllib.table_join import Config
+from automllib.table_join import merge_table
 from automllib.utils import timeit
 
 np.random.seed(0)
