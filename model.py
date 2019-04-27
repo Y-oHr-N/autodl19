@@ -1,4 +1,7 @@
+import copy
+import logging
 import os
+
 from typing import Any
 from typing import Dict
 
@@ -8,12 +11,12 @@ os.system("pip3 install lightgbm")
 os.system("pip3 install optuna")
 os.system("pip3 install pandas==0.24.2")
 
-import copy
 import numpy as np
 import pandas as pd
 
 from sklearn.base import BaseEstimator
 from sklearn.base import MetaEstimatorMixin
+from sklearn.model_selection import train_test_split
 
 from automllib.compose import make_model
 from automllib.compose import make_preprocessor
@@ -22,10 +25,11 @@ from automllib.constants import ONE_DIM_ARRAY_TYPE
 from automllib.constants import TWO_DIM_ARRAY_TYPE
 from automllib.merge import Config
 from automllib.merge import merge_table
-from automllib.train import train
 from automllib.utils import timeit
 
 np.random.seed(0)
+
+logger = logging.getLogger(__name__)
 
 
 class Model(BaseEstimator, MetaEstimatorMixin):
@@ -48,7 +52,29 @@ class Model(BaseEstimator, MetaEstimatorMixin):
 
         X = self.preprocessor_.fit_transform(X)
 
-        self.estimator_ = train(X, y)
+        self.estimator_ = make_model()
+
+        X_train, X_valid, y_train, y_valid = train_test_split(
+            X,
+            y,
+            shuffle=False
+        )
+
+        fit_params = {
+            'search_cv__early_stopping_rounds': 10,
+            'search_cv__eval_set': [(X_valid, y_valid)],
+            'search_cv__verbose': False
+        }
+
+        self.estimator_.fit(X_train, y_train, **fit_params)
+
+        try:
+            best_score = self.estimator_.named_steps['search_cv'].best_score_
+
+            logger.info(f'The best score is {best_score:.3f}')
+
+        except Exception as e:
+            logger.exception(e)
 
         return self
 
