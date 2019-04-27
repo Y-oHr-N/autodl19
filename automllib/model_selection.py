@@ -760,12 +760,18 @@ class OptunaSearchCV(BaseEstimator):
     ):
         # type: (...) -> 'OptunaSearchCV'
 
+        n_samples = len(X)
+
         self.best_estimator_ = clone(self.estimator)
 
         try:
             self.best_estimator_.set_params(**self.study_.best_params)
-        except ValueError:
-            logger.warning(f'No trials are completed yet.')
+        except ValueError as e:
+            logger.exception(e)
+
+        logger.info(
+            'Refitting the estimator using {} samples...'.format(n_samples)
+        )
 
         start_time = time()
 
@@ -832,10 +838,6 @@ class OptunaSearchCV(BaseEstimator):
                 train_size=train_size
             )
 
-        logger.info(
-            f'{len(indices)} samples are used during hyperparameter search.'
-        )
-
         X_res = safe_indexing(X, indices)
         y_res = safe_indexing(y, indices)
         groups_res = safe_indexing(groups, indices)
@@ -876,6 +878,11 @@ class OptunaSearchCV(BaseEstimator):
             self.max_iter,
             self.return_train_score,
             self.scorer_
+        )
+
+        logger.info(
+            'Searching the best hyperparameters using {} '
+            'samples...'.format(len(indices))
         )
 
         self.study_.optimize(
