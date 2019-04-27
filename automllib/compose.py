@@ -21,7 +21,7 @@ from .utils import get_numerical_columns
 from .utils import get_time_columns
 
 
-def make_categorical_transformer() -> BaseEstimator:
+def make_categorical_transformer(timeout: float = None) -> BaseEstimator:
     return Pipeline([
         ('categorical_selector', DropUniqueKey()),
         (
@@ -32,7 +32,7 @@ def make_categorical_transformer() -> BaseEstimator:
     ])
 
 
-def make_numerical_transformer() -> BaseEstimator:
+def make_numerical_transformer(timeout: float = None) -> BaseEstimator:
     return FeatureUnion([
         (
             'numerical_transformer',
@@ -45,29 +45,29 @@ def make_numerical_transformer() -> BaseEstimator:
     ])
 
 
-def make_time_transformer() -> BaseEstimator:
+def make_time_transformer(timeout: float = None) -> BaseEstimator:
     return Pipeline([
         ('time_vectorizer', TimeVectorizer()),
         ('time_imputer', SimpleImputer(strategy='most_frequent'))
     ])
 
 
-def make_mixed_transformer() -> BaseEstimator:
+def make_mixed_transformer(timeout: float = None) -> BaseEstimator:
     return ColumnTransformer(
         [
             (
                 'categorical_transformer',
-                make_categorical_transformer(),
+                make_categorical_transformer(timeout=timeout),
                 get_categorical_columns
             ),
             (
                 'numerical_transformer',
-                make_numerical_transformer(),
+                make_numerical_transformer(timeout=timeout),
                 get_numerical_columns
             ),
             (
                 'time_transformer',
-                make_time_transformer(),
+                make_time_transformer(timeout=timeout),
                 get_time_columns
             )
         ],
@@ -75,15 +75,15 @@ def make_mixed_transformer() -> BaseEstimator:
     )
 
 
-def make_preprocessor() -> BaseEstimator:
+def make_preprocessor(timeout: float = None) -> BaseEstimator:
     return Pipeline([
         ('1st_selector', NAProportionThreshold()),
         ('2nd_selector', NUniqueThreshold()),
-        ('mixed_transformer', make_mixed_transformer())
+        ('mixed_transformer', make_mixed_transformer(timeout=timeout))
     ])
 
 
-def make_search_cv() -> OptunaSearchCV:
+def make_search_cv(timeout: float = None) -> BaseEstimator:
     estimator = lgb.LGBMClassifier(
         max_depth=7,
         metric='auc',
@@ -135,12 +135,13 @@ def make_search_cv() -> OptunaSearchCV:
         random_state=0,
         sampler=sampler,
         scoring='roc_auc',
-        subsample=100_000
+        subsample=100_000,
+        timeout=timeout
     )
 
 
-def make_model() -> BaseEstimator:
+def make_model(timeout: float = None) -> BaseEstimator:
     return Pipeline([
         ('sampler', RandomUnderSampler(random_state=0)),
-        ('search_cv', make_search_cv())
+        ('search_cv', make_search_cv(timeout=timeout))
     ])
