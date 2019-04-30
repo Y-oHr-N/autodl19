@@ -61,15 +61,15 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         )
 
         fit_params = {
-            'search_cv__early_stopping_rounds': 10,
-            'search_cv__eval_set': [(X_valid, y_valid)],
-            'search_cv__verbose': False
+            'optunasearchcv__early_stopping_rounds': 10,
+            'optunasearchcv__eval_set': [(X_valid, y_valid)],
+            'optunasearchcv__verbose': False
         }
 
         self.estimator_.fit(X_train, y_train, **fit_params)
 
         try:
-            best_score = self.estimator_.named_steps['search_cv'].best_score_
+            best_score = self.estimator_._final_estimator.best_score_
 
             logger.info(f'The best score is {best_score:.3f}')
 

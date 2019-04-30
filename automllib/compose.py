@@ -2,13 +2,13 @@ import lightgbm as lgb
 import optuna
 
 from category_encoders import OrdinalEncoder
-from imblearn.pipeline import Pipeline
+from imblearn.pipeline import make_pipeline
 from imblearn.under_sampling import RandomUnderSampler
 from sklearn.base import BaseEstimator
-from sklearn.compose import ColumnTransformer
+from sklearn.compose import make_column_transformer
 from sklearn.impute import MissingIndicator
 from sklearn.impute import SimpleImputer
-from sklearn.pipeline import FeatureUnion
+from sklearn.pipeline import make_union
 
 from .feature_extraction import TimeVectorizer
 from .feature_selection import DropDuplicates
@@ -23,66 +23,52 @@ from .utils import get_time_columns
 
 
 def make_categorical_transformer(timeout: float = None) -> BaseEstimator:
-    return Pipeline([
-        ('categorical_selector', DropUniqueKey()),
-        (
-            'categorical_imputer',
-            SimpleImputer(fill_value='missing', strategy='constant')
-        ),
-        ('categorical_transformer', OrdinalEncoder())
-    ])
+    return make_pipeline(
+        DropUniqueKey(),
+        SimpleImputer(fill_value='missing', strategy='constant'),
+        OrdinalEncoder()
+    )
 
 
 def make_numerical_transformer(timeout: float = None) -> BaseEstimator:
-    return FeatureUnion([
-        (
-            'numerical_transformer',
-            Pipeline([
-                ('numerical_imputer', SimpleImputer(strategy='median')),
-                ('numerical_transformer', Clip(copy=False))
-            ])
-        ),
-        ('numerical_indicator', MissingIndicator())
-    ])
+    return make_union(
+        make_pipeline(SimpleImputer(strategy='median'), Clip(copy=False)),
+        MissingIndicator()
+    )
 
 
 def make_time_transformer(timeout: float = None) -> BaseEstimator:
-    return Pipeline([
-        ('time_vectorizer', TimeVectorizer()),
-        ('time_imputer', SimpleImputer(strategy='most_frequent'))
-    ])
+    return make_pipeline(
+        TimeVectorizer(),
+        SimpleImputer(strategy='most_frequent')
+    )
 
 
 def make_mixed_transformer(timeout: float = None) -> BaseEstimator:
-    return ColumnTransformer(
-        [
-            (
-                'categorical_transformer',
-                make_categorical_transformer(timeout=timeout),
-                get_categorical_columns
-            ),
-            (
-                'numerical_transformer',
-                make_numerical_transformer(timeout=timeout),
-                get_numerical_columns
-            ),
-            (
-                'time_transformer',
-                make_time_transformer(timeout=timeout),
-                get_time_columns
-            )
-        ],
+    return make_column_transformer(
+        (
+            make_categorical_transformer(timeout=timeout),
+            get_categorical_columns
+        ),
+        (
+            make_numerical_transformer(timeout=timeout),
+            get_numerical_columns
+        ),
+        (
+            make_time_transformer(timeout=timeout),
+            get_time_columns
+        ),
         n_jobs=-1
     )
 
 
 def make_preprocessor(timeout: float = None) -> BaseEstimator:
-    return Pipeline([
-        ('first_mixed_selector', NAProportionThreshold()),
-        ('second_mixed_selector', NUniqueThreshold()),
-        ('third_mixed_selector', DropDuplicates()),
-        ('mixed_transformer', make_mixed_transformer(timeout=timeout))
-    ])
+    return make_pipeline(
+        NAProportionThreshold(),
+        NUniqueThreshold(),
+        DropDuplicates(),
+        make_mixed_transformer(timeout=timeout)
+    )
 
 
 def make_search_cv(timeout: float = None) -> BaseEstimator:
@@ -143,7 +129,7 @@ def make_search_cv(timeout: float = None) -> BaseEstimator:
 
 
 def make_model(timeout: float = None) -> BaseEstimator:
-    return Pipeline([
-        ('sampler', RandomUnderSampler(random_state=0)),
-        ('search_cv', make_search_cv(timeout=timeout))
-    ])
+    return make_pipeline(
+        RandomUnderSampler(random_state=0),
+        make_search_cv(timeout=timeout)
+    )
