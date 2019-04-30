@@ -11,6 +11,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import FeatureUnion
 
 from .feature_extraction import TimeVectorizer
+from .feature_selection import DropDuplicates
 from .feature_selection import DropUniqueKey
 from .feature_selection import NAProportionThreshold
 from .feature_selection import NUniqueThreshold
@@ -77,8 +78,9 @@ def make_mixed_transformer(timeout: float = None) -> BaseEstimator:
 
 def make_preprocessor(timeout: float = None) -> BaseEstimator:
     return Pipeline([
-        ('1st_selector', NAProportionThreshold()),
-        ('2nd_selector', NUniqueThreshold()),
+        ('first_mixed_selector', NAProportionThreshold()),
+        ('second_mixed_selector', NUniqueThreshold()),
+        ('third_mixed_selector', DropDuplicates()),
         ('mixed_transformer', make_mixed_transformer(timeout=timeout))
     ])
 
