@@ -47,6 +47,23 @@ class BaseSelector(BaseEstimator, ABC):
         return X.loc[:, support]
 
 
+class DropDuplicates(BaseSelector, TransformerMixin):
+    def __init__(self) -> None:
+        pass
+
+    def fit(
+        self,
+        X: TWO_DIM_ARRAY_TYPE,
+        y: ONE_DIM_ARRAY_TYPE = None
+    ) -> 'DropDuplicates':
+        self.duplicated_ = X.T.duplicated()
+
+        return self
+
+    def get_support(self) -> ONE_DIM_ARRAY_TYPE:
+        return ~self.duplicated_
+
+
 class DropUniqueKey(BaseSelector, TransformerMixin):
     def __init__(self) -> None:
         pass
