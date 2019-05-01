@@ -2,16 +2,19 @@ import lightgbm as lgb
 import optuna
 
 from category_encoders import OrdinalEncoder
-from imblearn.pipeline import Pipeline
+from imblearn.pipeline import make_pipeline
 from imblearn.under_sampling import RandomUnderSampler
-from sklearn.compose import ColumnTransformer
+from sklearn.base import BaseEstimator
+from sklearn.compose import make_column_transformer
+from sklearn.decomposition import TruncatedSVD
 from sklearn.impute import MissingIndicator
 from sklearn.impute import SimpleImputer
-from sklearn.pipeline import FeatureUnion
-from sklearn.decomposition import TruncatedSVD
+from sklearn.pipeline import make_union
 
-from .feature_extraction import TimeVectorizer
 from .feature_extraction import MultiValueCategoricalVectorizer
+from .feature_extraction import TimeVectorizer
+from .feature_selection import DropDuplicates
+from .feature_selection import DropUniqueKey
 from .feature_selection import NAProportionThreshold
 from .feature_selection import NUniqueThreshold
 from .model_selection import OptunaSearchCV
@@ -22,78 +25,70 @@ from .utils import get_numerical_columns
 from .utils import get_time_columns
 
 
-def make_categorical_transformer() -> Pipeline:
-    return Pipeline([
-        ('imputer', SimpleImputer(fill_value='missing', strategy='constant')),
-        ('transformer', OrdinalEncoder())
-    ])
-
-
-def make_multi_value_categorical_transformer() -> Pipeline:
-    return Pipeline([
-        ('imputer', SimpleImputer(fill_value='missing', strategy='constant')),
-        ('vectorizer', MultiValueCategoricalVectorizer()),
-        ('reducer', TruncatedSVD(n_components=5))
-    ])
-
-
-def make_numerical_transformer() -> FeatureUnion:
-    return FeatureUnion([
-        (
-            'transformer',
-            Pipeline([
-                ('imputer', SimpleImputer(strategy='median')),
-                ('transformer', Clip())
-            ])
-        ),
-        ('indicator', MissingIndicator())
-    ])
-
-
-def make_time_transformer() -> Pipeline:
-    return Pipeline([
-        ('vectorizer', TimeVectorizer()),
-        ('imputer', SimpleImputer(strategy='most_frequent'))
-    ])
-
-
-def make_mixed_transformer() -> ColumnTransformer:
-    return ColumnTransformer(
-        [
-            (
-                'categorical_transformer',
-                make_categorical_transformer(),
-                get_categorical_columns
-            ),
-            (
-                'numerical_transformer',
-                make_numerical_transformer(),
-                get_numerical_columns
-            ),
-            (
-                'time_transformer',
-                make_time_transformer(),
-                get_time_columns
-            ),
-            (
-                'multi_value_categorical_transformer',
-                make_multi_value_categorical_transformer(),
-                get_multi_value_categorical_columns
-            )
-        ],
-        n_jobs=4
+def make_categorical_transformer(timeout: float = None) -> BaseEstimator:
+    return make_pipeline(
+        DropUniqueKey(),
+        SimpleImputer(fill_value='missing', strategy='constant'),
+        OrdinalEncoder()
     )
 
 
-def make_preprocessor() -> Pipeline:
-    return Pipeline([
-        ('na_proportion_threshold', NAProportionThreshold()),
-        ('nunique_threshold', NUniqueThreshold()),
-        ('mixed_transformer', make_mixed_transformer())
-    ])
+def make_multi_value_categorical_transformer(
+    timeout: float = None
+) -> BaseEstimator:
+    return make_pipeline(
+        SimpleImputer(fill_value='missing', strategy='constant'),
+        MultiValueCategoricalVectorizer(),
+        TruncatedSVD(n_components=5)
+    )
 
 
-def make_search_cv() -> OptunaSearchCV:
+def make_numerical_transformer(timeout: float = None) -> BaseEstimator:
+    return make_union(
+        make_pipeline(SimpleImputer(strategy='median'), Clip(copy=False)),
+        MissingIndicator()
+    )
+
+
+def make_time_transformer(timeout: float = None) -> BaseEstimator:
+    return make_pipeline(
+        TimeVectorizer(),
+        SimpleImputer(strategy='most_frequent')
+    )
+
+
+def make_mixed_transformer(timeout: float = None) -> BaseEstimator:
+    return make_column_transformer(
+        (
+            make_categorical_transformer(timeout=timeout),
+            get_categorical_columns
+        ),
+        (
+            make_multi_value_categorical_transformer(timeout=timeout),
+            get_multi_value_categorical_columns
+        ),
+        (
+            make_numerical_transformer(timeout=timeout),
+            get_numerical_columns
+        ),
+        (
+            make_time_transformer(timeout=timeout),
+            get_time_columns
+        ),
+        n_jobs=-1
+    )
+
+
+def make_preprocessor(timeout: float = None) -> BaseEstimator:
+    return make_pipeline(
+        NAProportionThreshold(),
+        NUniqueThreshold(),
+        DropDuplicates(),
+        make_mixed_transformer(timeout=timeout)
+    )
+
+
+def make_search_cv(timeout: float = None) -> BaseEstimator:
     estimator = lgb.LGBMClassifier(
         max_depth=7,
         metric='auc',
@@ -139,15 +134,19 @@ def make_search_cv() -> OptunaSearchCV:
     return OptunaSearchCV(
         estimator,
         param_distributions,
+        error_score='raise',
         n_trials=20,
         n_jobs=4,
+        random_state=0,
         sampler=sampler,
-        scoring='roc_auc'
+        scoring='roc_auc',
+        subsample=100_000,
+        timeout=timeout
     )
 
 
-def make_model() -> Pipeline:
-    return Pipeline([
-        ('sampler', RandomUnderSampler(random_state=0)),
-        ('search_cv', make_search_cv())
-    ])
+def make_model(timeout: float = None) -> BaseEstimator:
+    return make_pipeline(
+        RandomUnderSampler(random_state=0),
+        make_search_cv(timeout=timeout)
+    )

@@ -1,4 +1,7 @@
+import copy
+import logging
 import os
+
 from typing import Any
 from typing import Dict
 
@@ -8,22 +11,25 @@ os.system("pip3 install lightgbm")
 os.system("pip3 install optuna")
 os.system("pip3 install pandas==0.24.2")
 
-import copy
 import numpy as np
 import pandas as pd
 
 from sklearn.base import BaseEstimator
 from sklearn.base import MetaEstimatorMixin
+from sklearn.model_selection import train_test_split
 
 from automllib.compose import make_model
 from automllib.compose import make_preprocessor
 from automllib.constants import MAIN_TABLE_NAME
-from automllib.merge import Config
-from automllib.merge import merge_table
-from automllib.train import train
+from automllib.constants import ONE_DIM_ARRAY_TYPE
+from automllib.constants import TWO_DIM_ARRAY_TYPE
+from automllib.table_join import Config
+from automllib.table_join import merge_table
 from automllib.utils import timeit
 
 np.random.seed(0)
+
+logger = logging.getLogger(__name__)
 
 
 class Model(BaseEstimator, MetaEstimatorMixin):
@@ -33,9 +39,9 @@ class Model(BaseEstimator, MetaEstimatorMixin):
     @timeit
     def fit(
         self,
-        Xs: Dict[str, pd.DataFrame],
-        y: pd.Series,
-        time_ramain: float
+        Xs: Dict[str, TWO_DIM_ARRAY_TYPE],
+        y: ONE_DIM_ARRAY_TYPE,
+        timeout: float = None
     ) -> 'Model':
         self.config_ = Config(self.info)
         self.tables_ = copy.deepcopy(Xs)
@@ -46,12 +52,38 @@ class Model(BaseEstimator, MetaEstimatorMixin):
 
         X = self.preprocessor_.fit_transform(X)
 
-        self.estimator_ = train(X, y)
+        self.estimator_ = make_model()
+
+        X_train, X_valid, y_train, y_valid = train_test_split(
+            X,
+            y,
+            shuffle=False
+        )
+
+        fit_params = {
+            'optunasearchcv__early_stopping_rounds': 10,
+            'optunasearchcv__eval_set': [(X_valid, y_valid)],
+            'optunasearchcv__verbose': False
+        }
+
+        self.estimator_.fit(X_train, y_train, **fit_params)
+
+        try:
+            best_score = self.estimator_._final_estimator.best_score_
+
+            logger.info(f'The best score is {best_score:.3f}')
+
+        except Exception as e:
+            logger.exception(e)
 
         return self
 
     @timeit
-    def predict(self, X_test: pd.DataFrame, time_remain: float) -> pd.Series:
+    def predict(
+        self,
+        X_test: TWO_DIM_ARRAY_TYPE,
+        timeout: float = None
+    ) -> ONE_DIM_ARRAY_TYPE:
         Xs = self.tables_
         main_table = Xs[MAIN_TABLE_NAME]
         main_table = pd.concat([main_table, X_test], keys=['train', 'test'])

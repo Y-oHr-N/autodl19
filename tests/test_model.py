@@ -114,10 +114,14 @@ def make_experiment() -> Experiment:
             project_name='automl-kddcup19'
         )
 
-        build_number = os.getenv('TRAVIS_BUILD_NUMBER')
+        build_number = os.getenv('TRAVIS_BUILD_NUMBER', default=False)
+        pull_request = os.getenv('TRAVIS_PULL_REQUEST', default=False)
 
-        if build_number is not None:
-            experiment.log_other('Build Number', build_number)
+        if build_number:
+            experiment.log_other('Build number', build_number)
+
+        if pull_request:
+            experiment.log_other('Pull request number', pull_request)
 
     except Exception:
         experiment = None

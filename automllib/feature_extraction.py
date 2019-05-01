@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 
 from scipy.sparse import hstack
@@ -6,6 +5,9 @@ from sklearn.feature_extraction.text import HashingVectorizer
 
 from sklearn.base import BaseEstimator
 from sklearn.base import TransformerMixin
+
+from .constants import ONE_DIM_ARRAY_TYPE
+from .constants import TWO_DIM_ARRAY_TYPE
 
 
 class TimeVectorizer(BaseEstimator, TransformerMixin):
@@ -24,15 +26,15 @@ class TimeVectorizer(BaseEstimator, TransformerMixin):
 
     def fit(
         self,
-        X: np.ndarray,
-        y: np.ndarray = None
+        X: TWO_DIM_ARRAY_TYPE,
+        y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'TimeVectorizer':
         return self
 
     def transform(
         self,
-        X: np.ndarray
-    ) -> np.ndarray:
+        X: TWO_DIM_ARRAY_TYPE
+    ) -> ONE_DIM_ARRAY_TYPE:
         dfs = []
 
         for column in X:
@@ -51,8 +53,8 @@ class TimeVectorizer(BaseEstimator, TransformerMixin):
 class MultiValueCategoricalVectorizer(BaseEstimator, TransformerMixin):
     def fit(
         self,
-        X: np.ndarray,
-        y: np.ndarray = None
+        X: TWO_DIM_ARRAY_TYPE,
+        y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'MultiValueCategoricalVectorizer':
         self.vectorizers_ = []
 
@@ -65,7 +67,10 @@ class MultiValueCategoricalVectorizer(BaseEstimator, TransformerMixin):
 
         return self
 
-    def transform(self, X: np.ndarray) -> np.ndarray:
+    def transform(
+        self,
+        X: TWO_DIM_ARRAY_TYPE
+    ) -> ONE_DIM_ARRAY_TYPE:
         count_matrix = []
 
         for column, vectorizer in zip(X.T, self.vectorizers_):
