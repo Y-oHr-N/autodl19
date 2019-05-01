@@ -30,10 +30,10 @@ def aggregate_functions(
 ) -> Dict[str, List[Union[str, Callable]]]:
     func = {}
 
-    c_feature_names = get_categorical_columns(X)
-    # m_feature_names = get_multi_value_categorical_columns(X)
-    n_feature_names = get_numerical_columns(X)
-    # t_feature_names = get_time_columns(X)
+    c_feature_names = get_categorical_feature_names(X)
+    # m_feature_names = get_multi_value_categorical_feature_names(X)
+    n_feature_names = get_numerical_feature_names(X)
+    # t_feature_names = get_time_feature_names(X)
 
     func.update({name: AFS_MAP[C_TYPE] for name in c_feature_names})
     # func.update({name: AFS_MAP[M_TYPE] for name in m_feature_names})
@@ -43,7 +43,7 @@ def aggregate_functions(
     return func
 
 
-def get_columns_by_prefix(
+def get_feature_names_by_prefix(
     X: TWO_DIM_ARRAY_TYPE,
     prefix: str
 ) -> ONE_DIM_ARRAY_TYPE:
@@ -56,22 +56,22 @@ def get_columns_by_prefix(
     return list(columns[is_startwith])
 
 
-def get_categorical_columns(X: TWO_DIM_ARRAY_TYPE) -> ONE_DIM_ARRAY_TYPE:
-    return get_columns_by_prefix(X, C_PREFIX)
+def get_categorical_feature_names(X: TWO_DIM_ARRAY_TYPE) -> ONE_DIM_ARRAY_TYPE:
+    return get_feature_names_by_prefix(X, C_PREFIX)
 
 
-def get_multi_value_categorical_columns(
+def get_multi_value_categorical_feature_names(
     X: TWO_DIM_ARRAY_TYPE
 ) -> ONE_DIM_ARRAY_TYPE:
-    return get_columns_by_prefix(X, M_PREFIX)
+    return get_feature_names_by_prefix(X, M_PREFIX)
 
 
-def get_numerical_columns(X: TWO_DIM_ARRAY_TYPE) -> ONE_DIM_ARRAY_TYPE:
-    return get_columns_by_prefix(X, N_PREFIX)
+def get_numerical_feature_names(X: TWO_DIM_ARRAY_TYPE) -> ONE_DIM_ARRAY_TYPE:
+    return get_feature_names_by_prefix(X, N_PREFIX)
 
 
-def get_time_columns(X: TWO_DIM_ARRAY_TYPE) -> ONE_DIM_ARRAY_TYPE:
-    return get_columns_by_prefix(X, T_PREFIX)
+def get_time_feature_names(X: TWO_DIM_ARRAY_TYPE) -> ONE_DIM_ARRAY_TYPE:
+    return get_feature_names_by_prefix(X, T_PREFIX)
 
 
 def timeit(func: Callable) -> Callable:

@@ -19,10 +19,10 @@ from .feature_selection import NAProportionThreshold
 from .feature_selection import NUniqueThreshold
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
-from .utils import get_categorical_columns
-from .utils import get_multi_value_categorical_columns
-from .utils import get_numerical_columns
-from .utils import get_time_columns
+from .utils import get_categorical_feature_names
+from .utils import get_multi_value_categorical_feature_names
+from .utils import get_numerical_feature_names
+from .utils import get_time_feature_names
 
 
 def make_categorical_transformer(timeout: float = None) -> BaseEstimator:
@@ -61,19 +61,19 @@ def make_mixed_transformer(timeout: float = None) -> BaseEstimator:
     return make_column_transformer(
         (
             make_categorical_transformer(timeout=timeout),
-            get_categorical_columns
+            get_categorical_feature_names
         ),
         (
             make_multi_value_categorical_transformer(timeout=timeout),
-            get_multi_value_categorical_columns
+            get_multi_value_categorical_feature_names
         ),
         (
             make_numerical_transformer(timeout=timeout),
-            get_numerical_columns
+            get_numerical_feature_names
         ),
         (
             make_time_transformer(timeout=timeout),
-            get_time_columns
+            get_time_feature_names
         ),
         n_jobs=-1
     )
