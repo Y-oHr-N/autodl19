@@ -6,6 +6,7 @@ from typing import Any
 from typing import Dict
 
 import numpy as np
+import pandas as pd
 
 from sklearn.base import BaseEstimator
 from sklearn.base import TransformerMixin
@@ -36,6 +37,7 @@ class BaseSelector(BaseEstimator, ABC):
 
     @timeit
     def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
+        X = pd.DataFrame(X)
         _, n_features = X.shape
         support = self.get_support()
         n_selected_features = np.sum(support)
@@ -46,7 +48,7 @@ class BaseSelector(BaseEstimator, ABC):
             f'features and drops {n_dropped_features} features.'
         )
 
-        return X.loc[:, support]
+        return X.iloc[:, support]
 
 
 class DropDuplicates(BaseSelector, TransformerMixin):
@@ -59,7 +61,9 @@ class DropDuplicates(BaseSelector, TransformerMixin):
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'DropDuplicates':
-        self.duplicated_ = X.T.duplicated()
+        X = pd.DataFrame(X)
+
+        self.duplicated_ = X.T.duplicated().values
 
         return self
 
@@ -77,8 +81,10 @@ class DropUniqueKey(BaseSelector, TransformerMixin):
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'DropUniqueKey':
+        X = pd.DataFrame(X)
+
         self.n_samples_ = len(X)
-        self.nunique_ = X.nunique()
+        self.nunique_ = X.nunique().values
 
         return self
 
@@ -96,9 +102,10 @@ class NAProportionThreshold(BaseSelector, TransformerMixin):
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'NAProportionThreshold':
+        X = pd.DataFrame(X)
         n_samples = len(X)
 
-        self.na_propotion_ = X.isnull().sum() / n_samples
+        self.na_propotion_ = X.isnull().sum().values / n_samples
 
         return self
 
@@ -116,7 +123,9 @@ class NUniqueThreshold(BaseSelector, TransformerMixin):
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'NUniqueThreshold':
-        self.nunique_ = X.nunique()
+        X = pd.DataFrame(X)
+
+        self.nunique_ = X.nunique().values
 
         return self
 
