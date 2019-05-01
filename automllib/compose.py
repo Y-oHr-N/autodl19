@@ -10,6 +10,7 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.impute import MissingIndicator
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import make_union
+from sklearn.preprocessing import PolynomialFeatures
 
 from .feature_extraction import MultiValueCategoricalVectorizer
 from .feature_extraction import TimeVectorizer
@@ -45,7 +46,11 @@ def make_multi_value_categorical_transformer(
 
 def make_numerical_transformer(timeout: float = None) -> BaseEstimator:
     return make_union(
-        make_pipeline(SimpleImputer(strategy='median'), Clip(copy=False)),
+        make_pipeline(
+            SimpleImputer(strategy='median'),
+            Clip(copy=False),
+            PolynomialFeatures(include_bias=False, interaction_only=True)
+        ),
         MissingIndicator()
     )
 
