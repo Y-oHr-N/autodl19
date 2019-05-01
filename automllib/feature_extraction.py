@@ -1,3 +1,5 @@
+import logging
+
 import pandas as pd
 
 from scipy.sparse import hstack
@@ -8,6 +10,8 @@ from sklearn.base import TransformerMixin
 
 from .constants import ONE_DIM_ARRAY_TYPE
 from .constants import TWO_DIM_ARRAY_TYPE
+
+logger = logging.getLogger(__name__)
 
 
 class TimeVectorizer(BaseEstimator, TransformerMixin):
@@ -46,6 +50,11 @@ class TimeVectorizer(BaseEstimator, TransformerMixin):
             dfs.append(df)
 
         Xt = pd.concat(dfs, axis=1)
+        _, n_features = Xt.shape
+
+        logger.info(
+            f'{self.__class__.__name__} extracts {n_features} features.'
+        )
 
         return Xt
 
@@ -76,4 +85,11 @@ class MultiValueCategoricalVectorizer(BaseEstimator, TransformerMixin):
         for column, vectorizer in zip(X.T, self.vectorizers_):
             count_matrix.append(vectorizer.transform(column))
 
-        return hstack(tuple(count_matrix))
+        Xt = hstack(tuple(count_matrix))
+        _, n_features = Xt.shape
+
+        logger.info(
+            f'{self.__class__.__name__} extracts {n_features} features.'
+        )
+
+        return Xt

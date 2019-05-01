@@ -40,8 +40,8 @@ class BaseSelector(BaseEstimator, ABC):
         n_dropped_features = n_features - n_selected_features
 
         logger.info(
-            f'{n_selected_features} features are selected and '
-            f'{n_dropped_features} features are dropped.'
+            f'{self.__class__.__name__} selects {n_selected_features} '
+            f'features and drops {n_dropped_features} features.'
         )
 
         return X.loc[:, support]

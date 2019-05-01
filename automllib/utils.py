@@ -50,13 +50,13 @@ def get_time_feature_names(X: TWO_DIM_ARRAY_TYPE) -> ONE_DIM_ARRAY_TYPE:
 
 def timeit(func: Callable) -> Callable:
     def timed(*args: Tuple[Any], **kwargs: Dict[str, Any]) -> Any:
-        logger.info(f'==> Start {func.__name__}.')
+        logger.info(f'==> Start {func}.')
 
         timer = Timer()
         ret = func(*args, **kwargs)
         elapsed_time = timer.get_elapsed_time()
 
-        logger.info(f'==> End {func.__name__}. ({elapsed_time:.3f} sec.)')
+        logger.info(f'==> End {func}. ({elapsed_time:.3f} sec.)')
 
         return ret
 
