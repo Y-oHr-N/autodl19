@@ -68,18 +68,18 @@ def make_mixed_transformer(timeout: float = None) -> BaseEstimator:
             make_categorical_transformer(timeout=timeout),
             get_categorical_feature_names
         ),
-        (
-            make_multi_value_categorical_transformer(timeout=timeout),
-            get_multi_value_categorical_feature_names
-        ),
+        # (
+        #     make_multi_value_categorical_transformer(timeout=timeout),
+        #     get_multi_value_categorical_feature_names
+        # ),
         (
             make_numerical_transformer(timeout=timeout),
             get_numerical_feature_names
         ),
-        (
-            make_time_transformer(timeout=timeout),
-            get_time_feature_names
-        ),
+        # (
+        #     make_time_transformer(timeout=timeout),
+        #     get_time_feature_names
+        # ),
         n_jobs=-1
     )
 
@@ -88,7 +88,7 @@ def make_preprocessor(timeout: float = None) -> BaseEstimator:
     return make_pipeline(
         NAProportionThreshold(),
         NUniqueThreshold(),
-        DropDuplicates(),
+        # DropDuplicates(),
         make_mixed_transformer(timeout=timeout)
     )
 
