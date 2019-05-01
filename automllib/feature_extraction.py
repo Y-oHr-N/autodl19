@@ -10,6 +10,7 @@ from sklearn.base import TransformerMixin
 
 from .constants import ONE_DIM_ARRAY_TYPE
 from .constants import TWO_DIM_ARRAY_TYPE
+from .utils import timeit
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ class TimeVectorizer(BaseEstimator, TransformerMixin):
         'second'
     ]
 
+    @timeit
     def fit(
         self,
         X: TWO_DIM_ARRAY_TYPE,
@@ -35,6 +37,7 @@ class TimeVectorizer(BaseEstimator, TransformerMixin):
     ) -> 'TimeVectorizer':
         return self
 
+    @timeit
     def transform(
         self,
         X: TWO_DIM_ARRAY_TYPE
@@ -60,6 +63,7 @@ class TimeVectorizer(BaseEstimator, TransformerMixin):
 
 
 class MultiValueCategoricalVectorizer(BaseEstimator, TransformerMixin):
+    @timeit
     def fit(
         self,
         X: TWO_DIM_ARRAY_TYPE,
@@ -76,6 +80,7 @@ class MultiValueCategoricalVectorizer(BaseEstimator, TransformerMixin):
 
         return self
 
+    @timeit
     def transform(
         self,
         X: TWO_DIM_ARRAY_TYPE

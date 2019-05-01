@@ -12,6 +12,7 @@ from sklearn.base import TransformerMixin
 
 from .constants import ONE_DIM_ARRAY_TYPE
 from .constants import TWO_DIM_ARRAY_TYPE
+from .utils import timeit
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ class BaseSelector(BaseEstimator, ABC):
     def get_support(self) -> ONE_DIM_ARRAY_TYPE:
         pass
 
+    @timeit
     def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
         _, n_features = X.shape
         support = self.get_support()
@@ -51,6 +53,7 @@ class DropDuplicates(BaseSelector, TransformerMixin):
     def __init__(self) -> None:
         pass
 
+    @timeit
     def fit(
         self,
         X: TWO_DIM_ARRAY_TYPE,
@@ -68,6 +71,7 @@ class DropUniqueKey(BaseSelector, TransformerMixin):
     def __init__(self) -> None:
         pass
 
+    @timeit
     def fit(
         self,
         X: TWO_DIM_ARRAY_TYPE,
@@ -86,6 +90,7 @@ class NAProportionThreshold(BaseSelector, TransformerMixin):
     def __init__(self, threshold: float = 0.6) -> None:
         self.threshold = threshold
 
+    @timeit
     def fit(
         self,
         X: TWO_DIM_ARRAY_TYPE,
@@ -105,6 +110,7 @@ class NUniqueThreshold(BaseSelector, TransformerMixin):
     def __init__(self, threshold: int = 1) -> None:
         self.threshold = threshold
 
+    @timeit
     def fit(
         self,
         X: TWO_DIM_ARRAY_TYPE,

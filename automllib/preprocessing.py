@@ -6,6 +6,7 @@ from sklearn.utils import check_array
 
 from .constants import ONE_DIM_ARRAY_TYPE
 from .constants import TWO_DIM_ARRAY_TYPE
+from .utils import timeit
 
 
 class Clip(BaseEstimator, TransformerMixin):
@@ -19,6 +20,7 @@ class Clip(BaseEstimator, TransformerMixin):
         self.low = low
         self.high = high
 
+    @timeit
     def fit(
         self,
         X: TWO_DIM_ARRAY_TYPE,
@@ -34,6 +36,7 @@ class Clip(BaseEstimator, TransformerMixin):
 
         return self
 
+    @timeit
     def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
         X = check_array(X)
 
