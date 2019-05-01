@@ -139,13 +139,11 @@ def make_search_cv(timeout: float = None) -> BaseEstimator:
     return OptunaSearchCV(
         estimator,
         param_distributions,
-        error_score='raise',
-        n_trials=20,
-        n_jobs=4,
+        n_jobs=-1,
         random_state=0,
         sampler=sampler,
         scoring='roc_auc',
-        subsample=100_000,
+        subsample=1_000,
         timeout=timeout
     )
 
