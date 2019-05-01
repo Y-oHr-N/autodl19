@@ -1,5 +1,8 @@
 import pandas as pd
 
+from scipy.sparse import hstack
+from sklearn.feature_extraction.text import HashingVectorizer
+
 from sklearn.base import BaseEstimator
 from sklearn.base import TransformerMixin
 
@@ -45,3 +48,32 @@ class TimeVectorizer(BaseEstimator, TransformerMixin):
         Xt = pd.concat(dfs, axis=1)
 
         return Xt
+
+
+class MultiValueCategoricalVectorizer(BaseEstimator, TransformerMixin):
+    def fit(
+        self,
+        X: TWO_DIM_ARRAY_TYPE,
+        y: ONE_DIM_ARRAY_TYPE = None
+    ) -> 'MultiValueCategoricalVectorizer':
+        self.vectorizers_ = []
+
+        for column in X.T:
+            vectorizer = HashingVectorizer()
+
+            vectorizer.fit(column)
+
+            self.vectorizers_.append(vectorizer)
+
+        return self
+
+    def transform(
+        self,
+        X: TWO_DIM_ARRAY_TYPE
+    ) -> ONE_DIM_ARRAY_TYPE:
+        count_matrix = []
+
+        for column, vectorizer in zip(X.T, self.vectorizers_):
+            count_matrix.append(vectorizer.transform(column))
+
+        return hstack(tuple(count_matrix))

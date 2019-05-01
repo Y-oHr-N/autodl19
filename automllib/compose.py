@@ -6,10 +6,12 @@ from imblearn.pipeline import make_pipeline
 from imblearn.under_sampling import RandomUnderSampler
 from sklearn.base import BaseEstimator
 from sklearn.compose import make_column_transformer
+from sklearn.decomposition import TruncatedSVD
 from sklearn.impute import MissingIndicator
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import make_union
 
+from .feature_extraction import MultiValueCategoricalVectorizer
 from .feature_extraction import TimeVectorizer
 from .feature_selection import DropDuplicates
 from .feature_selection import DropUniqueKey
@@ -18,6 +20,7 @@ from .feature_selection import NUniqueThreshold
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .utils import get_categorical_columns
+from .utils import get_multi_value_categorical_columns
 from .utils import get_numerical_columns
 from .utils import get_time_columns
 
@@ -27,6 +30,16 @@ def make_categorical_transformer(timeout: float = None) -> BaseEstimator:
         DropUniqueKey(),
         SimpleImputer(fill_value='missing', strategy='constant'),
         OrdinalEncoder()
+    )
+
+
+def make_multi_value_categorical_transformer(
+    timeout: float = None
+) -> BaseEstimator:
+    return make_pipeline(
+        SimpleImputer(fill_value='missing', strategy='constant'),
+        MultiValueCategoricalVectorizer(),
+        TruncatedSVD(n_components=5)
     )
 
 
@@ -49,6 +62,10 @@ def make_mixed_transformer(timeout: float = None) -> BaseEstimator:
         (
             make_categorical_transformer(timeout=timeout),
             get_categorical_columns
+        ),
+        (
+            make_multi_value_categorical_transformer(timeout=timeout),
+            get_multi_value_categorical_columns
         ),
         (
             make_numerical_transformer(timeout=timeout),
