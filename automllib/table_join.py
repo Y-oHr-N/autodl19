@@ -1,12 +1,22 @@
+import logging
+
 from collections import defaultdict
 from collections import deque
-import logging
+from typing import Callable
+from typing import Dict
+from typing import Union
+from typing import List
 
 import pandas as pd
 
+from .constants import AGGREGATE_FUNCTIONS_MAP as AFS_MAP
+from .constants import CATEGORICAL_TYPE as C_TYPE
 from .constants import MAIN_TABLE_NAME
 from .constants import NUMERICAL_PREFIX
-from .utils import aggregate_functions
+from .constants import NUMERICAL_TYPE as N_TYPE
+from .constants import TWO_DIM_ARRAY_TYPE
+from .utils import get_categorical_feature_names
+from .utils import get_numerical_feature_names
 from .utils import timeit
 
 logger = logging.getLogger(__name__)
@@ -134,6 +144,24 @@ def merge_table(tables, config):
     bfs(MAIN_TABLE_NAME, graph, config['tables'])
 
     return dfs(MAIN_TABLE_NAME, config, tables, graph)
+
+
+def aggregate_functions(
+    X: TWO_DIM_ARRAY_TYPE
+) -> Dict[str, List[Union[str, Callable]]]:
+    func = {}
+
+    c_feature_names = get_categorical_feature_names(X)
+    # m_feature_names = get_multi_value_categorical_feature_names(X)
+    n_feature_names = get_numerical_feature_names(X)
+    # t_feature_names = get_time_feature_names(X)
+
+    func.update({name: AFS_MAP[C_TYPE] for name in c_feature_names})
+    # func.update({name: AFS_MAP[M_TYPE] for name in m_feature_names})
+    func.update({name: AFS_MAP[N_TYPE] for name in n_feature_names})
+    # func.update({name: AFS_MAP[T_TYPE] for name in t_feature_names})
+
+    return func
 
 
 class Config(object):
