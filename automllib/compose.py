@@ -48,7 +48,7 @@ def make_numerical_transformer(timeout: float = None) -> BaseEstimator:
     return make_union(
         make_pipeline(
             SimpleImputer(strategy='median'),
-            Clip(copy=False),
+            Clip(),
             PolynomialFeatures(include_bias=False, interaction_only=True)
         ),
         MissingIndicator()
