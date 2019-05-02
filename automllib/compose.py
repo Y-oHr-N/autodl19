@@ -1,7 +1,6 @@
 import lightgbm as lgb
 import optuna
 
-from category_encoders import OrdinalEncoder
 from imblearn.pipeline import make_pipeline
 from imblearn.under_sampling import RandomUnderSampler
 from sklearn.base import BaseEstimator
@@ -20,6 +19,7 @@ from .feature_selection import NAProportionThreshold
 from .feature_selection import NUniqueThreshold
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
+from .preprocessing import CountEncoder
 from .utils import get_categorical_feature_names
 from .utils import get_multi_value_categorical_feature_names
 from .utils import get_numerical_feature_names
@@ -30,7 +30,7 @@ def make_categorical_transformer(timeout: float = None) -> BaseEstimator:
     return make_pipeline(
         DropUniqueKey(),
         SimpleImputer(fill_value='missing', strategy='constant'),
-        OrdinalEncoder()
+        CountEncoder()
     )
 
 
