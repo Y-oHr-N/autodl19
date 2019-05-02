@@ -72,7 +72,7 @@ class CountEncoder(BaseEstimator, TransformerMixin):
         _, n_features = X.shape
 
         vectorized = np.vectorize(
-            lambda counter, xj: counter.get(xj, 0),
+            lambda counter, xj: counter.get(xj, 0.0),
             excluded='counter'
         )
 
