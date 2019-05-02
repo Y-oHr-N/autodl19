@@ -63,6 +63,9 @@ class TimeVectorizer(BaseEstimator, TransformerMixin):
 
 
 class MultiValueCategoricalVectorizer(BaseEstimator, TransformerMixin):
+    def __init__(self, n_features_per_column: int = 1048576):
+        self.n_features_per_column = n_features_per_column
+
     @timeit
     def fit(
         self,
@@ -72,7 +75,9 @@ class MultiValueCategoricalVectorizer(BaseEstimator, TransformerMixin):
         self.vectorizers_ = []
 
         for column in X.T:
-            vectorizer = HashingVectorizer()
+            vectorizer = HashingVectorizer(
+                n_features=self.n_features_per_column
+            )
 
             vectorizer.fit(column)
 

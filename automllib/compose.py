@@ -39,8 +39,7 @@ def make_multi_value_categorical_transformer(
 ) -> BaseEstimator:
     return make_pipeline(
         SimpleImputer(fill_value='missing', strategy='constant'),
-        MultiValueCategoricalVectorizer(),
-        TruncatedSVD(n_components=5)
+        MultiValueCategoricalVectorizer(n_features_per_column=32),
     )
 
 
@@ -68,10 +67,10 @@ def make_mixed_transformer(timeout: float = None) -> BaseEstimator:
             make_categorical_transformer(timeout=timeout),
             get_categorical_feature_names
         ),
-        # (
-        #     make_multi_value_categorical_transformer(timeout=timeout),
-        #     get_multi_value_categorical_feature_names
-        # ),
+        (
+            make_multi_value_categorical_transformer(timeout=timeout),
+            get_multi_value_categorical_feature_names
+        ),
         (
             make_numerical_transformer(timeout=timeout),
             get_numerical_feature_names
