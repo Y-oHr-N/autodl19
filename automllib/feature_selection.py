@@ -105,7 +105,7 @@ class NAProportionThreshold(BaseSelector, TransformerMixin):
         X = pd.DataFrame(X)
         n_samples = len(X)
 
-        self.na_propotion_ = X.isnull().sum().values / n_samples
+        self.na_propotion_ = 1.0 - X.count().values / n_samples
 
         return self
 
