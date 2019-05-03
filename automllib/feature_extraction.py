@@ -1,8 +1,12 @@
 import logging
 
+from typing import Type
+from typing import Union
+
 import pandas as pd
 
 from scipy.sparse import hstack
+from sklearn.base import clone
 from sklearn.feature_extraction.text import HashingVectorizer
 
 from sklearn.base import BaseEstimator
@@ -63,7 +67,14 @@ class TimeVectorizer(BaseEstimator, TransformerMixin):
 
 
 class MultiValueCategoricalVectorizer(BaseEstimator, TransformerMixin):
-    def __init__(self, n_features_per_column: int = 1048576):
+    def __init__(
+        self,
+        dtype: Union[str, Type] = 'float64',
+        lowercase: bool = True,
+        n_features_per_column: int = 1048576
+    ):
+        self.dtype = dtype
+        self.lowercase = lowercase
         self.n_features_per_column = n_features_per_column
 
     @timeit
@@ -72,16 +83,13 @@ class MultiValueCategoricalVectorizer(BaseEstimator, TransformerMixin):
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'MultiValueCategoricalVectorizer':
-        self.vectorizers_ = []
+        v = HashingVectorizer(
+            dtype=self.dtype,
+            lowercase=self.lowercase,
+            n_features=self.n_features_per_column
+        )
 
-        for column in X.T:
-            vectorizer = HashingVectorizer(
-                n_features=self.n_features_per_column
-            )
-
-            vectorizer.fit(column)
-
-            self.vectorizers_.append(vectorizer)
+        self.vectorizers_ = [clone(v).fit(column) for column in X.T]
 
         return self
 
@@ -90,12 +98,12 @@ class MultiValueCategoricalVectorizer(BaseEstimator, TransformerMixin):
         self,
         X: TWO_DIM_ARRAY_TYPE
     ) -> ONE_DIM_ARRAY_TYPE:
-        count_matrix = []
-
-        for column, vectorizer in zip(X.T, self.vectorizers_):
-            count_matrix.append(vectorizer.transform(column))
-
-        Xt = hstack(tuple(count_matrix))
+        Xs = [
+            self.vectorizers_[j].transform(
+                column
+            ) for j, column in enumerate(X.T)
+        ]
+        Xt = hstack(Xs)
         _, n_features = Xt.shape
 
         logger.info(

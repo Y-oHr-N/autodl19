@@ -39,7 +39,11 @@ def make_multi_value_categorical_transformer(
 ) -> BaseEstimator:
     return make_pipeline(
         SimpleImputer(fill_value='missing', strategy='constant'),
-        MultiValueCategoricalVectorizer(n_features_per_column=32),
+        MultiValueCategoricalVectorizer(
+            dtype='float32',
+            lowercase=False,
+            n_features_per_column=64
+        )
     )
 
 
