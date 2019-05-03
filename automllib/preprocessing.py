@@ -1,5 +1,8 @@
 import collections
 
+from typing import Type
+from typing import Union
+
 import numpy as np
 
 from sklearn.base import BaseEstimator
@@ -40,6 +43,9 @@ class Clip(BaseEstimator, TransformerMixin):
 
 
 class CountEncoder(BaseEstimator, TransformerMixin):
+    def __init__(self, dtype: Union[str, Type] = 'float64'):
+        self.dtype = dtype
+
     @timeit
     def fit(
         self,
@@ -52,11 +58,8 @@ class CountEncoder(BaseEstimator, TransformerMixin):
             estimator=self,
             force_all_finite='allow-nan'
         )
-        _, n_features = X.shape
 
-        self.counters_ = [
-            collections.Counter(X[:, j]) for j in range(n_features)
-        ]
+        self.counters_ = [collections.Counter(column) for column in X.T]
 
         return self
 
@@ -68,15 +71,13 @@ class CountEncoder(BaseEstimator, TransformerMixin):
             estimator=self,
             force_all_finite='allow-nan'
         )
-        Xt = np.empty_like(X, dtype=float)
-        _, n_features = X.shape
-
+        Xt = np.empty_like(X, dtype=self.dtype)
         vectorized = np.vectorize(
             lambda counter, xj: counter.get(xj, 0.0),
             excluded='counter'
         )
 
-        for j in range(n_features):
-            Xt[:, j] = vectorized(self.counters_[j], X[:, j])
+        for j, column in enumerate(X.T):
+            Xt[:, j] = vectorized(self.counters_[j], column)
 
         return Xt

@@ -30,7 +30,7 @@ def make_categorical_transformer(timeout: float = None) -> BaseEstimator:
     return make_pipeline(
         DropUniqueKey(),
         SimpleImputer(fill_value='missing', strategy='constant'),
-        CountEncoder()
+        CountEncoder(dtype='float32')
     )
 
 
