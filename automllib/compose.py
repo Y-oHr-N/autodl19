@@ -1,11 +1,11 @@
 import lightgbm as lgb
+import numpy as np
 import optuna
 
 from imblearn.pipeline import make_pipeline
 from imblearn.under_sampling import RandomUnderSampler
 from sklearn.base import BaseEstimator
 from sklearn.compose import make_column_transformer
-from sklearn.decomposition import TruncatedSVD
 from sklearn.impute import MissingIndicator
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import make_union
@@ -28,7 +28,10 @@ from .utils import get_time_feature_names
 
 def make_categorical_transformer(timeout: float = None) -> BaseEstimator:
     return make_pipeline(
+        NAProportionThreshold(),
+        NUniqueThreshold(),
         DropUniqueKey(),
+        DropDuplicates(),
         SimpleImputer(fill_value='missing', strategy='constant'),
         CountEncoder(dtype='float32')
     )
@@ -38,6 +41,7 @@ def make_multi_value_categorical_transformer(
     timeout: float = None
 ) -> BaseEstimator:
     return make_pipeline(
+        NAProportionThreshold(),
         SimpleImputer(fill_value='missing', strategy='constant'),
         MultiValueCategoricalVectorizer(
             dtype='float32',
@@ -48,20 +52,28 @@ def make_multi_value_categorical_transformer(
 
 
 def make_numerical_transformer(timeout: float = None) -> BaseEstimator:
-    return make_union(
-        make_pipeline(
-            SimpleImputer(strategy='median'),
-            Clip(),
-            PolynomialFeatures(include_bias=False, interaction_only=True)
-        ),
-        MissingIndicator()
+    return make_pipeline(
+        NAProportionThreshold(),
+        NUniqueThreshold(),
+        make_union(
+            make_pipeline(
+                SimpleImputer(copy=False, strategy='median'),
+                Clip(),
+                PolynomialFeatures(include_bias=False, interaction_only=True)
+            ),
+            MissingIndicator()
+        )
     )
 
 
 def make_time_transformer(timeout: float = None) -> BaseEstimator:
     return make_pipeline(
-        TimeVectorizer(),
-        SimpleImputer(strategy='most_frequent')
+        NAProportionThreshold(),
+        SimpleImputer(
+            fill_value=np.datetime64('1970-01-01'),
+            strategy='constant'
+        ),
+        TimeVectorizer()
     )
 
 
@@ -71,10 +83,10 @@ def make_mixed_transformer(timeout: float = None) -> BaseEstimator:
             make_categorical_transformer(timeout=timeout),
             get_categorical_feature_names
         ),
-        (
-            make_multi_value_categorical_transformer(timeout=timeout),
-            get_multi_value_categorical_feature_names
-        ),
+        # (
+        #     make_multi_value_categorical_transformer(timeout=timeout),
+        #     get_multi_value_categorical_feature_names
+        # ),
         (
             make_numerical_transformer(timeout=timeout),
             get_numerical_feature_names
@@ -84,15 +96,6 @@ def make_mixed_transformer(timeout: float = None) -> BaseEstimator:
         #     get_time_feature_names
         # ),
         n_jobs=-1
-    )
-
-
-def make_preprocessor(timeout: float = None) -> BaseEstimator:
-    return make_pipeline(
-        NAProportionThreshold(),
-        NUniqueThreshold(),
-        # DropDuplicates(),
-        make_mixed_transformer(timeout=timeout)
     )
 
 
@@ -146,7 +149,7 @@ def make_search_cv(timeout: float = None) -> BaseEstimator:
         random_state=0,
         sampler=sampler,
         scoring='roc_auc',
-        subsample=1_000,
+        subsample=100_000,
         timeout=timeout
     )
 

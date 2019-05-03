@@ -17,8 +17,8 @@ from sklearn.base import BaseEstimator
 from sklearn.base import MetaEstimatorMixin
 from sklearn.model_selection import train_test_split
 
+from automllib.compose import make_mixed_transformer
 from automllib.compose import make_model
-from automllib.compose import make_preprocessor
 from automllib.constants import MAIN_TABLE_NAME
 from automllib.constants import ONE_DIM_ARRAY_TYPE
 from automllib.constants import TWO_DIM_ARRAY_TYPE
@@ -47,7 +47,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
 
         X = merge_table(Xs, self.config_)
 
-        self.preprocessor_ = make_preprocessor()
+        self.preprocessor_ = make_mixed_transformer()
 
         X = self.preprocessor_.fit_transform(X)
 
