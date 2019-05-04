@@ -15,7 +15,13 @@ from .utils import timeit
 
 
 class Clip(BaseEstimator, TransformerMixin):
-    def __init__(self, low: float = 0.1, high: float = 99.9) -> None:
+    def __init__(
+        self,
+        dtype: Union[str, Type] = 'float64',
+        low: float = 0.1,
+        high: float = 99.9,
+    ) -> None:
+        self.dtype = dtype
         self.low = low
         self.high = high
 
@@ -25,7 +31,12 @@ class Clip(BaseEstimator, TransformerMixin):
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'Clip':
-        X = check_array(X, force_all_finite='allow-nan', estimator=self)
+        X = check_array(
+            X,
+            dtype=self.dtype,
+            force_all_finite='allow-nan',
+            estimator=self
+        )
 
         self.data_min_, self.data_max_ = np.nanpercentile(
             X,
@@ -37,7 +48,12 @@ class Clip(BaseEstimator, TransformerMixin):
 
     @timeit
     def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
-        X = check_array(X, force_all_finite='allow-nan', estimator=self)
+        X = check_array(
+            X,
+            dtype=self.dtype,
+            force_all_finite='allow-nan',
+            estimator=self
+        )
 
         return np.clip(X, self.data_min_, self.data_max_)
 
