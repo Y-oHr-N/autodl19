@@ -8,6 +8,7 @@ import pandas as pd
 from scipy.sparse import hstack
 from sklearn.base import clone
 from sklearn.feature_extraction.text import HashingVectorizer
+from sklearn.utils import check_array
 
 from sklearn.base import BaseEstimator
 from sklearn.base import TransformerMixin
@@ -80,6 +81,7 @@ class MultiValueCategoricalVectorizer(BaseEstimator, TransformerMixin):
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'MultiValueCategoricalVectorizer':
+        X = check_array(X, dtype=None, estimator=self)
         v = HashingVectorizer(
             dtype=self.dtype,
             lowercase=self.lowercase,
@@ -92,6 +94,7 @@ class MultiValueCategoricalVectorizer(BaseEstimator, TransformerMixin):
 
     @timeit
     def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
+        X = check_array(X, dtype=None, estimator=self)
         Xs = [
             self.vectorizers_[j].transform(
                 column
