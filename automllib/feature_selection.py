@@ -10,6 +10,7 @@ import pandas as pd
 
 from sklearn.base import BaseEstimator
 from sklearn.base import TransformerMixin
+from sklearn.utils import check_array
 
 from .constants import ONE_DIM_ARRAY_TYPE
 from .constants import TWO_DIM_ARRAY_TYPE
@@ -31,16 +32,16 @@ class BaseSelector(BaseEstimator, ABC):
     ) -> 'BaseSelector':
         pass
 
-    @abstractmethod
-    def get_support(self) -> ONE_DIM_ARRAY_TYPE:
-        pass
-
     @timeit
     def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
-        X = pd.DataFrame(X)
+        X = check_array(
+            X,
+            dtype=None,
+            estimator=self,
+            force_all_finite='allow-nan'
+        )
         _, n_features = X.shape
-        support = self.get_support()
-        n_selected_features = np.sum(support)
+        n_selected_features = len(self.support_)
         n_dropped_features = n_features - n_selected_features
 
         logger.info(
@@ -48,7 +49,7 @@ class BaseSelector(BaseEstimator, ABC):
             f'features and drops {n_dropped_features} features.'
         )
 
-        return X.iloc[:, support]
+        return X[:, self.support_]
 
 
 class DropDuplicates(BaseSelector, TransformerMixin):
@@ -61,14 +62,33 @@ class DropDuplicates(BaseSelector, TransformerMixin):
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'DropDuplicates':
-        X = pd.DataFrame(X)
+        raise NotImplementedError()
 
-        self.duplicated_ = X.T.duplicated().values
+
+class DropInvariant(BaseSelector, TransformerMixin):
+    def __init__(self) -> None:
+        pass
+
+    @timeit
+    def fit(
+        self,
+        X: TWO_DIM_ARRAY_TYPE,
+        y: ONE_DIM_ARRAY_TYPE = None
+    ) -> 'DropInvariant':
+        X = check_array(
+            X,
+            dtype=None,
+            estimator=self,
+            force_all_finite='allow-nan'
+        )
+
+        self.support_ = np.array([
+            j for j, column in enumerate(
+                X.T
+            ) if len(pd.unique(column)) > 1
+        ])
 
         return self
-
-    def get_support(self) -> ONE_DIM_ARRAY_TYPE:
-        return ~self.duplicated_
 
 
 class DropUniqueKey(BaseSelector, TransformerMixin):
@@ -81,15 +101,21 @@ class DropUniqueKey(BaseSelector, TransformerMixin):
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'DropUniqueKey':
-        X = pd.DataFrame(X)
+        X = check_array(
+            X,
+            dtype=None,
+            estimator=self,
+            force_all_finite='allow-nan'
+        )
+        n_samples = len(X)
 
-        self.n_samples_ = len(X)
-        self.nunique_ = X.nunique().values
+        self.support_ = np.array([
+            j for j, column in enumerate(
+                X.T
+            ) if len(pd.unique(column)) != n_samples
+        ])
 
         return self
-
-    def get_support(self) -> ONE_DIM_ARRAY_TYPE:
-        return self.nunique_ != self.n_samples_
 
 
 class NAProportionThreshold(BaseSelector, TransformerMixin):
@@ -102,32 +128,18 @@ class NAProportionThreshold(BaseSelector, TransformerMixin):
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'NAProportionThreshold':
-        X = pd.DataFrame(X)
+        X = check_array(
+            X,
+            dtype=None,
+            estimator=self,
+            force_all_finite='allow-nan'
+        )
         n_samples = len(X)
 
-        self.na_propotion_ = 1.0 - X.count().values / n_samples
+        self.support_ = np.array([
+            j for j, column in enumerate(
+                X.T
+            ) if pd.Series.count(column) >= (1.0 - self.threshold) * n_samples
+        ])
 
         return self
-
-    def get_support(self) -> ONE_DIM_ARRAY_TYPE:
-        return self.na_propotion_ < self.threshold
-
-
-class NUniqueThreshold(BaseSelector, TransformerMixin):
-    def __init__(self, threshold: int = 1) -> None:
-        self.threshold = threshold
-
-    @timeit
-    def fit(
-        self,
-        X: TWO_DIM_ARRAY_TYPE,
-        y: ONE_DIM_ARRAY_TYPE = None
-    ) -> 'NUniqueThreshold':
-        X = pd.DataFrame(X)
-
-        self.nunique_ = X.nunique().values
-
-        return self
-
-    def get_support(self) -> ONE_DIM_ARRAY_TYPE:
-        return self.nunique_ > self.threshold

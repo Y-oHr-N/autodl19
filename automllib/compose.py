@@ -14,9 +14,9 @@ from sklearn.pipeline import make_union
 from .feature_extraction import MultiValueCategoricalVectorizer
 from .feature_extraction import TimeVectorizer
 # from .feature_selection import DropDuplicates
+from .feature_selection import DropInvariant
 from .feature_selection import DropUniqueKey
 from .feature_selection import NAProportionThreshold
-from .feature_selection import NUniqueThreshold
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
@@ -29,7 +29,7 @@ from .utils import get_numerical_feature_names
 def make_categorical_transformer(timeout: float = None) -> BaseEstimator:
     return make_pipeline(
         NAProportionThreshold(),
-        NUniqueThreshold(),
+        DropInvariant(),
         DropUniqueKey(),
         # DropDuplicates(),
         SimpleImputer(fill_value='missing', strategy='constant'),
@@ -54,7 +54,7 @@ def make_multi_value_categorical_transformer(
 def make_numerical_transformer(timeout: float = None) -> BaseEstimator:
     return make_pipeline(
         NAProportionThreshold(),
-        NUniqueThreshold(),
+        DropInvariant(),
         make_union(
             make_pipeline(
                 SimpleImputer(strategy='median'),
