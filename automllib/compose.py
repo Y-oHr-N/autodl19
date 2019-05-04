@@ -9,11 +9,11 @@ from sklearn.compose import make_column_transformer
 from sklearn.impute import MissingIndicator
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import make_union
-from sklearn.preprocessing import PolynomialFeatures
+# from sklearn.preprocessing import PolynomialFeatures
 
 from .feature_extraction import MultiValueCategoricalVectorizer
 from .feature_extraction import TimeVectorizer
-from .feature_selection import DropDuplicates
+# from .feature_selection import DropDuplicates
 from .feature_selection import DropUniqueKey
 from .feature_selection import NAProportionThreshold
 from .feature_selection import NUniqueThreshold
@@ -23,7 +23,7 @@ from .preprocessing import CountEncoder
 from .utils import get_categorical_feature_names
 from .utils import get_multi_value_categorical_feature_names
 from .utils import get_numerical_feature_names
-from .utils import get_time_feature_names
+# from .utils import get_time_feature_names
 
 
 def make_categorical_transformer(timeout: float = None) -> BaseEstimator:
@@ -31,7 +31,7 @@ def make_categorical_transformer(timeout: float = None) -> BaseEstimator:
         NAProportionThreshold(),
         NUniqueThreshold(),
         DropUniqueKey(),
-        DropDuplicates(),
+        # DropDuplicates(),
         SimpleImputer(fill_value='missing', strategy='constant'),
         CountEncoder(dtype='float32')
     )
@@ -57,9 +57,9 @@ def make_numerical_transformer(timeout: float = None) -> BaseEstimator:
         NUniqueThreshold(),
         make_union(
             make_pipeline(
-                SimpleImputer(copy=False, strategy='median'),
+                SimpleImputer(strategy='median'),
                 Clip(dtype='float32'),
-                PolynomialFeatures(include_bias=False, interaction_only=True)
+                # PolynomialFeatures(include_bias=False, interaction_only=True)
             ),
             MissingIndicator()
         )
@@ -83,10 +83,10 @@ def make_mixed_transformer(timeout: float = None) -> BaseEstimator:
             make_categorical_transformer(timeout=timeout),
             get_categorical_feature_names
         ),
-        # (
-        #     make_multi_value_categorical_transformer(timeout=timeout),
-        #     get_multi_value_categorical_feature_names
-        # ),
+        (
+            make_multi_value_categorical_transformer(timeout=timeout),
+            get_multi_value_categorical_feature_names
+        ),
         (
             make_numerical_transformer(timeout=timeout),
             get_numerical_feature_names
