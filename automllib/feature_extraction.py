@@ -42,10 +42,7 @@ class TimeVectorizer(BaseEstimator, TransformerMixin):
         return self
 
     @timeit
-    def transform(
-        self,
-        X: TWO_DIM_ARRAY_TYPE
-    ) -> ONE_DIM_ARRAY_TYPE:
+    def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
         dfs = []
 
         for column in X:
@@ -94,10 +91,7 @@ class MultiValueCategoricalVectorizer(BaseEstimator, TransformerMixin):
         return self
 
     @timeit
-    def transform(
-        self,
-        X: TWO_DIM_ARRAY_TYPE
-    ) -> ONE_DIM_ARRAY_TYPE:
+    def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
         Xs = [
             self.vectorizers_[j].transform(
                 column
