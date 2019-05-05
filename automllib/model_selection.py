@@ -21,6 +21,7 @@ try:
     from sklearn.utils import check_random_state
     from sklearn.utils.metaestimators import _safe_split
     from sklearn.utils import safe_indexing as sklearn_safe_indexing
+    from sklearn.utils.validation import _num_samples
     from sklearn.utils.validation import check_is_fitted
 
     _available = True
@@ -760,7 +761,7 @@ class OptunaSearchCV(BaseEstimator):
     ):
         # type: (...) -> 'OptunaSearchCV'
 
-        n_samples = len(X)
+        n_samples = _num_samples(X)
 
         self.best_estimator_ = clone(self.estimator)
 
@@ -825,7 +826,7 @@ class OptunaSearchCV(BaseEstimator):
 
         random_state = check_random_state(self.random_state)
         max_samples = self.subsample
-        n_samples = len(X)
+        n_samples = _num_samples(X)
         indices = np.arange(n_samples)
 
         if type(max_samples) is float:
@@ -880,7 +881,7 @@ class OptunaSearchCV(BaseEstimator):
 
         logger.info(
             'Searching the best hyperparameters using {} '
-            'samples...'.format(len(indices))
+            'samples...'.format(_num_samples(indices))
         )
 
         self.study_.optimize(
