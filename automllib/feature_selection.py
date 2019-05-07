@@ -1,47 +1,34 @@
 import logging
 
-from abc import ABC
 from abc import abstractmethod
 from typing import Any
-from typing import Dict
 
 import numpy as np
 import pandas as pd
 
-from sklearn.base import BaseEstimator
-from sklearn.base import TransformerMixin
-from sklearn.utils import check_array
+from sklearn.utils.validation import check_is_fitted
 
-from .constants import ONE_DIM_ARRAY_TYPE
-from .constants import TWO_DIM_ARRAY_TYPE
+from .base import BaseTransformer
+from .base import ONE_DIM_ARRAY_TYPE
+from .base import TWO_DIM_ARRAY_TYPE
 from .utils import timeit
 
 logger = logging.getLogger(__name__)
 
 
-class BaseSelector(BaseEstimator, ABC):
+class BaseSelector(BaseTransformer):
     @abstractmethod
-    def __init__(self, **params: Dict[str, Any]) -> None:
-        pass
-
-    @abstractmethod
-    def fit(
-        self,
-        X: TWO_DIM_ARRAY_TYPE,
-        y: ONE_DIM_ARRAY_TYPE = None
-    ) -> 'BaseSelector':
+    def get_support(self) -> ONE_DIM_ARRAY_TYPE:
         pass
 
     @timeit
     def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
-        X = check_array(
-            X,
-            dtype=None,
-            estimator=self,
-            force_all_finite='allow-nan'
-        )
+        self._check_is_fitted()
+
+        X = self._check_array(X)
         _, n_features = X.shape
-        n_selected_features = len(self.support_)
+        support = self.get_support()
+        n_selected_features = len(support)
         n_dropped_features = n_features - n_selected_features
 
         logger.info(
@@ -49,25 +36,23 @@ class BaseSelector(BaseEstimator, ABC):
             f'features and drops {n_dropped_features} features.'
         )
 
-        return X[:, self.support_]
+        return X[:, support]
 
 
-class DropDuplicates(BaseSelector, TransformerMixin):
-    def __init__(self) -> None:
-        pass
-
-    @timeit
-    def fit(
-        self,
-        X: TWO_DIM_ARRAY_TYPE,
-        y: ONE_DIM_ARRAY_TYPE = None
-    ) -> 'DropDuplicates':
+class DropDuplicates(BaseSelector):
+    def __init__(self, **params: Any) -> None:
         raise NotImplementedError()
 
 
-class DropInvariant(BaseSelector, TransformerMixin):
-    def __init__(self) -> None:
+class DropInvariant(BaseSelector):
+    def __init__(self, **params: Any) -> None:
         pass
+
+    def _check_params(self) -> None:
+        pass
+
+    def _check_is_fitted(self) -> None:
+        check_is_fitted(self, ['nunique_'])
 
     @timeit
     def fit(
@@ -75,25 +60,27 @@ class DropInvariant(BaseSelector, TransformerMixin):
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'DropInvariant':
-        X = check_array(
-            X,
-            dtype=None,
-            estimator=self,
-            force_all_finite='allow-nan'
-        )
+        self._check_params()
 
-        self.support_ = np.array([
-            j for j, column in enumerate(
-                X.T
-            ) if len(pd.unique(column)) > 1
-        ])
+        X = self._check_array(X)
+
+        self.nunique_ = np.array([len(pd.unique(column)) for column in X.T])
 
         return self
 
+    def get_support(self) -> ONE_DIM_ARRAY_TYPE:
+        return self.nunique_ > 1
 
-class DropUniqueKey(BaseSelector, TransformerMixin):
-    def __init__(self) -> None:
+
+class DropUniqueKey(BaseSelector):
+    def __init__(self, **params: Any) -> None:
         pass
+
+    def _check_params(self) -> None:
+        pass
+
+    def _check_is_fitted(self) -> None:
+        check_is_fitted(self, ['nunique_'])
 
     @timeit
     def fit(
@@ -101,26 +88,30 @@ class DropUniqueKey(BaseSelector, TransformerMixin):
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'DropUniqueKey':
-        X = check_array(
-            X,
-            dtype=None,
-            estimator=self,
-            force_all_finite='allow-nan'
-        )
-        n_samples = len(X)
+        self._check_params()
 
-        self.support_ = np.array([
-            j for j, column in enumerate(
-                X.T
-            ) if len(pd.unique(column)) != n_samples
-        ])
+        X = self._check_array(X)
+
+        self.n_samples_ = len(X)
+        self.nunique_ = np.array([len(pd.unique(column)) for column in X.T])
 
         return self
 
+    def get_support(self) -> ONE_DIM_ARRAY_TYPE:
+        return self.nunique_ < self.n_samples_
 
-class NAProportionThreshold(BaseSelector, TransformerMixin):
+
+class NAProportionThreshold(BaseSelector):
     def __init__(self, threshold: float = 0.6) -> None:
+        pass
+
         self.threshold = threshold
+
+    def _check_params(self) -> None:
+        pass
+
+    def _check_is_fitted(self) -> None:
+        check_is_fitted(self, ['count_'])
 
     @timeit
     def fit(
@@ -128,18 +119,15 @@ class NAProportionThreshold(BaseSelector, TransformerMixin):
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'NAProportionThreshold':
-        X = check_array(
-            X,
-            dtype=None,
-            estimator=self,
-            force_all_finite='allow-nan'
-        )
-        n_samples = len(X)
+        self._check_params()
 
-        self.support_ = np.array([
-            j for j, column in enumerate(
-                X.T
-            ) if pd.Series.count(column) >= (1.0 - self.threshold) * n_samples
-        ])
+        X = self._check_array(X)
+
+        self.n_samples_ = len(X)
+
+        self.count_ = np.array([pd.Series.count(column) for column in X.T])
 
         return self
+
+    def get_support(self) -> ONE_DIM_ARRAY_TYPE:
+        return self.count_ >= (1.0 - self.threshold) * self.n_samples_

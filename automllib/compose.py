@@ -1,9 +1,7 @@
 import lightgbm as lgb
-import numpy as np
 import optuna
 
 from imblearn.pipeline import make_pipeline
-from sklearn.base import BaseEstimator
 from sklearn.compose import make_column_transformer
 from sklearn.impute import IterativeImputer
 from sklearn.impute import MissingIndicator
@@ -12,6 +10,7 @@ from sklearn.linear_model import HuberRegressor
 from sklearn.pipeline import make_union
 # from sklearn.preprocessing import PolynomialFeatures
 
+from .base import BaseEstimator
 from .feature_extraction import MultiValueCategoricalVectorizer
 from .feature_extraction import TimeVectorizer
 # from .feature_selection import DropDuplicates

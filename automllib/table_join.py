@@ -9,12 +9,12 @@ from typing import List
 
 import pandas as pd
 
+from .base import TWO_DIM_ARRAY_TYPE
 from .constants import AGGREGATE_FUNCTIONS_MAP as AFS_MAP
 from .constants import CATEGORICAL_TYPE as C_TYPE
 from .constants import MAIN_TABLE_NAME
 from .constants import NUMERICAL_PREFIX
 from .constants import NUMERICAL_TYPE as N_TYPE
-from .constants import TWO_DIM_ARRAY_TYPE
 from .utils import get_categorical_feature_names
 from .utils import get_numerical_feature_names
 from .utils import timeit

@@ -1,16 +1,16 @@
 from typing import Any
-from typing import Dict
 from typing import Tuple
 from typing import Union
 
 import numpy as np
 
 from imblearn.utils import check_sampling_strategy
-from sklearn.base import BaseEstimator
 from sklearn.utils import check_random_state
 from sklearn.utils import check_X_y
 from sklearn.utils import safe_indexing
+from sklearn.utils.validation import check_is_fitted
 
+from .base import BaseEstimator
 from .base import ONE_DIM_ARRAY_TYPE
 from .base import TWO_DIM_ARRAY_TYPE
 from .utils import timeit
@@ -27,12 +27,21 @@ class RandomUnderSampler(BaseEstimator):
         self.random_state = random_state
         self.sampling_strategy = sampling_strategy
 
+    def _check_params(self) -> None:
+        pass
+
+    def _check_is_fitted(self) -> None:
+        check_is_fitted(
+            self,
+            ['classes_', 'sample_indices_', 'sampling_strategy_']
+        )
+
     @timeit
     def fit(
         self,
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE,
-        **fit_params: Dict[str, Any]
+        **fit_params: Any
     ) -> 'RandomUnderSampler':
         random_state = check_random_state(self.random_state)
         X, y = check_X_y(
@@ -76,7 +85,7 @@ class RandomUnderSampler(BaseEstimator):
         self,
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE,
-        **fit_params: Dict[str, Any]
+        **fit_params: Any
     ) -> Tuple[TWO_DIM_ARRAY_TYPE, ONE_DIM_ARRAY_TYPE]:
         self.fit(X, y, **fit_params)
 

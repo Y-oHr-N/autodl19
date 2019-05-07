@@ -14,15 +14,16 @@ os.system("pip3 install scikit-learn==0.21rc2")
 import numpy as np
 import pandas as pd
 
-from sklearn.base import BaseEstimator
 from sklearn.base import MetaEstimatorMixin
 from sklearn.model_selection import train_test_split
+from sklearn.utils.validation import check_is_fitted
 
+from automllib.base import BaseEstimator
+from automllib.base import ONE_DIM_ARRAY_TYPE
+from automllib.base import TWO_DIM_ARRAY_TYPE
 from automllib.compose import make_mixed_transformer
 from automllib.compose import make_model
 from automllib.constants import MAIN_TABLE_NAME
-from automllib.constants import ONE_DIM_ARRAY_TYPE
-from automllib.constants import TWO_DIM_ARRAY_TYPE
 from automllib.table_join import Config
 from automllib.table_join import merge_table
 from automllib.utils import timeit
@@ -35,6 +36,15 @@ logger = logging.getLogger(__name__)
 class Model(BaseEstimator, MetaEstimatorMixin):
     def __init__(self, info: Dict[str, Any]) -> None:
         self.info = info
+
+    def _check_params(self) -> None:
+        pass
+
+    def _check_is_fitted(self) -> None:
+        check_is_fitted(
+            self,
+            ['config_', 'estimator_' 'preprocessor_' 'tables_']
+        )
 
     @timeit
     def fit(

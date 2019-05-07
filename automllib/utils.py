@@ -8,12 +8,12 @@ from typing import Tuple
 
 import numpy as np
 
+from .base import ONE_DIM_ARRAY_TYPE
+from .base import TWO_DIM_ARRAY_TYPE
 from .constants import CATEGORICAL_PREFIX as C_PREFIX
 from .constants import MULTI_VALUE_CATEGORICAL_PREFIX as M_PREFIX
 from .constants import NUMERICAL_PREFIX as N_PREFIX
-from .constants import ONE_DIM_ARRAY_TYPE
 from .constants import TIME_PREFIX as T_PREFIX
-from .constants import TWO_DIM_ARRAY_TYPE
 
 logger = logging.getLogger(__name__)
 
