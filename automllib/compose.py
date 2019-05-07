@@ -7,6 +7,7 @@ from sklearn.impute import IterativeImputer
 from sklearn.impute import MissingIndicator
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import HuberRegressor
+from sklearn.model_selection import TimeSeriesSplit
 from sklearn.pipeline import make_union
 # from sklearn.preprocessing import PolynomialFeatures
 
@@ -146,6 +147,7 @@ def make_search_cv(timeout: float = None) -> BaseEstimator:
     return OptunaSearchCV(
         estimator,
         param_distributions,
+        cv=TimeSeriesSplit(5),
         n_jobs=-1,
         random_state=0,
         sampler=sampler,
