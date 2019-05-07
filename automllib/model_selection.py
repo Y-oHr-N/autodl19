@@ -430,6 +430,9 @@ class OptunaSearchCV(BaseEstimator):
         subsample:
             Proportion of samples that are used during hyperparameter search.
 
+            - If int, then draw ``subsample`` samples.
+            - If float, then draw ``subsample`` * ``X.shape[0]`` samples.
+
         timeout:
             Time limit in seconds for the search of appropriate models. If
             :obj:`None`, the study is executed without time limitation. If
