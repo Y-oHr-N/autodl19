@@ -4,8 +4,8 @@ from collections import defaultdict
 from collections import deque
 from typing import Callable
 from typing import Dict
-from typing import Union
 from typing import List
+from typing import Union
 
 import pandas as pd
 
