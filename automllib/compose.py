@@ -6,8 +6,10 @@ from imblearn.pipeline import make_pipeline
 from imblearn.under_sampling import RandomUnderSampler
 from sklearn.base import BaseEstimator
 from sklearn.compose import make_column_transformer
+from sklearn.impute import IterativeImputer
 from sklearn.impute import MissingIndicator
 from sklearn.impute import SimpleImputer
+from sklearn.linear_model import HuberRegressor
 from sklearn.pipeline import make_union
 # from sklearn.preprocessing import PolynomialFeatures
 
@@ -57,7 +59,7 @@ def make_numerical_transformer(timeout: float = None) -> BaseEstimator:
         DropInvariant(),
         make_union(
             make_pipeline(
-                SimpleImputer(strategy='median'),
+                IterativeImputer(estimator=HuberRegressor()),
                 Clip(dtype='float32'),
                 # PolynomialFeatures(include_bias=False, interaction_only=True)
             ),
