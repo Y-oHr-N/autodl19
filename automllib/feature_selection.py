@@ -77,7 +77,7 @@ class DropUniqueKey(BaseSelector):
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'DropUniqueKey':
-        self.n_samples_ = len(X)
+        self.n_samples_, _ = X.shape
         self.nunique_ = np.array([len(pd.unique(column)) for column in X.T])
 
         return self
@@ -103,7 +103,7 @@ class NAProportionThreshold(BaseSelector):
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'NAProportionThreshold':
-        self.n_samples_ = len(X)
+        self.n_samples_, _ = X.shape
         self.count_ = np.array([pd.Series.count(column) for column in X.T])
 
         return self
