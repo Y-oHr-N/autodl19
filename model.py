@@ -58,6 +58,8 @@ class Model(BaseEstimator, MetaEstimatorMixin):
 
         X = merge_table(Xs, self.config_)
 
+        X.sort_values(self.info['time_col'], inplace=True)
+
         self.preprocessor_ = make_mixed_transformer()
 
         X = self.preprocessor_.fit_transform(X)
