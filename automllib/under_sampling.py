@@ -11,8 +11,8 @@ from sklearn.utils import safe_indexing
 from sklearn.utils.validation import check_is_fitted
 
 from .base import BaseEstimator
-from .base import ONE_DIM_ARRAY_TYPE
-from .base import TWO_DIM_ARRAY_TYPE
+from .constants import ONE_DIM_ARRAY_TYPE
+from .constants import TWO_DIM_ARRAY_TYPE
 from .utils import timeit
 
 
@@ -36,8 +36,7 @@ class RandomUnderSampler(BaseEstimator):
             ['classes_', 'sample_indices_', 'sampling_strategy_']
         )
 
-    @timeit
-    def fit(
+    def _fit(
         self,
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE,

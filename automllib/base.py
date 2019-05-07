@@ -10,13 +10,13 @@ import numpy as np
 import pandas as pd
 
 from joblib import dump
-from scipy.sparse import spmatrix
 from sklearn.base import BaseEstimator as SKLearnBaseEstimator
 from sklearn.base import TransformerMixin
 from sklearn.utils import check_array
 
-ONE_DIM_ARRAY_TYPE = Union[np.ndarray, pd.Series]
-TWO_DIM_ARRAY_TYPE = Union[np.ndarray, spmatrix, pd.DataFrame]
+from .constants import ONE_DIM_ARRAY_TYPE
+from .constants import TWO_DIM_ARRAY_TYPE
+from .utils import timeit
 
 
 class BaseEstimator(SKLearnBaseEstimator, ABC):
@@ -33,7 +33,7 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
         pass
 
     @abstractmethod
-    def fit(
+    def _fit(
         self,
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None,
@@ -41,12 +41,25 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
     ) -> 'BaseEstimator':
         pass
 
+    @timeit
+    def fit(
+        self,
+        X: TWO_DIM_ARRAY_TYPE,
+        y: ONE_DIM_ARRAY_TYPE = None,
+        **fit_params: Any
+    ) -> 'BaseEstimator':
+        self._check_params()
+
+        X = self._check_array(X)
+
+        return self._fit(X, y, **fit_params)
+
     def _check_array(
         self,
         X: TWO_DIM_ARRAY_TYPE,
-        accept_sparse: bool = True,
-        dtype: Union[str, Type] = None,
-        force_all_finite: str = 'allow-nan'
+        accept_sparse: Union[str, bool, List[str]] = True,
+        dtype: Union[str, Type, List[Type]] = None,
+        force_all_finite: Union[str, bool] = 'allow-nan'
     ) -> TWO_DIM_ARRAY_TYPE:
         return check_array(
             X,
@@ -65,15 +78,15 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
 
         Parameters
         ----------
-        filename : str or pathlib.Path
+        filename
             Path of the file in which it is to be stored.
 
-        kwargs : dict
+        kwargs
             Other keywords passed to ``sklearn.externals.joblib.dump``.
 
         Returns
         -------
-        filenames : list
+        filenames
             List of file names in which the data is stored.
         """
 
@@ -84,5 +97,13 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
 
 class BaseTransformer(BaseEstimator, TransformerMixin):
     @abstractmethod
-    def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
+    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
         pass
+
+    @timeit
+    def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
+        self._check_is_fitted()
+
+        X = self._check_array(X)
+
+        return self._transform(X)

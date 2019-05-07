@@ -12,9 +12,8 @@ from sklearn.feature_extraction.text import HashingVectorizer
 from sklearn.utils.validation import check_is_fitted
 
 from .base import BaseTransformer
-from .base import ONE_DIM_ARRAY_TYPE
-from .base import TWO_DIM_ARRAY_TYPE
-from .utils import timeit
+from .constants import ONE_DIM_ARRAY_TYPE
+from .constants import TWO_DIM_ARRAY_TYPE
 
 logger = logging.getLogger(__name__)
 
@@ -42,22 +41,15 @@ class TimeVectorizer(BaseTransformer):
     def _check_is_fitted(self) -> None:
         pass
 
-    @timeit
-    def fit(
+    def _fit(
         self,
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'TimeVectorizer':
-        self._check_params()
-
-        X = self._check_array(X)
-
         return self
 
-    @timeit
-    def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
-        self._check_is_fitted()
-
+    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
+        X = pd.DataFrame(X)
         dfs = []
 
         for column in X:
@@ -95,15 +87,11 @@ class MultiValueCategoricalVectorizer(BaseTransformer):
     def _check_is_fitted(self) -> None:
         check_is_fitted(self, ['vectorizers_'])
 
-    @timeit
-    def fit(
+    def _fit(
         self,
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'MultiValueCategoricalVectorizer':
-        self._check_params()
-
-        X = self._check_array(X)
         v = HashingVectorizer(
             dtype=self.dtype,
             lowercase=self.lowercase,
@@ -114,11 +102,7 @@ class MultiValueCategoricalVectorizer(BaseTransformer):
 
         return self
 
-    @timeit
-    def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
-        self._check_is_fitted()
-
-        X = self._check_array(X)
+    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
         Xs = [
             self.vectorizers_[j].transform(
                 column

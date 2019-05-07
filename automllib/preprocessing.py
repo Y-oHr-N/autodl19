@@ -8,9 +8,8 @@ import numpy as np
 from sklearn.utils.validation import check_is_fitted
 
 from .base import BaseTransformer
-from .base import ONE_DIM_ARRAY_TYPE
-from .base import TWO_DIM_ARRAY_TYPE
-from .utils import timeit
+from .constants import ONE_DIM_ARRAY_TYPE
+from .constants import TWO_DIM_ARRAY_TYPE
 
 
 class Clip(BaseTransformer):
@@ -30,16 +29,11 @@ class Clip(BaseTransformer):
     def _check_is_fitted(self) -> None:
         check_is_fitted(self, ['data_max_', 'data_min_'])
 
-    @timeit
-    def fit(
+    def _fit(
         self,
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'Clip':
-        self._check_params()
-
-        X = self._check_array(X)
-
         self.data_min_, self.data_max_ = np.nanpercentile(
             X,
             [self.low, self.high],
@@ -48,11 +42,7 @@ class Clip(BaseTransformer):
 
         return self
 
-    @timeit
-    def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
-        self._check_is_fitted()
-
-        X = self._check_array(X)
+    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
         X = np.clip(X, self.data_min_, self.data_max_)
 
         return X.astype(self.dtype)
@@ -68,25 +58,16 @@ class CountEncoder(BaseTransformer):
     def _check_is_fitted(self) -> None:
         check_is_fitted(self, ['counters_'])
 
-    @timeit
-    def fit(
+    def _fit(
         self,
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'CountEncoder':
-        self._check_params()
-
-        X = self._check_array(X)
-
         self.counters_ = [collections.Counter(column) for column in X.T]
 
         return self
 
-    @timeit
-    def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
-        self._check_is_fitted()
-
-        X = self._check_array(X)
+    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
         Xt = np.empty_like(X, dtype=self.dtype)
         vectorized = np.vectorize(
             lambda counter, xj: counter.get(xj, 0.0),
