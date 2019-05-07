@@ -74,6 +74,22 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
         y: ONE_DIM_ARRAY_TYPE = None,
         **fit_params: Any
     ) -> 'BaseEstimator':
+        """Fit the model according to the given training data.
+
+        Parameters
+        ----------
+        X
+            Training data.
+
+        y
+            Target.
+
+        Returns
+        -------
+        self
+            Return self.
+        """
+
         self._check_params()
 
         X, y = self._check_X_y(X, y)
