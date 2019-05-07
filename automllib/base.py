@@ -13,6 +13,7 @@ from joblib import dump
 from sklearn.base import BaseEstimator as SKLearnBaseEstimator
 from sklearn.base import TransformerMixin
 from sklearn.utils import check_array
+from sklearn.utils import check_X_y
 
 from .constants import ONE_DIM_ARRAY_TYPE
 from .constants import TWO_DIM_ARRAY_TYPE
@@ -41,6 +42,34 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
     ) -> 'BaseEstimator':
         pass
 
+    def _check_X_y(
+        self,
+        X: TWO_DIM_ARRAY_TYPE,
+        y: ONE_DIM_ARRAY_TYPE = None,
+        accept_sparse: Union[str, bool, List[str]] = True,
+        dtype: Union[str, Type, List[Type]] = None,
+        force_all_finite: Union[str, bool] = 'allow-nan'
+    ) -> TWO_DIM_ARRAY_TYPE:
+        if y is None:
+            X = check_array(
+                X,
+                accept_sparse=accept_sparse,
+                estimator=self,
+                dtype=dtype,
+                force_all_finite=force_all_finite
+            )
+        else:
+            X, y = check_X_y(
+                X,
+                y,
+                accept_sparse=accept_sparse,
+                estimator=self,
+                dtype=dtype,
+                force_all_finite=force_all_finite
+            )
+
+        return X, y
+
     @timeit
     def fit(
         self,
@@ -50,24 +79,9 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
     ) -> 'BaseEstimator':
         self._check_params()
 
-        X = self._check_array(X)
+        X, y = self._check_X_y(X, y)
 
         return self._fit(X, y, **fit_params)
-
-    def _check_array(
-        self,
-        X: TWO_DIM_ARRAY_TYPE,
-        accept_sparse: Union[str, bool, List[str]] = True,
-        dtype: Union[str, Type, List[Type]] = None,
-        force_all_finite: Union[str, bool] = 'allow-nan'
-    ) -> TWO_DIM_ARRAY_TYPE:
-        return check_array(
-            X,
-            accept_sparse=accept_sparse,
-            estimator=self,
-            dtype=dtype,
-            force_all_finite=force_all_finite
-        )
 
     def to_pickle(
         self,
@@ -104,6 +118,6 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
     def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
         self._check_is_fitted()
 
-        X = self._check_array(X)
+        X, _ = self._check_X_y(X)
 
         return self._transform(X)
