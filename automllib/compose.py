@@ -3,7 +3,6 @@ import numpy as np
 import optuna
 
 from imblearn.pipeline import make_pipeline
-from imblearn.under_sampling import RandomUnderSampler
 from sklearn.base import BaseEstimator
 from sklearn.compose import make_column_transformer
 from sklearn.impute import IterativeImputer
@@ -22,6 +21,7 @@ from .feature_selection import NAProportionThreshold
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
+from .under_sampling import RandomUnderSampler
 from .utils import get_categorical_feature_names
 from .utils import get_multi_value_categorical_feature_names
 from .utils import get_numerical_feature_names
