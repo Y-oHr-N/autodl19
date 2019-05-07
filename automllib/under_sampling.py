@@ -65,7 +65,7 @@ class RandomUnderSampler(BaseSampler):
         **fit_params: Any
     ) -> 'RandomUnderSampler':
         random_state = check_random_state(self.random_state)
-        n_samples = len(X)
+        n_samples, _ = X.shape
         indices = np.arange(n_samples)
         arrays = []
 
