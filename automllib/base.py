@@ -6,9 +6,6 @@ from typing import List
 from typing import Type
 from typing import Union
 
-import numpy as np
-import pandas as pd
-
 from joblib import dump
 from sklearn.base import BaseEstimator as SKLearnBaseEstimator
 from sklearn.base import TransformerMixin
