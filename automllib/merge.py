@@ -58,7 +58,8 @@ def temporal_join(u, v, v_name, key, time_col):
     tmp_u.sort_values(time_col, inplace=True)
 
     columns = v.columns.drop(key)
-    func = aggregate_functions(columns)
+    # func = aggregate_functions(columns)
+    func = aggregate_functions(v.drop(key, axis=1))
     tmp_u = tmp_u.groupby(rehash_key).rolling(5).agg(func)
 
     tmp_u.reset_index(0, drop=True, inplace=True)  # drop rehash index
@@ -98,8 +99,8 @@ def dfs(u_name, config, tables, graph):
             continue
 
         if config['time_col'] in u and config['time_col'] in v:
-            logger.info(f'Join {u_name} <--{type_}--t {v_name}.')
-            # u = temporal_join(u, v, v_name, key, config['time_col'])
+            logger.info(f'Temporal Join {u_name} <--{type_}--t {v_name}.')
+            u = temporal_join(u, v, v_name, key, config['time_col'])
         else:
             logger.info(f'Join {u_name} <--{type_}--nt {v_name}.')
             u = join(u, v, v_name, key, type_)

@@ -2,11 +2,11 @@ import os
 from typing import Any
 from typing import Dict
 
-os.system("pip3 install category_encoders")
-os.system("pip3 install imbalanced-learn")
-os.system("pip3 install lightgbm")
-os.system("pip3 install optuna")
-os.system("pip3 install pandas==0.24.2")
+# os.system("pip3 install category_encoders")
+# os.system("pip3 install imbalanced-learn")
+# os.system("pip3 install lightgbm")
+# os.system("pip3 install optuna")
+# os.system("pip3 install pandas==0.24.2")
 
 import copy
 import numpy as np
