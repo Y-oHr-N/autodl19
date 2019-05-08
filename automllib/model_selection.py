@@ -78,8 +78,8 @@ def safe_indexing(
     # type: (...) -> Union[OneDimArrayType, TwoDimArrayType]
     if X is None:
         return X
-    else:
-        return sklearn_safe_indexing(X, indices)
+
+    return sklearn_safe_indexing(X, indices)
 
 
 class Objective(object):
