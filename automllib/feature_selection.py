@@ -76,7 +76,7 @@ class DropUniqueKey(BaseSelector):
         self,
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
-    ) -> 'DropUniqueKey':
+    ) -> 'DropUniqueKey':¥
         self.n_samples_, _ = X.shape
         self.nunique_ = np.array([len(pd.unique(column)) for column in X.T])
 

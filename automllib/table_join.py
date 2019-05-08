@@ -62,30 +62,22 @@ def temporal_join(u, v, v_name, key, time_col):
 
     tmp_u = u[[time_col, key]]
     tmp_u = pd.concat([tmp_u, v], keys=['u', 'v'], sort=False)
-    rehash_key = f'rehash_{key}'
-    tmp_u[rehash_key] = tmp_u[key].apply(lambda x: hash(x) % 200)
+    tmp_u.sort_values(by=[key, time_col], ascending=[True, True], inplace=True)
 
-    tmp_u.sort_values(time_col, inplace=True)
+    tmp_u = tmp_u.groupby(key).ffill()
 
-    columns = v.columns.drop(key)
-    func = aggregate_functions(columns)
-    tmp_u = tmp_u.groupby(rehash_key).rolling(5).agg(func)
-
-    tmp_u.reset_index(0, drop=True, inplace=True)  # drop rehash index
-
+    # TODO: Check exceptions for all relations (one2one, one2many, many2many)
     tmp_u.columns = tmp_u.columns.map(
-        lambda a: f"{NUMERICAL_PREFIX}{a[1].upper()}_ROLLING5({v_name}.{a[0]})"
+        lambda a: f"{a}_NEAREST({v_name})" if not (a == key or a == time_col) else a
     )
+    tmp_u.drop([key, time_col], axis=1, inplace=True)  # Drop the key column.
 
     if tmp_u.empty:
         logger.info('Return u because temp_u is empty.')
-
         return u
 
     ret = pd.concat([u, tmp_u.loc['u']], axis=1, sort=False)
-
     del tmp_u
-
     return ret
 
 
@@ -108,8 +100,8 @@ def dfs(u_name, config, tables, graph):
             continue
 
         if config['time_col'] in u and config['time_col'] in v:
-            logger.info(f'Join {u_name} <--{type_}--t {v_name}.')
-            # u = temporal_join(u, v, v_name, key, config['time_col'])
+            logger.info(f'Temporal Join {u_name} <--{type_}--t {v_name}.')
+            u = temporal_join(u, v, v_name, key, config['time_col'])
         else:
             logger.info(f'Join {u_name} <--{type_}--nt {v_name}.')
             u = join(u, v, v_name, key, type_)
