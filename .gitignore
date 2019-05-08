@@ -108,10 +108,3 @@ data/*
 ref/*
 !*/K/
 !*/L/
-
-# ingestion programs
-/ingestion_program
-
-# pycharm
-/.idea
-
