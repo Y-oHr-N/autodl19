@@ -28,7 +28,7 @@ from .utils import get_numerical_feature_names
 # from .utils import get_time_feature_names
 
 
-def make_categorical_transformer(timeout: float = None) -> BaseEstimator:
+def make_categorical_transformer() -> BaseEstimator:
     return make_pipeline(
         NAProportionThreshold(),
         DropInvariant(),
@@ -39,9 +39,7 @@ def make_categorical_transformer(timeout: float = None) -> BaseEstimator:
     )
 
 
-def make_multi_value_categorical_transformer(
-    timeout: float = None
-) -> BaseEstimator:
+def make_multi_value_categorical_transformer() -> BaseEstimator:
     return make_pipeline(
         NAProportionThreshold(),
         SimpleImputer(fill_value='missing', strategy='constant'),
@@ -53,7 +51,7 @@ def make_multi_value_categorical_transformer(
     )
 
 
-def make_numerical_transformer(timeout: float = None) -> BaseEstimator:
+def make_numerical_transformer() -> BaseEstimator:
     return make_pipeline(
         NAProportionThreshold(),
         DropInvariant(),
@@ -68,7 +66,7 @@ def make_numerical_transformer(timeout: float = None) -> BaseEstimator:
     )
 
 
-def make_time_transformer(timeout: float = None) -> BaseEstimator:
+def make_time_transformer() -> BaseEstimator:
     return make_pipeline(
         NAProportionThreshold(),
         SimpleImputer(
@@ -79,22 +77,22 @@ def make_time_transformer(timeout: float = None) -> BaseEstimator:
     )
 
 
-def make_mixed_transformer(timeout: float = None) -> BaseEstimator:
+def make_mixed_transformer() -> BaseEstimator:
     return make_column_transformer(
         (
-            make_categorical_transformer(timeout=timeout),
+            make_categorical_transformer(),
             get_categorical_feature_names
         ),
         (
-            make_multi_value_categorical_transformer(timeout=timeout),
+            make_multi_value_categorical_transformer(),
             get_multi_value_categorical_feature_names
         ),
         (
-            make_numerical_transformer(timeout=timeout),
+            make_numerical_transformer(),
             get_numerical_feature_names
         ),
         # (
-        #     make_time_transformer(timeout=timeout),
+        #     make_time_transformer(),
         #     get_time_feature_names
         # ),
         n_jobs=-1
