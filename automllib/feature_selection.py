@@ -1,47 +1,13 @@
-import logging
-
-from abc import abstractmethod
 from typing import Any
 
 import numpy as np
 import pandas as pd
 
-from sklearn.utils import safe_mask
 from sklearn.utils.validation import check_is_fitted
 
-from .base import BaseTransformer
+from .base import BaseSelector
 from .constants import ONE_DIM_ARRAY_TYPE
 from .constants import TWO_DIM_ARRAY_TYPE
-
-logger = logging.getLogger(__name__)
-
-
-class BaseSelector(BaseTransformer):
-    @abstractmethod
-    def _get_support(self) -> ONE_DIM_ARRAY_TYPE:
-        pass
-
-    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
-        _, n_features = X.shape
-        support = self.get_support()
-        support = safe_mask(X, support)
-        n_selected_features = np.sum(support)
-        n_dropped_features = n_features - n_selected_features
-
-        logger.info(
-            f'{self.__class__.__name__} selects {n_selected_features} '
-            f'features and drops {n_dropped_features} features.'
-        )
-
-        return X[:, support]
-
-    def get_support(self, indices=False) -> ONE_DIM_ARRAY_TYPE:
-        support = self._get_support()
-
-        if indices:
-            support = np.where(support)[0]
-
-        return support
 
 
 class DropDuplicates(BaseSelector):

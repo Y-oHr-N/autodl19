@@ -1,41 +1,15 @@
 from typing import Any
-from typing import Tuple
 from typing import Union
 
 import numpy as np
 
 from imblearn.utils import check_sampling_strategy
 from sklearn.utils import check_random_state
-from sklearn.utils import safe_indexing
 from sklearn.utils.validation import check_is_fitted
 
-from .base import BaseEstimator
+from .base import BaseSampler
 from .constants import ONE_DIM_ARRAY_TYPE
 from .constants import TWO_DIM_ARRAY_TYPE
-
-
-class BaseSampler(BaseEstimator):
-    def _resample(
-        self,
-        X: TWO_DIM_ARRAY_TYPE,
-        y: ONE_DIM_ARRAY_TYPE,
-    ) -> Tuple[TWO_DIM_ARRAY_TYPE, ONE_DIM_ARRAY_TYPE]:
-        self._check_is_fitted()
-
-        X, y = self._check_X_y(X, y)
-
-        X = safe_indexing(X, self.sample_indices_)
-        y = safe_indexing(y, self.sample_indices_)
-
-        return X, y
-
-    def fit_resample(
-        self,
-        X: TWO_DIM_ARRAY_TYPE,
-        y: ONE_DIM_ARRAY_TYPE,
-        **fit_params: Any
-    ) -> Tuple[TWO_DIM_ARRAY_TYPE, ONE_DIM_ARRAY_TYPE]:
-        return self.fit(X, y, **fit_params)._resample(X, y)
 
 
 class RandomUnderSampler(BaseSampler):
