@@ -1,16 +1,17 @@
 import lightgbm as lgb
-import numpy as np
 import optuna
 
 from imblearn.pipeline import make_pipeline
-from imblearn.under_sampling import RandomUnderSampler
-from sklearn.base import BaseEstimator
 from sklearn.compose import make_column_transformer
+from sklearn.impute import IterativeImputer
 from sklearn.impute import MissingIndicator
 from sklearn.impute import SimpleImputer
+from sklearn.linear_model import HuberRegressor
+from sklearn.model_selection import TimeSeriesSplit
 from sklearn.pipeline import make_union
 # from sklearn.preprocessing import PolynomialFeatures
 
+from .base import BaseEstimator
 from .feature_extraction import MultiValueCategoricalVectorizer
 from .feature_extraction import TimeVectorizer
 # from .feature_selection import DropDuplicates
@@ -20,6 +21,7 @@ from .feature_selection import NAProportionThreshold
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
+from .under_sampling import RandomUnderSampler
 from .utils import get_categorical_feature_names
 from .utils import get_multi_value_categorical_feature_names
 from .utils import get_numerical_feature_names
@@ -57,7 +59,7 @@ def make_numerical_transformer(timeout: float = None) -> BaseEstimator:
         DropInvariant(),
         make_union(
             make_pipeline(
-                SimpleImputer(strategy='median'),
+                IterativeImputer(estimator=HuberRegressor()),
                 Clip(dtype='float32'),
                 # PolynomialFeatures(include_bias=False, interaction_only=True)
             ),
@@ -145,6 +147,7 @@ def make_search_cv(timeout: float = None) -> BaseEstimator:
     return OptunaSearchCV(
         estimator,
         param_distributions,
+        cv=TimeSeriesSplit(5),
         n_jobs=-1,
         random_state=0,
         sampler=sampler,

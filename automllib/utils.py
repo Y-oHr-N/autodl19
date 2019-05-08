@@ -3,7 +3,6 @@ import time
 
 from typing import Any
 from typing import Callable
-from typing import Dict
 from typing import Tuple
 
 import numpy as np
@@ -49,7 +48,7 @@ def get_time_feature_names(X: TWO_DIM_ARRAY_TYPE) -> ONE_DIM_ARRAY_TYPE:
 
 
 def timeit(func: Callable) -> Callable:
-    def timed(*args: Tuple[Any], **kwargs: Dict[str, Any]) -> Any:
+    def timed(*args: Tuple[Any], **kwargs: Any) -> Any:
         logger.info(f'==> Start {func}.')
 
         timer = Timer()

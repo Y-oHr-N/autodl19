@@ -3,6 +3,7 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
+from scipy.sparse import spmatrix
 from scipy.stats import kurtosis
 
 MAIN_TABLE_NAME = 'main'
@@ -46,4 +47,4 @@ AGGREGATE_FUNCTIONS_MAP = {
 }
 
 ONE_DIM_ARRAY_TYPE = Union[np.ndarray, pd.Series]
-TWO_DIM_ARRAY_TYPE = Union[np.ndarray, pd.DataFrame]
+TWO_DIM_ARRAY_TYPE = Union[np.ndarray, spmatrix, pd.DataFrame]

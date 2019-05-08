@@ -5,16 +5,14 @@ from typing import Union
 
 import numpy as np
 
-from sklearn.base import BaseEstimator
-from sklearn.base import TransformerMixin
-from sklearn.utils import check_array
+from sklearn.utils.validation import check_is_fitted
 
+from .base import BaseTransformer
 from .constants import ONE_DIM_ARRAY_TYPE
 from .constants import TWO_DIM_ARRAY_TYPE
-from .utils import timeit
 
 
-class Clip(BaseEstimator, TransformerMixin):
+class Clip(BaseTransformer):
     def __init__(
         self,
         dtype: Union[str, Type] = 'float64',
@@ -25,19 +23,17 @@ class Clip(BaseEstimator, TransformerMixin):
         self.low = low
         self.high = high
 
-    @timeit
-    def fit(
+    def _check_params(self) -> None:
+        pass
+
+    def _check_is_fitted(self) -> None:
+        check_is_fitted(self, ['data_max_', 'data_min_'])
+
+    def _fit(
         self,
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'Clip':
-        X = check_array(
-            X,
-            dtype=self.dtype,
-            force_all_finite='allow-nan',
-            estimator=self
-        )
-
         self.data_min_, self.data_max_ = np.nanpercentile(
             X,
             [self.low, self.high],
@@ -46,47 +42,32 @@ class Clip(BaseEstimator, TransformerMixin):
 
         return self
 
-    @timeit
-    def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
-        X = check_array(
-            X,
-            dtype=self.dtype,
-            force_all_finite='allow-nan',
-            estimator=self
-        )
+    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
+        X = np.clip(X, self.data_min_, self.data_max_)
 
-        return np.clip(X, self.data_min_, self.data_max_)
+        return X.astype(self.dtype)
 
 
-class CountEncoder(BaseEstimator, TransformerMixin):
-    def __init__(self, dtype: Union[str, Type] = 'float64'):
+class CountEncoder(BaseTransformer):
+    def __init__(self, dtype: Union[str, Type] = 'float64') -> None:
         self.dtype = dtype
 
-    @timeit
-    def fit(
+    def _check_params(self) -> None:
+        pass
+
+    def _check_is_fitted(self) -> None:
+        check_is_fitted(self, ['counters_'])
+
+    def _fit(
         self,
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None
     ) -> 'CountEncoder':
-        X = check_array(
-            X,
-            dtype=None,
-            estimator=self,
-            force_all_finite='allow-nan'
-        )
-
         self.counters_ = [collections.Counter(column) for column in X.T]
 
         return self
 
-    @timeit
-    def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
-        X = check_array(
-            X,
-            dtype=None,
-            estimator=self,
-            force_all_finite='allow-nan'
-        )
+    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
         Xt = np.empty_like(X, dtype=self.dtype)
         vectorized = np.vectorize(
             lambda counter, xj: counter.get(xj, 0.0),

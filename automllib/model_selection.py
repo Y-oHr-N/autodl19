@@ -8,6 +8,7 @@ from time import time
 
 import numpy as np
 import pandas as pd  # NOQA
+from scipy.sparse import spmatrix  # NOQA
 
 try:
     from sklearn.base import BaseEstimator
@@ -52,7 +53,7 @@ if types.TYPE_CHECKING:
     from typing import Union  # NOQA
 
     OneDimArrayType = Union[List[float], np.ndarray, pd.Series]
-    TwoDimArrayType = Union[List[List[float]], np.ndarray, pd.DataFrame]
+    TwoDimArrayType = Union[List[List[float]], np.ndarray, spmatrix, pd.DataFrame]
 
 logger = logging.get_logger(__name__)
 
@@ -429,6 +430,9 @@ class OptunaSearchCV(BaseEstimator):
         subsample:
             Proportion of samples that are used during hyperparameter search.
 
+            - If int, then draw ``subsample`` samples.
+            - If float, then draw ``subsample`` * ``X.shape[0]`` samples.
+
         timeout:
             Time limit in seconds for the search of appropriate models. If
             :obj:`None`, the study is executed without time limitation. If
@@ -757,7 +761,7 @@ class OptunaSearchCV(BaseEstimator):
         self,
         X,  # type: TwoDimArrayType
         y=None,  # type: Optional[Union[OneDimArrayType, TwoDimArrayType]]
-        **fit_params  # type: Dict[str, Any]
+        **fit_params  # type: Any
     ):
         # type: (...) -> 'OptunaSearchCV'
 
@@ -797,7 +801,7 @@ class OptunaSearchCV(BaseEstimator):
         X,  # type: TwoDimArrayType
         y=None,  # type: Optional[Union[OneDimArrayType, TwoDimArrayType]]
         groups=None,  # type: Optional[OneDimArrayType]
-        **fit_params  # type: Dict[str, Any]
+        **fit_params  # type: Any
     ):
         # type: (...) -> 'OptunaSearchCV'
         """Run fit with all sets of parameters.

@@ -5,10 +5,11 @@ import os
 from typing import Any
 from typing import Dict
 
-# os.system("pip3 install imbalanced-learn")
-# os.system("pip3 install lightgbm")
-# os.system("pip3 install optuna")
-# os.system("pip3 install pandas==0.24.2")
+os.system("pip3 install imbalanced-learn")
+os.system("pip3 install lightgbm")
+os.system("pip3 install optuna")
+os.system("pip3 install pandas==0.24.2")
+os.system("pip3 install scikit-learn==0.21rc2")
 
 import numpy as np
 import pandas as pd
@@ -16,6 +17,7 @@ import pandas as pd
 from sklearn.base import BaseEstimator
 from sklearn.base import MetaEstimatorMixin
 from sklearn.model_selection import train_test_split
+from sklearn.utils.validation import check_is_fitted
 
 from automllib.compose import make_mixed_transformer
 from automllib.compose import make_model
@@ -35,6 +37,15 @@ class Model(BaseEstimator, MetaEstimatorMixin):
     def __init__(self, info: Dict[str, Any]) -> None:
         self.info = info
 
+    def _check_params(self) -> None:
+        pass
+
+    def _check_is_fitted(self) -> None:
+        check_is_fitted(
+            self,
+            ['config_', 'estimator_' 'preprocessor_' 'tables_']
+        )
+
     @timeit
     def fit(
         self,
@@ -46,6 +57,8 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         self.tables_ = copy.deepcopy(Xs)
 
         X = merge_table(Xs, self.config_)
+
+        X.sort_values(self.info['time_col'], inplace=True)
 
         self.preprocessor_ = make_mixed_transformer()
 
