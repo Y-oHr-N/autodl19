@@ -1,3 +1,6 @@
+from typing import Union
+
+import numpy as np
 import pandas as pd
 
 from scipy.stats import kurtosis
@@ -41,3 +44,6 @@ AGGREGATE_FUNCTIONS_MAP = {
     ],
     # TIME_TYPE: []
 }
+
+ONE_DIM_ARRAY_TYPE = Union[np.ndarray, pd.Series]
+TWO_DIM_ARRAY_TYPE = Union[np.ndarray, pd.DataFrame]

@@ -1,12 +1,22 @@
+import logging
+
 from collections import defaultdict
 from collections import deque
-import logging
+from typing import Callable
+from typing import Dict
+from typing import Union
+from typing import List
 
 import pandas as pd
 
+from .constants import AGGREGATE_FUNCTIONS_MAP as AFS_MAP
+from .constants import CATEGORICAL_TYPE as C_TYPE
 from .constants import MAIN_TABLE_NAME
 from .constants import NUMERICAL_PREFIX
-from .utils import aggregate_functions
+from .constants import NUMERICAL_TYPE as N_TYPE
+from .constants import TWO_DIM_ARRAY_TYPE
+from .utils import get_categorical_feature_names
+from .utils import get_numerical_feature_names
 from .utils import timeit
 
 logger = logging.getLogger(__name__)
@@ -44,6 +54,41 @@ def join(u, v, v_name, key, type_):
     return u.join(v, on=key)
 
 
+# @timeit
+# def temporal_join(u, v, v_name, key, time_col):
+#     if isinstance(key, list):
+#         assert len(key) == 1
+#         key = key[0]
+#
+#     tmp_u = u[[time_col, key]]
+#     tmp_u = pd.concat([tmp_u, v], keys=['u', 'v'], sort=False)
+#     rehash_key = f'rehash_{key}'
+#     tmp_u[rehash_key] = tmp_u[key].apply(lambda x: hash(x) % 200)
+#
+#     tmp_u.sort_values(time_col, inplace=True)
+#
+#     # columns = v.columns.drop(key)
+#     columns = v.drop(key, axis=1)
+#     func = aggregate_functions(columns)
+#     tmp_u = tmp_u.groupby(rehash_key).rolling(5).agg(func)
+#
+#     tmp_u.reset_index(0, drop=True, inplace=True)  # drop rehash index
+#
+#     tmp_u.columns = tmp_u.columns.map(
+#         lambda a: f"{NUMERICAL_PREFIX}{a[1].upper()}_ROLLING5({v_name}.{a[0]})"
+#     )
+#
+#     if tmp_u.empty:
+#         logger.info('Return u because temp_u is empty.')
+#
+#         return u
+#
+#     ret = pd.concat([u, tmp_u.loc['u']], axis=1, sort=False)
+#
+#     del tmp_u
+#
+#     return ret
+
 @timeit
 def temporal_join(u, v, v_name, key, time_col):
     if isinstance(key, list):
@@ -52,31 +97,22 @@ def temporal_join(u, v, v_name, key, time_col):
 
     tmp_u = u[[time_col, key]]
     tmp_u = pd.concat([tmp_u, v], keys=['u', 'v'], sort=False)
-    rehash_key = f'rehash_{key}'
-    tmp_u[rehash_key] = tmp_u[key].apply(lambda x: hash(x) % 200)
+    tmp_u.sort_values(by=[key, time_col], ascending=[True, True], inplace=True)
 
-    tmp_u.sort_values(time_col, inplace=True)
+    tmp_u = tmp_u.groupby(key).ffill()
 
-    columns = v.columns.drop(key)
-    # func = aggregate_functions(columns)
-    func = aggregate_functions(v.drop(key, axis=1))
-    tmp_u = tmp_u.groupby(rehash_key).rolling(5).agg(func)
-
-    tmp_u.reset_index(0, drop=True, inplace=True)  # drop rehash index
-
+    # TODO: Check exceptions for all relations (one2one, one2many, many2many)
     tmp_u.columns = tmp_u.columns.map(
-        lambda a: f"{NUMERICAL_PREFIX}{a[1].upper()}_ROLLING5({v_name}.{a[0]})"
+        lambda a: f"{a}_NEAREST({v_name})" if not (a == key or a == time_col) else a
     )
+    tmp_u.drop([key, time_col], axis=1, inplace=True)  # Drop the key column.
 
     if tmp_u.empty:
         logger.info('Return u because temp_u is empty.')
-
         return u
 
     ret = pd.concat([u, tmp_u.loc['u']], axis=1, sort=False)
-
     del tmp_u
-
     return ret
 
 
@@ -135,6 +171,24 @@ def merge_table(tables, config):
     bfs(MAIN_TABLE_NAME, graph, config['tables'])
 
     return dfs(MAIN_TABLE_NAME, config, tables, graph)
+
+
+def aggregate_functions(
+    X: TWO_DIM_ARRAY_TYPE
+) -> Dict[str, List[Union[str, Callable]]]:
+    func = {}
+
+    c_feature_names = get_categorical_feature_names(X)
+    # m_feature_names = get_multi_value_categorical_feature_names(X)
+    n_feature_names = get_numerical_feature_names(X)
+    # t_feature_names = get_time_feature_names(X)
+
+    func.update({name: AFS_MAP[C_TYPE] for name in c_feature_names})
+    # func.update({name: AFS_MAP[M_TYPE] for name in m_feature_names})
+    func.update({name: AFS_MAP[N_TYPE] for name in n_feature_names})
+    # func.update({name: AFS_MAP[T_TYPE] for name in t_feature_names})
+
+    return func
 
 
 class Config(object):
