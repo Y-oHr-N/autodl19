@@ -101,7 +101,7 @@ def dfs(u_name, config, tables, graph):
 
         if config['time_col'] in u and config['time_col'] in v:
             logger.info(f'Temporal Join {u_name} <--{type_}--t {v_name}.')
-            u = temporal_join(u, v, v_name, key, config['time_col'])
+            # u = temporal_join(u, v, v_name, key, config['time_col'])
         else:
             logger.info(f'Join {u_name} <--{type_}--nt {v_name}.')
             u = join(u, v, v_name, key, type_)
