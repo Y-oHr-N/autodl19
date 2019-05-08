@@ -18,10 +18,14 @@ class RandomUnderSampler(BaseSampler):
     def __init__(
         self,
         random_state: Union[int, np.random.RandomState] = None,
-        sampling_strategy: str = 'auto'
+        replacement: bool = False,
+        sampling_strategy: str = 'auto',
+        shuffle: bool = True
     ):
         self.random_state = random_state
+        self.replacement = replacement
         self.sampling_strategy = sampling_strategy
+        self.shuffle = shuffle
 
     def _check_params(self) -> None:
         pass
@@ -58,13 +62,14 @@ class RandomUnderSampler(BaseSampler):
                 sample_indices = random_state.choice(
                     sample_indices,
                     size=n_samples_per_class,
-                    replace=False
+                    replace=self.replacement
                 )
 
             arrays.append(sample_indices)
 
         self.sample_indices_ = np.concatenate(arrays)
 
-        self.sample_indices_.sort()
+        if not self.shuffle:
+            self.sample_indices_.sort()
 
         return self

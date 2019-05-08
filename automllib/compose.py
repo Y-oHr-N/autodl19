@@ -159,6 +159,6 @@ def make_search_cv(timeout: float = None) -> BaseEstimator:
 
 def make_model(timeout: float = None) -> BaseEstimator:
     return make_pipeline(
-        RandomUnderSampler(random_state=0),
+        RandomUnderSampler(random_state=0, shuffle=False),
         make_search_cv(timeout=timeout)
     )
