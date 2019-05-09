@@ -64,10 +64,13 @@ class CountEncoder(BaseTransformer):
         return self
 
     def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
-        Xt = np.zeros_like(X, dtype=self.dtype)
+        Xt = np.empty_like(X, dtype=self.dtype)
+        vectorized = np.vectorize(
+            lambda counter, xj: counter.get(xj, 0.0),
+            excluded='counter'
+        )
 
         for j, column in enumerate(X.T):
-            for key, value in self.counters_[j].items():
-                Xt[column == key, j] = value
+            Xt[:, j] = vectorized(self.counters_[j], column)
 
         return Xt
