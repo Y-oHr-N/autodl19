@@ -5,14 +5,14 @@ from typing import Union
 
 import numpy as np
 
-from sklearn.utils.validation import check_is_fitted
-
 from .base import BaseTransformer
 from .constants import ONE_DIM_ARRAY_TYPE
 from .constants import TWO_DIM_ARRAY_TYPE
 
 
 class Clip(BaseTransformer):
+    _attributes = ['data_max_', 'data_min_']
+
     def __init__(
         self,
         dtype: Union[str, Type] = 'float64',
@@ -25,9 +25,6 @@ class Clip(BaseTransformer):
 
     def _check_params(self) -> None:
         pass
-
-    def _check_is_fitted(self) -> None:
-        check_is_fitted(self, ['data_max_', 'data_min_'])
 
     def _fit(
         self,
@@ -49,14 +46,13 @@ class Clip(BaseTransformer):
 
 
 class CountEncoder(BaseTransformer):
+    _attributes = ['counters_']
+
     def __init__(self, dtype: Union[str, Type] = 'float64') -> None:
         self.dtype = dtype
 
     def _check_params(self) -> None:
         pass
-
-    def _check_is_fitted(self) -> None:
-        check_is_fitted(self, ['counters_'])
 
     def _fit(
         self,

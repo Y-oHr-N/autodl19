@@ -9,7 +9,6 @@ import pandas as pd
 from scipy.sparse import hstack
 from sklearn.base import clone
 from sklearn.feature_extraction.text import HashingVectorizer
-from sklearn.utils.validation import check_is_fitted
 
 from .base import BaseTransformer
 from .constants import ONE_DIM_ARRAY_TYPE
@@ -19,26 +18,12 @@ logger = logging.getLogger(__name__)
 
 
 class TimeVectorizer(BaseTransformer):
-    _attributes = [
-        # 'year',
-        'weekofyear',
-        'dayofyear',
-        'quarter',
-        'month',
-        'day',
-        'weekday',
-        'hour',
-        'minute',
-        'second'
-    ]
+    _attributes = []
 
     def __init__(self, **params: Any) -> None:
         pass
 
     def _check_params(self) -> None:
-        pass
-
-    def _check_is_fitted(self) -> None:
         pass
 
     def _fit(
@@ -52,10 +37,23 @@ class TimeVectorizer(BaseTransformer):
         X = pd.DataFrame(X)
         dfs = []
 
+        attributes = [
+            # 'year',
+            'weekofyear',
+            'dayofyear',
+            'quarter',
+            'month',
+            'day',
+            'weekday',
+            'hour',
+            'minute',
+            'second'
+        ]
+
         for column in X:
             df = pd.DataFrame()
 
-            for attr in self._attributes:
+            for attr in attributes:
                 df[f'{column}_{attr}'] = getattr(X[column].dt, attr)
 
             dfs.append(df)
@@ -71,6 +69,8 @@ class TimeVectorizer(BaseTransformer):
 
 
 class MultiValueCategoricalVectorizer(BaseTransformer):
+    _attributes = ['vectorizers_']
+
     def __init__(
         self,
         dtype: Union[str, Type] = 'float64',
@@ -83,9 +83,6 @@ class MultiValueCategoricalVectorizer(BaseTransformer):
 
     def _check_params(self) -> None:
         pass
-
-    def _check_is_fitted(self) -> None:
-        check_is_fitted(self, ['vectorizers_'])
 
     def _fit(
         self,

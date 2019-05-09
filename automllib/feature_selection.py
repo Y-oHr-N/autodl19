@@ -3,27 +3,23 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from sklearn.utils.validation import check_is_fitted
-
 from .base import BaseSelector
 from .constants import ONE_DIM_ARRAY_TYPE
 from .constants import TWO_DIM_ARRAY_TYPE
 
 
 class DropDuplicates(BaseSelector):
-    def __init__(self, **params: Any) -> None:
-        raise NotImplementedError()
+    pass
 
 
 class DropInvariant(BaseSelector):
+    _attributes = ['nunique_']
+
     def __init__(self, **params: Any) -> None:
         pass
 
     def _check_params(self) -> None:
         pass
-
-    def _check_is_fitted(self) -> None:
-        check_is_fitted(self, ['nunique_'])
 
     def _fit(
         self,
@@ -39,14 +35,13 @@ class DropInvariant(BaseSelector):
 
 
 class DropUniqueKey(BaseSelector):
+    _attributes = ['nunique_', 'n_samples_']
+
     def __init__(self, **params: Any) -> None:
         pass
 
     def _check_params(self) -> None:
         pass
-
-    def _check_is_fitted(self) -> None:
-        check_is_fitted(self, ['nunique_'])
 
     def _fit(
         self,
@@ -63,6 +58,8 @@ class DropUniqueKey(BaseSelector):
 
 
 class NAProportionThreshold(BaseSelector):
+    _attributes = ['count_', 'n_samples_']
+
     def __init__(self, threshold: float = 0.6) -> None:
         pass
 
@@ -70,9 +67,6 @@ class NAProportionThreshold(BaseSelector):
 
     def _check_params(self) -> None:
         pass
-
-    def _check_is_fitted(self) -> None:
-        check_is_fitted(self, ['count_'])
 
     def _fit(
         self,

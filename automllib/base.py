@@ -18,6 +18,7 @@ from sklearn.utils import check_array
 from sklearn.utils import check_X_y
 from sklearn.utils import safe_indexing
 from sklearn.utils import safe_mask
+from sklearn.utils.validation import check_is_fitted
 
 from .constants import ONE_DIM_ARRAY_TYPE
 from .constants import TWO_DIM_ARRAY_TYPE
@@ -27,16 +28,17 @@ logger = logging.getLogger(__name__)
 
 
 class BaseEstimator(SKLearnBaseEstimator, ABC):
+    @property
+    @abstractmethod
+    def _attributes(self) -> Union[str, List[str]]:
+        pass
+
     @abstractmethod
     def __init__(self, **params: Any) -> None:
         pass
 
     @abstractmethod
     def _check_params(self) -> None:
-        pass
-
-    @abstractmethod
-    def _check_is_fitted(self) -> None:
         pass
 
     @abstractmethod
@@ -75,6 +77,9 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
             )
 
         return X, y
+
+    def _check_is_fitted(self) -> None:
+        check_is_fitted(self, self._attributes)
 
     @timeit
     def fit(

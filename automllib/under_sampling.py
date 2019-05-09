@@ -5,7 +5,6 @@ import numpy as np
 
 from imblearn.utils import check_sampling_strategy
 from sklearn.utils import check_random_state
-from sklearn.utils.validation import check_is_fitted
 
 from .base import BaseSampler
 from .constants import ONE_DIM_ARRAY_TYPE
@@ -13,6 +12,7 @@ from .constants import TWO_DIM_ARRAY_TYPE
 
 
 class RandomUnderSampler(BaseSampler):
+    _attributes = ['classes_', 'sample_indices_', 'sampling_strategy_']
     _sampling_type = 'under-sampling'
 
     def __init__(
@@ -29,12 +29,6 @@ class RandomUnderSampler(BaseSampler):
 
     def _check_params(self) -> None:
         pass
-
-    def _check_is_fitted(self) -> None:
-        check_is_fitted(
-            self,
-            ['classes_', 'sample_indices_', 'sampling_strategy_']
-        )
 
     def _fit(
         self,
