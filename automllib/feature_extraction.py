@@ -1,20 +1,36 @@
 import logging
 
 from typing import Any
+from typing import List
 from typing import Type
 from typing import Union
 
 import pandas as pd
 
+from joblib import delayed
+from joblib import effective_n_jobs
+from joblib import Parallel
 from scipy.sparse import hstack
+from scipy.sparse import vstack
 from sklearn.base import clone
 from sklearn.feature_extraction.text import HashingVectorizer
+from sklearn.utils import gen_even_slices
+from sklearn.utils import safe_indexing
 
 from .base import BaseTransformer
 from .constants import ONE_DIM_ARRAY_TYPE
 from .constants import TWO_DIM_ARRAY_TYPE
 
 logger = logging.getLogger(__name__)
+
+
+def multi_value_categorical_vectorize(
+    X: TWO_DIM_ARRAY_TYPE,
+    vectorizers: List[HashingVectorizer]
+) -> TWO_DIM_ARRAY_TYPE:
+    Xs = [vectorizers[j].transform(column) for j, column in enumerate(X.T)]
+
+    return hstack(Xs)
 
 
 class TimeVectorizer(BaseTransformer):
@@ -75,11 +91,13 @@ class MultiValueCategoricalVectorizer(BaseTransformer):
         self,
         dtype: Union[str, Type] = 'float64',
         lowercase: bool = True,
-        n_features_per_column: int = 1048576
+        n_features_per_column: int = 1_048_576,
+        n_jobs: int = 1
     ) -> None:
         self.dtype = dtype
         self.lowercase = lowercase
         self.n_features_per_column = n_features_per_column
+        self.n_jobs = n_jobs
 
     def _check_params(self) -> None:
         pass
@@ -100,16 +118,14 @@ class MultiValueCategoricalVectorizer(BaseTransformer):
         return self
 
     def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
-        Xs = [
-            self.vectorizers_[j].transform(
-                column
-            ) for j, column in enumerate(X.T)
-        ]
-        Xt = hstack(Xs)
-        _, n_features = Xt.shape
-
-        logger.info(
-            f'{self.__class__.__name__} extracts {n_features} features.'
+        n_samples, _ = X.shape
+        n_jobs = effective_n_jobs(self.n_jobs)
+        parallel = Parallel(n_jobs=n_jobs)
+        func = delayed(multi_value_categorical_vectorize)
+        result = parallel(
+            func(
+                safe_indexing(X, s), self.vectorizers_
+            ) for s in gen_even_slices(n_samples, n_jobs)
         )
 
-        return Xt
+        return vstack(result)

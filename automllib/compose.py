@@ -35,7 +35,7 @@ def make_categorical_transformer() -> BaseEstimator:
         DropUniqueKey(),
         # DropDuplicates(),
         SimpleImputer(fill_value='missing', strategy='constant'),
-        CountEncoder(dtype='float32')
+        CountEncoder(dtype='float32', n_jobs=-1)
     )
 
 
@@ -46,7 +46,8 @@ def make_multi_value_categorical_transformer() -> BaseEstimator:
         MultiValueCategoricalVectorizer(
             dtype='float32',
             lowercase=False,
-            n_features_per_column=64
+            n_features_per_column=64,
+            n_jobs=-1
         )
     )
 
@@ -61,7 +62,8 @@ def make_numerical_transformer() -> BaseEstimator:
                 Clip(dtype='float32'),
                 # PolynomialFeatures(include_bias=False, interaction_only=True)
             ),
-            MissingIndicator()
+            MissingIndicator(),
+            n_jobs=-1
         )
     )
 
@@ -95,7 +97,6 @@ def make_mixed_transformer() -> BaseEstimator:
         #     make_time_transformer(),
         #     get_time_feature_names
         # ),
-        n_jobs=-1
     )
 
 
