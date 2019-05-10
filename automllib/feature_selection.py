@@ -1,4 +1,6 @@
 from typing import Any
+from typing import Type
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -15,8 +17,8 @@ class DropDuplicates(BaseSelector):
 class DropInvariant(BaseSelector):
     _attributes = ['nunique_']
 
-    def __init__(self, **params: Any) -> None:
-        pass
+    def __init__(self, dtype: Union[str, Type] = None) -> None:
+        super().__init__(dtype=dtype)
 
     def _check_params(self) -> None:
         pass
@@ -37,8 +39,8 @@ class DropInvariant(BaseSelector):
 class DropUniqueKey(BaseSelector):
     _attributes = ['nunique_', 'n_samples_']
 
-    def __init__(self, **params: Any) -> None:
-        pass
+    def __init__(self, dtype: Union[str, Type] = None) -> None:
+        super().__init__(dtype=dtype)
 
     def _check_params(self) -> None:
         pass
@@ -60,8 +62,12 @@ class DropUniqueKey(BaseSelector):
 class NAProportionThreshold(BaseSelector):
     _attributes = ['count_', 'n_samples_']
 
-    def __init__(self, threshold: float = 0.6) -> None:
-        pass
+    def __init__(
+        self,
+        dtype: Union[str, Type] = None,
+        threshold: float = 0.6
+    ) -> None:
+        super().__init__(dtype=dtype)
 
         self.threshold = threshold
 

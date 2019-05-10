@@ -164,6 +164,10 @@ class BaseSampler(BaseEstimator):
 
 class BaseTransformer(BaseEstimator, TransformerMixin):
     @abstractmethod
+    def __init__(self, dtype: Union[str, Type] = None):
+        self.dtype = dtype
+
+    @abstractmethod
     def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
         pass
 
@@ -172,8 +176,12 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self._check_is_fitted()
 
         X, _ = self._check_X_y(X)
+        X = self._transform(X)
 
-        return self._transform(X)
+        if self.dtype is not None:
+            X = X.astype(self.dtype)
+
+        return X
 
 
 class BaseSelector(BaseTransformer):

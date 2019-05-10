@@ -38,11 +38,12 @@ class Clip(BaseTransformer):
 
     def __init__(
         self,
-        dtype: Union[str, Type] = 'float64',
+        dtype: Union[str, Type] = None,
         low: float = 0.1,
         high: float = 99.9,
     ) -> None:
-        self.dtype = dtype
+        super().__init__(dtype=dtype)
+
         self.low = low
         self.high = high
 
@@ -63,9 +64,7 @@ class Clip(BaseTransformer):
         return self
 
     def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
-        X = np.clip(X, self.data_min_, self.data_max_)
-
-        return X.astype(self.dtype)
+        return np.clip(X, self.data_min_, self.data_max_)
 
 
 class CountEncoder(BaseTransformer):
@@ -73,10 +72,11 @@ class CountEncoder(BaseTransformer):
 
     def __init__(
         self,
-        dtype: Union[str, Type] = 'float64',
+        dtype: Union[str, Type] = None,
         n_jobs: int = 1
     ) -> None:
-        self.dtype = dtype
+        super().__init__(dtype=dtype)
+
         self.n_jobs = n_jobs
 
     def _check_params(self) -> None:
@@ -102,6 +102,4 @@ class CountEncoder(BaseTransformer):
             ) for s in gen_even_slices(n_samples, n_jobs)
         )
 
-        X = np.concatenate(result)
-
-        return X.astype(self.dtype)
+        return np.concatenate(result)
