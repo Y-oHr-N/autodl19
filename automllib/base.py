@@ -32,8 +32,8 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
         pass
 
     @abstractmethod
-    def __init__(self, **params: Any) -> None:
-        pass
+    def __init__(self, verbose: int = 0) -> None:
+        self.verbose = verbose
 
     @abstractmethod
     def _check_params(self) -> None:
@@ -79,6 +79,18 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
     def _check_is_fitted(self) -> None:
         check_is_fitted(self, self._attributes)
 
+    def _get_logger(self) -> logging.Logger:
+        logger = logging.getLogger(__name__)
+
+        if self.verbose > 1:
+            logger.setLevel(logging.DEBUG)
+        elif self.verbose > 0:
+            logger.setLevel(logging.INFO)
+        else:
+            logger.setLevel(logging.WARNING)
+
+        return logger
+
     @timeit
     def fit(
         self,
@@ -106,7 +118,7 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
 
         X, y = self._check_X_y(X, y)
 
-        self.logger_ = logging.getLogger(__name__)
+        self.logger_ = self._get_logger()
 
         return self._fit(X, y, **fit_params)
 
@@ -164,7 +176,13 @@ class BaseSampler(BaseEstimator):
 
 class BaseTransformer(BaseEstimator, TransformerMixin):
     @abstractmethod
-    def __init__(self, dtype: Union[str, Type] = None):
+    def __init__(
+        self,
+        dtype: Union[str, Type] = None,
+        verbose: int = 0
+    ) -> None:
+        super().__init__(verbose=verbose)
+
         self.dtype = dtype
 
     @abstractmethod

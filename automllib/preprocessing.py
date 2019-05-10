@@ -41,8 +41,9 @@ class Clip(BaseTransformer):
         dtype: Union[str, Type] = None,
         low: float = 0.1,
         high: float = 99.9,
+        verbose: int = 0
     ) -> None:
-        super().__init__(dtype=dtype)
+        super().__init__(dtype=dtype, verbose=verbose)
 
         self.low = low
         self.high = high
@@ -73,9 +74,10 @@ class CountEncoder(BaseTransformer):
     def __init__(
         self,
         dtype: Union[str, Type] = None,
-        n_jobs: int = 1
+        n_jobs: int = 1,
+        verbose: int = 0
     ) -> None:
-        super().__init__(dtype=dtype)
+        super().__init__(dtype=dtype, verbose=verbose)
 
         self.n_jobs = n_jobs
 

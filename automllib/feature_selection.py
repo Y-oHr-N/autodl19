@@ -17,8 +17,12 @@ class DropDuplicates(BaseSelector):
 class DropInvariant(BaseSelector):
     _attributes = ['nunique_']
 
-    def __init__(self, dtype: Union[str, Type] = None) -> None:
-        super().__init__(dtype=dtype)
+    def __init__(
+        self,
+        dtype: Union[str, Type] = None,
+        verbose: int = 0
+    ) -> None:
+        super().__init__(dtype=dtype, verbose=verbose)
 
     def _check_params(self) -> None:
         pass
@@ -39,8 +43,12 @@ class DropInvariant(BaseSelector):
 class DropUniqueKey(BaseSelector):
     _attributes = ['nunique_', 'n_samples_']
 
-    def __init__(self, dtype: Union[str, Type] = None) -> None:
-        super().__init__(dtype=dtype)
+    def __init__(
+        self,
+        dtype: Union[str, Type] = None,
+        verbose: int = 0
+    ) -> None:
+        super().__init__(dtype=dtype, verbose=verbose)
 
     def _check_params(self) -> None:
         pass
@@ -65,9 +73,10 @@ class NAProportionThreshold(BaseSelector):
     def __init__(
         self,
         dtype: Union[str, Type] = None,
-        threshold: float = 0.6
+        threshold: float = 0.6,
+        verbose: int = 0
     ) -> None:
-        super().__init__(dtype=dtype)
+        super().__init__(dtype=dtype, verbose=verbose)
 
         self.threshold = threshold
 

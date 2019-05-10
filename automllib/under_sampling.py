@@ -20,8 +20,11 @@ class RandomUnderSampler(BaseSampler):
         random_state: Union[int, np.random.RandomState] = None,
         replacement: bool = False,
         sampling_strategy: str = 'auto',
-        shuffle: bool = True
+        shuffle: bool = True,
+        verbose: int = 0
     ):
+        super().__init__(verbose=verbose)
+
         self.random_state = random_state
         self.replacement = replacement
         self.sampling_strategy = sampling_strategy

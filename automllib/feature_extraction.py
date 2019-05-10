@@ -32,8 +32,12 @@ def multi_value_categorical_vectorize(
 class TimeVectorizer(BaseTransformer):
     _attributes = []
 
-    def __init__(self, dtype: Union[str, Type] = None) -> None:
-        super().__init__(dtype=dtype)
+    def __init__(
+        self,
+        dtype: Union[str, Type] = None,
+        verbose: int = 0
+    ) -> None:
+        super().__init__(dtype=dtype, verbose=verbose)
 
     def _check_params(self) -> None:
         pass
@@ -88,9 +92,10 @@ class MultiValueCategoricalVectorizer(BaseTransformer):
         dtype: Union[str, Type] = None,
         lowercase: bool = True,
         n_features_per_column: int = 1_048_576,
-        n_jobs: int = 1
+        n_jobs: int = 1,
+        verbose: int = 0
     ) -> None:
-        super().__init__(dtype=dtype)
+        super().__init__(dtype=dtype, verbose=verbose)
 
         self.lowercase = lowercase
         self.n_features_per_column = n_features_per_column
