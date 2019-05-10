@@ -34,8 +34,9 @@ logger = logging.getLogger(__name__)
 
 
 class Model(BaseEstimator, MetaEstimatorMixin):
-    def __init__(self, info: Dict[str, Any]) -> None:
+    def __init__(self, info: Dict[str, Any], verbose: int = 1) -> None:
         self.info = info
+        self.verbose = verbose
 
     def _check_params(self) -> None:
         pass
@@ -60,11 +61,11 @@ class Model(BaseEstimator, MetaEstimatorMixin):
 
         X.sort_values(self.info['time_col'], inplace=True)
 
-        self.preprocessor_ = make_mixed_transformer()
+        self.preprocessor_ = make_mixed_transformer(verbose=self.verbose)
 
         X = self.preprocessor_.fit_transform(X)
 
-        self.estimator_ = make_model()
+        self.estimator_ = make_model(verbose=self.verbose)
 
         X_train, X_valid, y_train, y_valid = train_test_split(
             X,

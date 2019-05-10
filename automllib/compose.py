@@ -28,38 +28,41 @@ from .utils import get_numerical_feature_names
 # from .utils import get_time_feature_names
 
 
-def make_categorical_transformer() -> BaseEstimator:
+def make_categorical_transformer(verbose: int = 0) -> BaseEstimator:
     return make_pipeline(
-        NAProportionThreshold(),
-        DropInvariant(),
-        DropUniqueKey(),
-        # DropDuplicates(),
+        NAProportionThreshold(verbose=verbose),
+        DropInvariant(verbose=verbose),
+        DropUniqueKey(verbose=verbose),
+        # DropDuplicates(verbose=verbose),
         SimpleImputer(fill_value='missing', strategy='constant'),
-        CountEncoder(dtype='float32', n_jobs=-1)
+        CountEncoder(dtype='float32', n_jobs=-1, verbose=verbose)
     )
 
 
-def make_multi_value_categorical_transformer() -> BaseEstimator:
+def make_multi_value_categorical_transformer(
+    verbose: int = 0
+) -> BaseEstimator:
     return make_pipeline(
-        NAProportionThreshold(),
+        NAProportionThreshold(verbose=verbose),
         SimpleImputer(fill_value='missing', strategy='constant'),
         MultiValueCategoricalVectorizer(
             dtype='float32',
             lowercase=False,
             n_features_per_column=64,
-            n_jobs=-1
+            n_jobs=-1,
+            verbose=verbose
         )
     )
 
 
-def make_numerical_transformer() -> BaseEstimator:
+def make_numerical_transformer(verbose: int = 0) -> BaseEstimator:
     return make_pipeline(
-        NAProportionThreshold(),
-        DropInvariant(),
+        NAProportionThreshold(verbose=verbose),
+        DropInvariant(verbose=verbose),
         make_union(
             make_pipeline(
                 IterativeImputer(estimator=HuberRegressor()),
-                Clip(dtype='float32'),
+                Clip(dtype='float32', verbose=verbose),
                 # PolynomialFeatures(include_bias=False, interaction_only=True)
             ),
             MissingIndicator(),
@@ -68,39 +71,39 @@ def make_numerical_transformer() -> BaseEstimator:
     )
 
 
-def make_time_transformer() -> BaseEstimator:
+def make_time_transformer(verbose: int = 0) -> BaseEstimator:
     return make_pipeline(
-        NAProportionThreshold(),
+        NAProportionThreshold(verbose=verbose),
         SimpleImputer(
             fill_value=np.datetime64('1970-01-01'),
             strategy='constant'
         ),
-        TimeVectorizer()
+        TimeVectorizer(verbose=verbose)
     )
 
 
-def make_mixed_transformer() -> BaseEstimator:
+def make_mixed_transformer(verbose: int = 0) -> BaseEstimator:
     return make_column_transformer(
         (
-            make_categorical_transformer(),
+            make_categorical_transformer(verbose=verbose),
             get_categorical_feature_names
         ),
         (
-            make_multi_value_categorical_transformer(),
+            make_multi_value_categorical_transformer(verbose=verbose),
             get_multi_value_categorical_feature_names
         ),
         (
-            make_numerical_transformer(),
+            make_numerical_transformer(verbose=verbose),
             get_numerical_feature_names
         ),
         # (
-        #     make_time_transformer(),
+        #     make_time_transformer(verbose=verbose),
         #     get_time_feature_names
         # ),
     )
 
 
-def make_search_cv(timeout: float = None) -> BaseEstimator:
+def make_search_cv(timeout: float = None, verbose: int = 0) -> BaseEstimator:
     estimator = lgb.LGBMClassifier(
         max_depth=7,
         metric='auc',
@@ -156,8 +159,8 @@ def make_search_cv(timeout: float = None) -> BaseEstimator:
     )
 
 
-def make_model(timeout: float = None) -> BaseEstimator:
+def make_model(timeout: float = None, verbose: int = 0) -> BaseEstimator:
     return make_pipeline(
-        RandomUnderSampler(random_state=0, shuffle=False),
-        make_search_cv(timeout=timeout)
+        RandomUnderSampler(random_state=0, shuffle=False, verbose=verbose),
+        make_search_cv(timeout=timeout, verbose=verbose)
     )
