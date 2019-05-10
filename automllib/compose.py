@@ -43,7 +43,12 @@ def make_multi_value_categorical_transformer() -> BaseEstimator:
     return make_pipeline(
         NAProportionThreshold(),
         SimpleImputer(fill_value='missing', strategy='constant'),
-        CountEncoder(dtype='float32', n_jobs=-1)
+        MultiValueCategoricalVectorizer(
+            dtype='float32',
+            lowercase=False,
+            n_features_per_column=64,
+            n_jobs=-1
+        )
     )
 
 
