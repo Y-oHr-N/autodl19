@@ -5,6 +5,7 @@ import os
 from typing import Any
 from typing import Dict
 
+os.system("pip3 install colorlog")
 os.system("pip3 install imbalanced-learn")
 os.system("pip3 install lightgbm")
 os.system("pip3 install optuna")
