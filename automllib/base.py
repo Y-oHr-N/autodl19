@@ -118,9 +118,9 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
         X, y = self._check_X_y(X, y)
 
         self.logger_ = self._get_logger()
+        self.timeit_ = Timeit(self.logger_)
 
-        timeit = Timeit(self.logger_)
-        func = timeit(self._fit)
+        func = self.timeit_(self._fit)
 
         return func(X, y, **fit_params)
 
@@ -175,8 +175,7 @@ class BaseSampler(BaseEstimator):
     ) -> Tuple[TWO_DIM_ARRAY_TYPE, ONE_DIM_ARRAY_TYPE]:
         self.fit(X, y, **fit_params)
 
-        timeit = Timeit(self.logger_)
-        func = timeit(self._resample)
+        func = self.timeit_(self._resample)
 
         return func(X, y)
 
@@ -197,12 +196,24 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         pass
 
     def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
+        """Transform the data.
+
+        Parameters
+        ----------
+        X
+            Training data.
+
+        Returns
+        -------
+        Xt
+            Transformed data.
+        """
+
         self._check_is_fitted()
 
         X, _ = self._check_X_y(X)
 
-        timeit = Timeit(self.logger_)
-        func = timeit(self._transform)
+        func = self.timeit_(self._transform)
 
         X = func(X)
 
