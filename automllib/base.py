@@ -22,7 +22,7 @@ from sklearn.utils.validation import check_is_fitted
 
 from .constants import ONE_DIM_ARRAY_TYPE
 from .constants import TWO_DIM_ARRAY_TYPE
-from .utils import timeit
+from .utils import Timeit
 
 
 class BaseEstimator(SKLearnBaseEstimator, ABC):
@@ -91,7 +91,6 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
 
         return logger
 
-    @timeit
     def fit(
         self,
         X: TWO_DIM_ARRAY_TYPE,
@@ -120,7 +119,10 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
 
         self.logger_ = self._get_logger()
 
-        return self._fit(X, y, **fit_params)
+        timeit = Timeit(self.logger_)
+        func = timeit(self._fit)
+
+        return func(X, y, **fit_params)
 
     def to_pickle(
         self,
@@ -171,7 +173,12 @@ class BaseSampler(BaseEstimator):
         y: ONE_DIM_ARRAY_TYPE,
         **fit_params: Any
     ) -> Tuple[TWO_DIM_ARRAY_TYPE, ONE_DIM_ARRAY_TYPE]:
-        return self.fit(X, y, **fit_params)._resample(X, y)
+        self.fit(X, y, **fit_params)
+
+        timeit = Timeit(self.logger_)
+        func = timeit(self._resample)
+
+        return func(X, y)
 
 
 class BaseTransformer(BaseEstimator, TransformerMixin):
@@ -189,12 +196,15 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
     def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
         pass
 
-    @timeit
     def transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
         self._check_is_fitted()
 
         X, _ = self._check_X_y(X)
-        X = self._transform(X)
+
+        timeit = Timeit(self.logger_)
+        func = timeit(self._transform)
+
+        X = func(X)
 
         if self.dtype is not None:
             X = X.astype(self.dtype)

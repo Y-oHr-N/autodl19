@@ -17,7 +17,7 @@ from .constants import NUMERICAL_TYPE as N_TYPE
 from .constants import TWO_DIM_ARRAY_TYPE
 from .utils import get_categorical_feature_names
 from .utils import get_numerical_feature_names
-from .utils import timeit
+from .utils import Timeit
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ def bfs(root_name, graph, tconfig):
                 queue.append(v_name)
 
 
-@timeit
+@Timeit(logger)
 def join(u, v, v_name, key, type_):
     if type_.split("_")[2] == 'many':
         columns = v.columns.drop(key)
@@ -54,7 +54,7 @@ def join(u, v, v_name, key, type_):
     return u.join(v, on=key)
 
 
-@timeit
+@Timeit(logger)
 def temporal_join(u, v, v_name, key, time_col):
     if isinstance(key, list):
         assert len(key) == 1
@@ -113,7 +113,7 @@ def dfs(u_name, config, tables, graph):
     return u
 
 
-@timeit
+@Timeit(logger)
 def merge_table(tables, config):
     graph = defaultdict(list)
 

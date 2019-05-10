@@ -26,7 +26,7 @@ from automllib.constants import ONE_DIM_ARRAY_TYPE
 from automllib.constants import TWO_DIM_ARRAY_TYPE
 from automllib.table_join import Config
 from automllib.table_join import merge_table
-from automllib.utils import timeit
+from automllib.utils import Timeit
 
 np.random.seed(0)
 
@@ -46,7 +46,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
             ['config_', 'estimator_' 'preprocessor_' 'tables_']
         )
 
-    @timeit
+    @Timeit(logger)
     def fit(
         self,
         Xs: Dict[str, TWO_DIM_ARRAY_TYPE],
@@ -90,7 +90,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
 
         return self
 
-    @timeit
+    @Timeit(logger)
     def predict(
         self,
         X_test: TWO_DIM_ARRAY_TYPE,

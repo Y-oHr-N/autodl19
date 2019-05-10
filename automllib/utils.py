@@ -47,19 +47,23 @@ def get_time_feature_names(X: TWO_DIM_ARRAY_TYPE) -> ONE_DIM_ARRAY_TYPE:
     return get_feature_names_by_prefix(X, T_PREFIX)
 
 
-def timeit(func: Callable) -> Callable:
-    def timed(*args: Tuple[Any], **kwargs: Any) -> Any:
-        logger.info(f'==> Start {func}.')
+class Timeit(object):
+    def __init__(self, logger: logging.Logger) -> None:
+        self.logger = logger
 
-        timer = Timer()
-        ret = func(*args, **kwargs)
-        elapsed_time = timer.get_elapsed_time()
+    def __call__(self, func: Callable) -> Callable:
+        def wrapper(*args: Tuple[Any], **kwargs: Any) -> Any:
+            self.logger.info(f'==> Start {func}.')
 
-        logger.info(f'==> End {func}. ({elapsed_time:.3f} sec.)')
+            timer = Timer()
+            ret = func(*args, **kwargs)
+            elapsed_time = timer.get_elapsed_time()
 
-        return ret
+            self.logger.info(f'==> End {func}. ({elapsed_time:.3f} sec.)')
 
-    return timed
+            return ret
+
+        return wrapper
 
 
 class Timer(object):
