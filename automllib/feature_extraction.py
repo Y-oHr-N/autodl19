@@ -1,5 +1,3 @@
-import logging
-
 from typing import Any
 from typing import List
 from typing import Type
@@ -20,8 +18,6 @@ from sklearn.utils import safe_indexing
 from .base import BaseTransformer
 from .constants import ONE_DIM_ARRAY_TYPE
 from .constants import TWO_DIM_ARRAY_TYPE
-
-logger = logging.getLogger(__name__)
 
 
 def multi_value_categorical_vectorize(
@@ -77,7 +73,7 @@ class TimeVectorizer(BaseTransformer):
         Xt = pd.concat(dfs, axis=1)
         _, n_features = Xt.shape
 
-        logger.info(
+        self.logger_.info(
             f'{self.__class__.__name__} extracts {n_features} features.'
         )
 

@@ -24,8 +24,6 @@ from .constants import ONE_DIM_ARRAY_TYPE
 from .constants import TWO_DIM_ARRAY_TYPE
 from .utils import timeit
 
-logger = logging.getLogger(__name__)
-
 
 class BaseEstimator(SKLearnBaseEstimator, ABC):
     @property
@@ -107,6 +105,8 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
         self._check_params()
 
         X, y = self._check_X_y(X, y)
+
+        self.logger_ = logging.getLogger(__name__)
 
         return self._fit(X, y, **fit_params)
 
@@ -196,7 +196,7 @@ class BaseSelector(BaseTransformer):
         n_selected_features = np.sum(support)
         n_dropped_features = n_features - n_selected_features
 
-        logger.info(
+        self.logger_.info(
             f'{self.__class__.__name__} selects {n_selected_features} '
             f'features and drops {n_dropped_features} features.'
         )
