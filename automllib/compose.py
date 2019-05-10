@@ -3,10 +3,9 @@ import optuna
 
 from imblearn.pipeline import make_pipeline
 from sklearn.compose import make_column_transformer
-from sklearn.impute import IterativeImputer
-from sklearn.impute import MissingIndicator
+# from sklearn.impute import IterativeImputer
+# from sklearn.impute import MissingIndicator
 from sklearn.impute import SimpleImputer
-from sklearn.linear_model import HuberRegressor
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.pipeline import make_union
 # from sklearn.preprocessing import PolynomialFeatures
@@ -61,12 +60,11 @@ def make_numerical_transformer(verbose: int = 0) -> BaseEstimator:
         DropInvariant(verbose=verbose),
         make_union(
             make_pipeline(
-                IterativeImputer(estimator=HuberRegressor()),
+                # IterativeImputer(),
                 Clip(dtype='float32', verbose=verbose),
                 # PolynomialFeatures(include_bias=False, interaction_only=True)
             ),
-            MissingIndicator(),
-            n_jobs=-1
+            # MissingIndicator()
         )
     )
 
