@@ -18,6 +18,7 @@ from sklearn.utils import check_array
 from sklearn.utils import check_X_y
 from sklearn.utils import safe_indexing
 from sklearn.utils import safe_mask
+from sklearn.utils.validation import _num_samples
 from sklearn.utils.validation import check_is_fitted
 
 from .constants import ONE_DIM_ARRAY_TYPE
@@ -161,9 +162,16 @@ class BaseSampler(BaseEstimator):
         self._check_is_fitted()
 
         X, y = self._check_X_y(X, y)
+        n_input_samples = _num_samples(X)
 
         X = safe_indexing(X, self.sample_indices_)
         y = safe_indexing(y, self.sample_indices_)
+        n_output_samples = len(self.sample_indices_)
+
+        self.logger_.info(
+            f'{self.__class__.__name__} selects {n_output_samples} samples '
+            f'and drops {n_input_samples - n_output_samples} samples.'
+        )
 
         return X, y
 
@@ -248,15 +256,15 @@ class BaseSelector(BaseTransformer):
         pass
 
     def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
-        _, n_features = X.shape
+        _, n_input_features = X.shape
         support = self.get_support()
         support = safe_mask(X, support)
-        n_selected_features = np.sum(support)
-        n_dropped_features = n_features - n_selected_features
+        n_output_features = np.sum(support)
 
         self.logger_.info(
-            f'{self.__class__.__name__} selects {n_selected_features} '
-            f'features and drops {n_dropped_features} features.'
+            f'{self.__class__.__name__} selects {n_output_features} '
+            f'features and drops {n_input_features - n_output_features} '
+            f'features.'
         )
 
         return X[:, support]
