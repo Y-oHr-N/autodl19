@@ -137,7 +137,7 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
             Path of the file in which it is to be stored.
 
         kwargs
-            Other keywords passed to ``sklearn.externals.joblib.dump``.
+            Other keywords passed to ``joblib.dump``.
 
         Returns
         -------
@@ -173,6 +173,25 @@ class BaseSampler(BaseEstimator):
         y: ONE_DIM_ARRAY_TYPE,
         **fit_params: Any
     ) -> Tuple[TWO_DIM_ARRAY_TYPE, ONE_DIM_ARRAY_TYPE]:
+        """Fit the model, then resample the data.
+
+        Parameters
+        ----------
+        X
+            Training Data.
+
+        y
+            Target.
+
+        Returns
+        -------
+        X_res
+            Resampled data.
+
+        y_res
+            Resampled target.
+        """
+
         self.fit(X, y, **fit_params)
 
         func = self.timeit_(self._resample)
@@ -201,7 +220,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         Parameters
         ----------
         X
-            Training data.
+            Data.
 
         Returns
         -------
@@ -243,6 +262,19 @@ class BaseSelector(BaseTransformer):
         return X[:, support]
 
     def get_support(self, indices: bool = False) -> ONE_DIM_ARRAY_TYPE:
+        """Get a mask of the features selected.
+
+        Parameters
+        ----------
+        indices
+           If True, an array of integers is returned.
+
+        Returns
+        -------
+        support
+            Mask.
+        """
+
         support = self._get_support()
 
         if indices:
