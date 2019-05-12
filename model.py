@@ -3,7 +3,9 @@ import logging
 import os
 
 from typing import Any
+from typing import Callable
 from typing import Dict
+from typing import Union
 
 os.system("pip3 install colorlog")
 os.system("pip3 install imbalanced-learn")
@@ -17,11 +19,11 @@ import pandas as pd
 
 from sklearn.base import BaseEstimator
 from sklearn.base import MetaEstimatorMixin
+from sklearn.model_selection import TimeSeriesSplit
 from sklearn.model_selection import train_test_split
 from sklearn.utils.validation import check_is_fitted
 
-from automllib.compose import make_mixed_transformer
-from automllib.compose import make_model
+from automllib.compose import Maker
 from automllib.constants import MAIN_TABLE_NAME
 from automllib.constants import ONE_DIM_ARRAY_TYPE
 from automllib.constants import TWO_DIM_ARRAY_TYPE
@@ -35,8 +37,36 @@ logger = logging.getLogger(__name__)
 
 
 class Model(BaseEstimator, MetaEstimatorMixin):
-    def __init__(self, info: Dict[str, Any], verbose: int = 1) -> None:
+    def __init__(
+        self,
+        info: Dict[str, Any],
+        cv: int = 3,
+        estimator_type: str = 'classifier',
+        lowercase: bool = False,
+        max_iter: int = 10,
+        metric: str = 'auc',
+        n_features_per_column: int = 32,
+        n_jobs: int = -1,
+        random_state: Union[int, np.random.RandomState] = 0,
+        sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
+        scoring: Union[str, Callable[..., float]] = 'roc_auc',
+        shuffle: bool = False,
+        subsample: Union[int, float] = 100_000,
+        verbose: int = 1
+    ) -> None:
+        self.cv = cv
+        self.estimator_type = estimator_type
         self.info = info
+        self.lowercase = lowercase
+        self.max_iter = max_iter
+        self.metric = metric
+        self.n_features_per_column = n_features_per_column
+        self.n_jobs = n_jobs
+        self.random_state = random_state
+        self.sampling_strategy = sampling_strategy
+        self.scoring = scoring
+        self.shuffle = shuffle
+        self.subsample = subsample
         self.verbose = verbose
 
     def _check_params(self) -> None:
@@ -57,38 +87,26 @@ class Model(BaseEstimator, MetaEstimatorMixin):
     ) -> 'Model':
         self.config_ = Config(self.info)
         self.tables_ = copy.deepcopy(Xs)
+        self.maker_ = Maker(
+            self.estimator_type,
+            cv=TimeSeriesSplit(self.cv),
+            lowercase=self.lowercase,
+            max_iter=self.max_iter,
+            metric=self.metric,
+            n_features_per_column=self.n_features_per_column,
+            n_jobs=self.n_jobs,
+            random_state=self.random_state,
+            sampling_strategy=self.sampling_strategy,
+            scoring=self.scoring,
+            shuffle=self.shuffle,
+            subsample=self.subsample,
+            verbose=self.verbose
+        )
+        self.model_ = self.maker_.make_model()
 
         X = merge_table(Xs, self.config_)
 
-        X.sort_values(self.info['time_col'], inplace=True)
-
-        self.preprocessor_ = make_mixed_transformer(verbose=self.verbose)
-
-        X = self.preprocessor_.fit_transform(X)
-
-        self.estimator_ = make_model(verbose=self.verbose)
-
-        X_train, X_valid, y_train, y_valid = train_test_split(
-            X,
-            y,
-            shuffle=False
-        )
-
-        fit_params = {
-            'optunasearchcv__early_stopping_rounds': 10,
-            'optunasearchcv__eval_set': [(X_valid, y_valid)],
-            'optunasearchcv__verbose': False
-        }
-
-        self.estimator_.fit(X_train, y_train, **fit_params)
-
-        try:
-            best_score = self.estimator_._final_estimator.best_score_
-
-            logger.info(f'The best score is {best_score:.3f}')
-
-        except Exception as e:
-            logger.exception(e)
+        self.model_.fit(X, y)
 
         return self
 
@@ -111,8 +129,6 @@ class Model(BaseEstimator, MetaEstimatorMixin):
 
         X.sort_index(inplace=True)
 
-        X = self.preprocessor_.transform(X)
-
-        result = self.estimator_.predict_proba(X)
+        result = self.model_.predict_proba(X)
 
         return pd.Series(result[:, 1])
