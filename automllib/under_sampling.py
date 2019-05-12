@@ -1,4 +1,5 @@
 from typing import Any
+from typing import Dict
 from typing import Union
 
 import numpy as np
@@ -19,7 +20,7 @@ class RandomUnderSampler(BaseSampler):
         self,
         random_state: Union[int, np.random.RandomState] = None,
         replacement: bool = False,
-        sampling_strategy: str = 'auto',
+        sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
         shuffle: bool = True,
         verbose: int = 0
     ):

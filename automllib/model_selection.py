@@ -678,7 +678,7 @@ class OptunaSearchCV(BaseEstimator):
         self,
         estimator,  # type: BaseEstimator
         param_distributions,  # type: Mapping[str, distributions.BaseDistribution]
-        cv=5,  # type: Union[int, BaseCrossValidator, None]
+        cv=5,  # type: Optional[Union[int, BaseCrossValidator]]
         enable_pruning=False,  # type: bool
         error_score=np.nan,  # type: Union[str, float]
         load_if_exists=False,  # type: bool
@@ -690,8 +690,8 @@ class OptunaSearchCV(BaseEstimator):
         refit=True,  # type: bool
         return_train_score=False,  # type: bool
         sampler=None,  # type: Optional[samplers.BaseSampler]
-        scoring=None,  # type: Union[str, Callable[..., float], None]
-        storage=None,  # type: Union[str, storages.BaseStorage, None]
+        scoring=None,  # type: Optional[Union[str, Callable[..., float]]]
+        storage=None,  # type: Optional[Union[str, storages.BaseStorage]]
         study_name=None,  # type: Optional[str]
         subsample=1.0,  # type: Union[int, float]
         timeout=None,  # type: Optional[float]
