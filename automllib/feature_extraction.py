@@ -82,6 +82,46 @@ class TimeVectorizer(BaseTransformer):
 
         return Xt
 
+class TimedeltaVectorizer(BaseTransformer):
+    def __init__(
+        self,
+        dtype: Union[str, Type] = None,
+        verbose: int = 0
+    ) -> None:
+        super().__init__(dtype=dtype, verbose=verbose)
+
+    def _check_params(self) -> None:
+        pass
+
+    def _fit(
+        self,
+        X: TWO_DIM_ARRAY_TYPE,
+        y: ONE_DIM_ARRAY_TYPE = None
+    ) -> 'TimedeltaVectorizer':
+        return self
+
+    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
+        X = pd.DataFrame(X)
+        dfs = []
+        columns = X.solumns
+        for i in range(len(columns)):
+            for j in range(i+1, len(columns)):
+                df = pd.DataFrame
+                df[f'diff_{columns[i]}_{columns[j]}'] = (
+                    df[columns[i]] -df[columns[j]]
+                ).astype('int64')
+                dfs.append(df)
+
+        Xt = pd.concat(dfs, axis=1)
+        _, n_features = Xt.shape
+
+        self.logger_.info(
+            f'{self.__class__.__name__} extracts {n_features} features.'
+        )
+
+        return Xt
+
+
 
 class MultiValueCategoricalVectorizer(BaseTransformer):
     _attributes = ['vectorizers_']

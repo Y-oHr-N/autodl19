@@ -20,6 +20,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.utils import check_random_state
 
 from .base import BaseEstimator
+from .feature_extraction import TimedeltaVectorizer
 from .feature_extraction import MultiValueCategoricalVectorizer
 # from .feature_selection import DropDuplicates
 from .feature_selection import DropInvariant
@@ -139,7 +140,11 @@ class Maker(object):
         )
 
     def make_time_transformer(self) -> BaseEstimator:
-        raise NotImplementedError()
+        return make_pipeline(
+            make_union(
+                TimedeltaVectorizer()
+            )
+        )
 
     def make_transformer(self) -> BaseEstimator:
         return make_column_transformer(
@@ -155,10 +160,10 @@ class Maker(object):
                 self.make_numerical_transformer(),
                 get_numerical_feature_names
             ),
-            # (
-            #     self.make_time_transformer(),
-            #     get_time_feature_names
-            # )
+            (
+                self.make_time_transformer(),
+                get_time_feature_names
+            )
         )
 
     def make_classifier(self) -> BaseEstimator:
