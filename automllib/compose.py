@@ -22,6 +22,7 @@ from sklearn.utils import check_random_state
 from .base import BaseEstimator
 from .feature_extraction import MultiValueCategoricalVectorizer
 # from .feature_selection import DropDuplicates
+from .feature_selection import DropCollinearFeatures
 from .feature_selection import DropInvariant
 from .feature_selection import DropUniqueKey
 from .feature_selection import NAProportionThreshold
@@ -121,6 +122,7 @@ class Maker(object):
         return make_pipeline(
             NAProportionThreshold(verbose=self.verbose),
             DropInvariant(verbose=self.verbose),
+            DropCollinearFeatures(verbose=self.verbose),
             make_union(
                 make_pipeline(
                     IterativeImputer(
