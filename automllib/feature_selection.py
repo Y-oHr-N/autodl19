@@ -43,6 +43,7 @@ class DropCollinearFeatures(BaseSelector):
     def _get_support(self) -> ONE_DIM_ARRAY_TYPE:
         triu = np.triu(self.corr_, k=1)
         triu = np.abs(triu)
+        triu = np.nan_to_num(triu)
 
         return np.all(triu <= self.threshold, axis=0)
 
