@@ -33,7 +33,7 @@ from .under_sampling import RandomUnderSampler
 from .utils import get_categorical_feature_names
 from .utils import get_multi_value_categorical_feature_names
 from .utils import get_numerical_feature_names
-# from .utils import get_time_feature_names
+from .utils import get_time_feature_names
 
 
 class Maker(object):
@@ -141,9 +141,7 @@ class Maker(object):
 
     def make_time_transformer(self) -> BaseEstimator:
         return make_pipeline(
-            make_union(
-                TimedeltaVectorizer()
-            )
+            TimedeltaVectorizer()
         )
 
     def make_transformer(self) -> BaseEstimator:

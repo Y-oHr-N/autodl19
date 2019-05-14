@@ -83,6 +83,7 @@ class TimeVectorizer(BaseTransformer):
         return Xt
 
 class TimedeltaVectorizer(BaseTransformer):
+    _attributes = []
     def __init__(
         self,
         dtype: Union[str, Type] = None,
@@ -103,13 +104,12 @@ class TimedeltaVectorizer(BaseTransformer):
     def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
         X = pd.DataFrame(X)
         dfs = []
-        columns = X.solumns
+        columns = X.columns
         for i in range(len(columns)):
             for j in range(i+1, len(columns)):
-                df = pd.DataFrame
-                df[f'diff_{columns[i]}_{columns[j]}'] = (
-                    df[columns[i]] -df[columns[j]]
-                ).astype('int64')
+                df = pd.DataFrame()
+                df[f'diff_{columns[i]}_{columns[j]}'] = \
+                    (X[columns[i]] - X[columns[j]]).astype('int64')
                 dfs.append(df)
 
         Xt = pd.concat(dfs, axis=1)
