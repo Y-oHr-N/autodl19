@@ -5,6 +5,7 @@ from typing import Type
 from typing import Union
 
 import numpy as np
+import pandas as pd
 
 from joblib import delayed
 from joblib import effective_n_jobs
@@ -105,6 +106,44 @@ class CountEncoder(BaseTransformer):
         )
 
         return np.concatenate(result)
+
+
+class RowStatistics(BaseTransformer):
+    _attributes = []
+
+    def __init__(
+        self,
+        dtype: Union[str, Type] = None,
+        n_jobs: int = 1,
+        verbose: int = 0
+    ) -> None:
+        super().__init__(dtype=dtype, verbose=verbose)
+
+        self.n_jobs = n_jobs
+
+    def _check_params(self) -> None:
+        pass
+
+    def _fit(
+        self,
+        X: TWO_DIM_ARRAY_TYPE,
+        y: ONE_DIM_ARRAY_TYPE = None
+    ) -> 'RowStatistics':
+        return self
+
+    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
+        n_samples, _ = X.shape
+        n_jobs = effective_n_jobs(self.n_jobs)
+        parallel = Parallel(n_jobs=n_jobs)
+        func = delayed(lambda X: pd.isnull(X).sum(axis=1).reshape(-1, 1))
+        result = parallel(
+            func(
+                safe_indexing(X, s)
+            ) for s in gen_even_slices(n_samples, n_jobs)
+        )
+
+        return np.concatenate(result)
+
 
 
 class StandardScaler(BaseTransformer):
