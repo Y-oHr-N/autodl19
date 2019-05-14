@@ -20,7 +20,6 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.utils import check_random_state
 
 from .base import BaseEstimator
-from .feature_extraction import TimedeltaVectorizer
 from .feature_extraction import MultiValueCategoricalVectorizer
 # from .feature_selection import DropDuplicates
 from .feature_selection import DropInvariant
@@ -29,6 +28,7 @@ from .feature_selection import NAProportionThreshold
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
+from .preprocessing import Diff
 from .under_sampling import RandomUnderSampler
 from .utils import get_categorical_feature_names
 from .utils import get_multi_value_categorical_feature_names
@@ -140,9 +140,7 @@ class Maker(object):
         )
 
     def make_time_transformer(self) -> BaseEstimator:
-        return make_pipeline(
-            TimedeltaVectorizer()
-        )
+        return Diff(dtype='float32', verbose=self.verbose)
 
     def make_transformer(self) -> BaseEstimator:
         return make_column_transformer(
