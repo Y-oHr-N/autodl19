@@ -29,13 +29,14 @@ from .feature_selection import NAProportionThreshold
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
+from .preprocessing import Diff
 from .preprocessing import RowStatistics
 from .preprocessing import StandardScaler
 from .under_sampling import RandomUnderSampler
 from .utils import get_categorical_feature_names
 from .utils import get_multi_value_categorical_feature_names
 from .utils import get_numerical_feature_names
-# from .utils import get_time_feature_names
+from .utils import get_time_feature_names
 
 
 class Maker(object):
@@ -143,27 +144,27 @@ class Maker(object):
         )
 
     def make_time_transformer(self) -> BaseEstimator:
-        raise NotImplementedError()
+        return Diff(dtype='float32', verbose=self.verbose)
 
     def make_transformer(self) -> BaseEstimator:
         return make_union(
             make_column_transformer(
-                (
-                    self.make_categorical_transformer(),
-                    get_categorical_feature_names
-                ),
-                (
-                    self.make_multi_value_categorical_transformer(),
-                    get_multi_value_categorical_feature_names
-                ),
-                (
-                    self.make_numerical_transformer(),
-                    get_numerical_feature_names
-                ),
                 # (
-                #     self.make_time_transformer(),
-                #     get_time_feature_names
-                # )
+                #     self.make_categorical_transformer(),
+                #     get_categorical_feature_names
+                # ),
+                # (
+                #     self.make_multi_value_categorical_transformer(),
+                #     get_multi_value_categorical_feature_names
+                # ),
+                # (
+                #     self.make_numerical_transformer(),
+                #     get_numerical_feature_names
+                # ),
+                (
+                    self.make_time_transformer(),
+                    get_time_feature_names
+                )
             ),
             RowStatistics(n_jobs=self.n_jobs, verbose=self.verbose)
         )
