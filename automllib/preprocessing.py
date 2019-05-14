@@ -1,4 +1,5 @@
 import collections
+import itertools
 
 from typing import List
 from typing import Type
@@ -105,6 +106,42 @@ class CountEncoder(BaseTransformer):
         )
 
         return np.concatenate(result)
+
+
+class Diff(BaseTransformer):
+    _attributes = []
+
+    def __init__(
+        self,
+        dtype: Union[str, Type] = None,
+        verbose: int = 0
+    ) -> None:
+        super().__init__(dtype=dtype, verbose=verbose)
+
+    def _check_params(self) -> None:
+        pass
+
+    def _fit(
+        self,
+        X: TWO_DIM_ARRAY_TYPE,
+        y: ONE_DIM_ARRAY_TYPE = None
+    ) -> 'Diff':
+        return self
+
+    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
+        n_samples, n_features = X.shape
+
+        if n_features < 2:
+            return np.empty((n_samples, 0))
+
+        Xs = []
+
+        for i, j in itertools.combinations(range(n_features), 2):
+            column = X[:, i] - X[:, j]
+
+            Xs.append(column.reshape(-1, 1))
+
+        return np.concatenate(Xs, axis=1)
 
 
 class StandardScaler(BaseTransformer):

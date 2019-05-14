@@ -29,12 +29,13 @@ from .feature_selection import NAProportionThreshold
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
+from .preprocessing import Diff
 from .preprocessing import StandardScaler
 from .under_sampling import RandomUnderSampler
 from .utils import get_categorical_feature_names
 from .utils import get_multi_value_categorical_feature_names
 from .utils import get_numerical_feature_names
-# from .utils import get_time_feature_names
+from .utils import get_time_feature_names
 
 
 class Maker(object):
@@ -142,7 +143,7 @@ class Maker(object):
         )
 
     def make_time_transformer(self) -> BaseEstimator:
-        raise NotImplementedError()
+        return Diff(dtype='float32', verbose=self.verbose)
 
     def make_transformer(self) -> BaseEstimator:
         return make_column_transformer(
@@ -158,10 +159,10 @@ class Maker(object):
                 self.make_numerical_transformer(),
                 get_numerical_feature_names
             ),
-            # (
-            #     self.make_time_transformer(),
-            #     get_time_feature_names
-            # )
+            (
+                self.make_time_transformer(),
+                get_time_feature_names
+            )
         )
 
     def make_classifier(self) -> BaseEstimator:
