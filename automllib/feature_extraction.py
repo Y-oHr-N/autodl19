@@ -105,6 +105,12 @@ class TimedeltaVectorizer(BaseTransformer):
         X = pd.DataFrame(X)
         dfs = []
         columns = X.columns
+        if len(columns) < 2 :
+            self.logger_.info(
+                f'{self.__class__.__name__} extracts 0 features'
+            )
+            return pd.DataFrame(index=X.index, columns=[])
+
         for i in range(len(columns)):
             for j in range(i+1, len(columns)):
                 df = pd.DataFrame()
