@@ -149,18 +149,18 @@ class Maker(object):
     def make_transformer(self) -> BaseEstimator:
         return make_union(
             make_column_transformer(
-                # (
-                #     self.make_categorical_transformer(),
-                #     get_categorical_feature_names
-                # ),
-                # (
-                #     self.make_multi_value_categorical_transformer(),
-                #     get_multi_value_categorical_feature_names
-                # ),
-                # (
-                #     self.make_numerical_transformer(),
-                #     get_numerical_feature_names
-                # ),
+                (
+                    self.make_categorical_transformer(),
+                    get_categorical_feature_names
+                ),
+                (
+                    self.make_multi_value_categorical_transformer(),
+                    get_multi_value_categorical_feature_names
+                ),
+                (
+                    self.make_numerical_transformer(),
+                    get_numerical_feature_names
+                ),
                 (
                     self.make_time_transformer(),
                     get_time_feature_names
