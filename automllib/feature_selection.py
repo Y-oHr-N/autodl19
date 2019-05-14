@@ -13,6 +13,41 @@ class DropDuplicates(BaseSelector):
     pass
 
 
+class DropCollinearFeatures(BaseSelector):
+    _attributes = ['corr_']
+
+    def __init__(
+        self,
+        dtype: Union[str, Type] = None,
+        threshold: float = 0.95,
+        verbose: int = 0
+    ) -> None:
+        super().__init__(dtype=dtype, verbose=verbose)
+
+        self.threshold = threshold
+
+    def _check_params(self) -> None:
+        pass
+
+    def _fit(
+        self,
+        X: TWO_DIM_ARRAY_TYPE,
+        y: ONE_DIM_ARRAY_TYPE = None
+    ) -> 'DropCollinearFeatures':
+        X = X.astype('float64')
+
+        self.corr_ = pd._libs.algos.nancorr(X)
+
+        return self
+
+    def _get_support(self) -> ONE_DIM_ARRAY_TYPE:
+        triu = np.triu(self.corr_, k=1)
+        triu = np.abs(triu)
+        triu = np.nan_to_num(triu)
+
+        return np.all(triu <= self.threshold, axis=0)
+
+
 class DropInvariant(BaseSelector):
     _attributes = ['nunique_']
 

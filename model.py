@@ -41,10 +41,12 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         self,
         info: Dict[str, Any],
         cv: int = 3,
+        early_stopping_rounds: int = 10,
         estimator_type: str = 'classifier',
         lowercase: bool = False,
         max_iter: int = 10,
         metric: str = 'auc',
+        n_estimators: int = 100,
         n_features_per_column: int = 32,
         n_jobs: int = -1,
         random_state: Union[int, np.random.RandomState] = 0,
@@ -52,14 +54,17 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         scoring: Union[str, Callable[..., float]] = 'roc_auc',
         shuffle: bool = False,
         subsample: Union[int, float] = 100_000,
+        validation_size: float = 0.1,
         verbose: int = 1
     ) -> None:
         self.cv = cv
+        self.early_stopping_rounds = early_stopping_rounds
         self.estimator_type = estimator_type
         self.info = info
         self.lowercase = lowercase
         self.max_iter = max_iter
         self.metric = metric
+        self.n_estimators = n_estimators
         self.n_features_per_column = n_features_per_column
         self.n_jobs = n_jobs
         self.random_state = random_state
@@ -67,6 +72,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         self.scoring = scoring
         self.shuffle = shuffle
         self.subsample = subsample
+        self.validation_size = validation_size
         self.verbose = verbose
 
     def _check_params(self) -> None:
@@ -93,6 +99,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
             lowercase=self.lowercase,
             max_iter=self.max_iter,
             metric=self.metric,
+            n_estimators=self.n_estimators,
             n_features_per_column=self.n_features_per_column,
             n_jobs=self.n_jobs,
             random_state=self.random_state,
@@ -102,11 +109,28 @@ class Model(BaseEstimator, MetaEstimatorMixin):
             subsample=self.subsample,
             verbose=self.verbose
         )
-        self.model_ = self.maker_.make_model()
+        self.transformer_ = self.maker_.make_transformer()
+        self.sampler_ = self.maker_.make_sampler()
+        self.model_ = self.maker_.make_search_cv()
 
         X = merge_table(Xs, self.config_)
+        X_train, X_valid, y_train, y_valid = train_test_split(
+            X,
+            y,
+            random_state=self.random_state,
+            shuffle=self.shuffle,
+            test_size=self.validation_size
+        )
+        X_train = self.transformer_.fit_transform(X_train)
+        X_valid = self.transformer_.transform(X_valid)
+        X_train, y_train = self.sampler_.fit_resample(X_train, y_train)
+        fit_params = {
+            'lgbmclassifier__early_stopping_rounds': self.early_stopping_rounds,
+            'lgbmclassifier__eval_set': [(X_valid, y_valid)],
+            'lgbmclassifier__verbose': False
+        }
 
-        self.model_.fit(X, y)
+        self.model_.fit(X_train, y_train)
 
         return self
 
@@ -129,6 +153,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
 
         X.sort_index(inplace=True)
 
+        X = self.transformer_.transform(X)
         result = self.model_.predict_proba(X)
 
         return pd.Series(result[:, 1])

@@ -22,6 +22,7 @@ from sklearn.utils import check_random_state
 from .base import BaseEstimator
 from .feature_extraction import MultiValueCategoricalVectorizer
 # from .feature_selection import DropDuplicates
+from .feature_selection import DropCollinearFeatures
 from .feature_selection import DropInvariant
 from .feature_selection import DropUniqueKey
 from .feature_selection import NAProportionThreshold
@@ -29,6 +30,7 @@ from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
 from .preprocessing import Diff
+from .preprocessing import StandardScaler
 from .under_sampling import RandomUnderSampler
 from .utils import get_categorical_feature_names
 from .utils import get_multi_value_categorical_feature_names
@@ -122,14 +124,15 @@ class Maker(object):
         return make_pipeline(
             NAProportionThreshold(verbose=self.verbose),
             DropInvariant(verbose=self.verbose),
+            DropCollinearFeatures(verbose=self.verbose),
             make_union(
                 make_pipeline(
+                    Clip(dtype='float32', verbose=self.verbose),
+                    StandardScaler(n_jobs=self.n_jobs, verbose=self.verbose),
                     IterativeImputer(
                         estimator=LinearRegression(n_jobs=self.n_jobs),
-                        initial_strategy='median',
                         max_iter=self.max_iter
                     ),
-                    Clip(dtype='float32', verbose=self.verbose),
                     PolynomialFeatures(
                         include_bias=False,
                         interaction_only=True
