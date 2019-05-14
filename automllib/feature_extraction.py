@@ -105,7 +105,8 @@ class TimedeltaVectorizer(BaseTransformer):
         X = pd.DataFrame(X)
         dfs = []
         columns = X.columns
-        if len(columns) < 2 :
+        min_column = 2
+        if len(columns) < min_column:
             self.logger_.info(
                 f'{self.__class__.__name__} extracts 0 features'
             )
