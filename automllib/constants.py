@@ -39,7 +39,7 @@ AGGREGATE_FUNCTIONS_MAP = {
         'mean',
         # 'median',
         'sum',
-        'var',
+        'std',
         'skew',
         kurtosis
     ],
