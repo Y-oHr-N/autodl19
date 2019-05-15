@@ -141,15 +141,9 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         timeout: float = None
     ) -> ONE_DIM_ARRAY_TYPE:
         Xs = self.tables_
-        main_table = Xs[MAIN_TABLE_NAME]
-        main_table = pd.concat([main_table, X_test], keys=['train', 'test'])
-        main_table.index = main_table.index.map(lambda x: f'{x[0]}_{x[1]}')
-        Xs[MAIN_TABLE_NAME] = main_table
+        Xs[MAIN_TABLE_NAME] = X_test
 
         X = merge_table(Xs, self.config_)
-
-        X = X[X.index.str.startswith('test')]
-        X.index = X.index.map(lambda x: int(x.split('_')[1]))
 
         X.sort_index(inplace=True)
 
