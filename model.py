@@ -130,7 +130,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
             'lgbmclassifier__verbose': False
         }
 
-        self.model_.fit(X_train, y_train)
+        self.model_.fit(X_train, y_train, **fit_params)
 
         return self
 
