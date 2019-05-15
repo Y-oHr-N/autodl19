@@ -34,6 +34,18 @@ def count_encode(
     return Xt
 
 
+def diff(X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
+    n_samples, n_input_features = X.shape
+    n_output_features = n_input_features * (n_input_features - 1) // 2
+    Xt = np.empty((n_samples, n_output_features))
+    iterator = itertools.combinations(range(n_input_features), 2)
+
+    for j, (k, l) in enumerate(iterator):
+        Xt[:, j] = X[:, k] - X[:, l]
+
+    return Xt
+
+
 class Clip(BaseTransformer):
     _attributes = ['data_max_', 'data_min_']
 
@@ -126,9 +138,12 @@ class Diff(BaseTransformer):
     def __init__(
         self,
         dtype: Union[str, Type] = None,
+        n_jobs: int = 1,
         verbose: int = 0
     ) -> None:
         super().__init__(dtype=dtype, verbose=verbose)
+
+        self.n_jobs = n_jobs
 
     def _check_params(self) -> None:
         pass
@@ -141,19 +156,17 @@ class Diff(BaseTransformer):
         return self
 
     def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
-        n_samples, n_features = X.shape
+        n_samples, _ = X.shape
+        n_jobs = effective_n_jobs(self.n_jobs)
+        parallel = Parallel(n_jobs=n_jobs)
+        func = delayed(diff)
+        result = parallel(
+            func(
+                safe_indexing(X, s)
+            ) for s in gen_even_slices(n_samples, n_jobs)
+        )
 
-        if n_features < 2:
-            return np.empty((n_samples, 0))
-
-        Xs = []
-
-        for i, j in itertools.combinations(range(n_features), 2):
-            column = X[:, i] - X[:, j]
-
-            Xs.append(column.reshape(-1, 1))
-
-        return np.concatenate(Xs, axis=1)
+        return np.concatenate(result)
 
 
 class StandardScaler(BaseTransformer):
