@@ -22,9 +22,10 @@ class RandomUnderSampler(BaseSampler):
         replacement: bool = False,
         sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
         shuffle: bool = True,
+        validate: bool = True,
         verbose: int = 0
     ):
-        super().__init__(verbose=verbose)
+        super().__init__(validate=validate, verbose=verbose)
 
         self.random_state = random_state
         self.replacement = replacement

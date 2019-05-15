@@ -86,6 +86,7 @@ class Maker(object):
                 random_state=self.random_state,
                 sampling_strategy=self.sampling_strategy,
                 shuffle=self.shuffle,
+                validate=False,
                 verbose=self.verbose
             )
         elif self.estimator_type == 'regressor':

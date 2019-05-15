@@ -33,7 +33,8 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
         pass
 
     @abstractmethod
-    def __init__(self, verbose: int = 0) -> None:
+    def __init__(self, validate: bool = True, verbose: int = 0) -> None:
+        self.validate = validate
         self.verbose = verbose
 
     @abstractmethod
@@ -57,28 +58,30 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
         dtype: Union[str, Type, List[Type]] = None,
         force_all_finite: Union[str, bool] = 'allow-nan'
     ) -> TWO_DIM_ARRAY_TYPE:
-        if y is None:
-            X = check_array(
-                X,
-                accept_sparse=accept_sparse,
-                estimator=self,
-                dtype=dtype,
-                force_all_finite=force_all_finite
-            )
-        else:
-            X, y = check_X_y(
-                X,
-                y,
-                accept_sparse=accept_sparse,
-                estimator=self,
-                dtype=dtype,
-                force_all_finite=force_all_finite
-            )
+        if self.validate:
+            if y is None:
+                X = check_array(
+                    X,
+                    accept_sparse=accept_sparse,
+                    estimator=self,
+                    dtype=dtype,
+                    force_all_finite=force_all_finite
+                )
+            else:
+                X, y = check_X_y(
+                    X,
+                    y,
+                    accept_sparse=accept_sparse,
+                    estimator=self,
+                    dtype=dtype,
+                    force_all_finite=force_all_finite
+                )
 
         return X, y
 
     def _check_is_fitted(self) -> None:
-        check_is_fitted(self, self._attributes)
+        if self.validate:
+            check_is_fitted(self, self._attributes)
 
     def _get_logger(self) -> logging.Logger:
         logger = logging.getLogger(__name__)
@@ -212,9 +215,10 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
     def __init__(
         self,
         dtype: Union[str, Type] = None,
+        validate: bool = True,
         verbose: int = 0
     ) -> None:
-        super().__init__(verbose=verbose)
+        super().__init__(validate=validate, verbose=verbose)
 
         self.dtype = dtype
 

@@ -34,9 +34,10 @@ class TimeVectorizer(BaseTransformer):
     def __init__(
         self,
         dtype: Union[str, Type] = None,
+        validate: bool = True,
         verbose: int = 0
     ) -> None:
-        super().__init__(dtype=dtype, verbose=verbose)
+        super().__init__(dtype=dtype, validate=validate, verbose=verbose)
 
     def _check_params(self) -> None:
         pass
@@ -92,9 +93,10 @@ class MultiValueCategoricalVectorizer(BaseTransformer):
         lowercase: bool = True,
         n_features_per_column: int = 1_048_576,
         n_jobs: int = 1,
+        validate: bool = True,
         verbose: int = 0
     ) -> None:
-        super().__init__(dtype=dtype, verbose=verbose)
+        super().__init__(dtype=dtype, validate=validate, verbose=verbose)
 
         self.lowercase = lowercase
         self.n_features_per_column = n_features_per_column

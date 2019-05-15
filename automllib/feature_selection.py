@@ -20,9 +20,10 @@ class DropCollinearFeatures(BaseSelector):
         self,
         dtype: Union[str, Type] = None,
         threshold: float = 0.95,
+        validate: bool = True,
         verbose: int = 0
     ) -> None:
-        super().__init__(dtype=dtype, verbose=verbose)
+        super().__init__(dtype=dtype, validate=validate, verbose=verbose)
 
         self.threshold = threshold
 
@@ -54,9 +55,10 @@ class DropInvariant(BaseSelector):
     def __init__(
         self,
         dtype: Union[str, Type] = None,
+        validate: bool = True,
         verbose: int = 0
     ) -> None:
-        super().__init__(dtype=dtype, verbose=verbose)
+        super().__init__(dtype=dtype, validate=validate, verbose=verbose)
 
     def _check_params(self) -> None:
         pass
@@ -80,9 +82,10 @@ class DropUniqueKey(BaseSelector):
     def __init__(
         self,
         dtype: Union[str, Type] = None,
+        validate: bool = True,
         verbose: int = 0
     ) -> None:
-        super().__init__(dtype=dtype, verbose=verbose)
+        super().__init__(dtype=dtype, validate=validate, verbose=verbose)
 
     def _check_params(self) -> None:
         pass
@@ -108,9 +111,10 @@ class NAProportionThreshold(BaseSelector):
         self,
         dtype: Union[str, Type] = None,
         threshold: float = 0.6,
+        validate: bool = True,
         verbose: int = 0
     ) -> None:
-        super().__init__(dtype=dtype, verbose=verbose)
+        super().__init__(dtype=dtype, validate=validate, verbose=verbose)
 
         self.threshold = threshold
 

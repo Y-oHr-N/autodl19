@@ -55,9 +55,10 @@ class Clip(BaseTransformer):
         high: float = 99.9,
         low: float = 0.1,
         n_jobs: int = 1,
+        validate: bool = True,
         verbose: int = 0
     ) -> None:
-        super().__init__(dtype=dtype, verbose=verbose)
+        super().__init__(dtype=dtype, validate=validate, verbose=verbose)
 
         self.high = high
         self.low = low
@@ -100,9 +101,10 @@ class CountEncoder(BaseTransformer):
         self,
         dtype: Union[str, Type] = None,
         n_jobs: int = 1,
+        validate: bool = True,
         verbose: int = 0
     ) -> None:
-        super().__init__(dtype=dtype, verbose=verbose)
+        super().__init__(dtype=dtype, validate=validate, verbose=verbose)
 
         self.n_jobs = n_jobs
 
@@ -139,9 +141,10 @@ class Diff(BaseTransformer):
         self,
         dtype: Union[str, Type] = None,
         n_jobs: int = 1,
+        validate: bool = True,
         verbose: int = 0
     ) -> None:
-        super().__init__(dtype=dtype, verbose=verbose)
+        super().__init__(dtype=dtype, validate=validate, verbose=verbose)
 
         self.n_jobs = n_jobs
 
@@ -176,9 +179,10 @@ class StandardScaler(BaseTransformer):
         self,
         dtype: Union[str, Type] = None,
         n_jobs: int = 1,
+        validate: bool = True,
         verbose: int = 0
     ) -> None:
-        super().__init__(dtype=dtype, verbose=verbose)
+        super().__init__(dtype=dtype, validate=validate, verbose=verbose)
 
         self.n_jobs = n_jobs
 
