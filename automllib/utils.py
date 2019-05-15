@@ -5,8 +5,6 @@ from typing import Any
 from typing import Callable
 from typing import Tuple
 
-import numpy as np
-
 from .constants import CATEGORICAL_PREFIX as C_PREFIX
 from .constants import MULTI_VALUE_CATEGORICAL_PREFIX as M_PREFIX
 from .constants import NUMERICAL_PREFIX as N_PREFIX
@@ -81,7 +79,7 @@ class Timer(object):
 
         remaining_time = self.time_budget - self.get_elapsed_time()
 
-        return np.maximum(0.0, remaining_time)
+        return max(0.0, remaining_time)
 
     def check_remaining_time(self) -> None:
         if self.get_remaining_time() == 0.0:
