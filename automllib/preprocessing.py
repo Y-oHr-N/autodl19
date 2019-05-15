@@ -40,14 +40,16 @@ class Clip(BaseTransformer):
     def __init__(
         self,
         dtype: Union[str, Type] = None,
-        low: float = 0.1,
         high: float = 99.9,
+        low: float = 0.1,
+        n_jobs: int = 1,
         verbose: int = 0
     ) -> None:
         super().__init__(dtype=dtype, verbose=verbose)
 
-        self.low = low
         self.high = high
+        self.low = low
+        self.n_jobs = n_jobs
 
     def _check_params(self) -> None:
         pass
@@ -66,7 +68,17 @@ class Clip(BaseTransformer):
         return self
 
     def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
-        return np.clip(X, self.data_min_, self.data_max_)
+        n_samples, _ = X.shape
+        n_jobs = effective_n_jobs(self.n_jobs)
+        parallel = Parallel(n_jobs=n_jobs)
+        func = delayed(np.clip)
+        result = parallel(
+            func(
+                safe_indexing(X, s), self.data_min_, self.data_max_
+            ) for s in gen_even_slices(n_samples, n_jobs)
+        )
+
+        return np.concatenate(result)
 
 
 class CountEncoder(BaseTransformer):
