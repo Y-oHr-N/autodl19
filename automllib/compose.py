@@ -128,7 +128,11 @@ class Maker(object):
             DropCollinearFeatures(verbose=self.verbose),
             make_union(
                 make_pipeline(
-                    Clip(dtype='float32', verbose=self.verbose),
+                    Clip(
+                        dtype='float32',
+                        n_jobs=self.n_jobs,
+                        verbose=self.verbose
+                    ),
                     StandardScaler(n_jobs=self.n_jobs, verbose=self.verbose),
                     IterativeImputer(
                         estimator=LinearRegression(n_jobs=self.n_jobs),
@@ -144,7 +148,11 @@ class Maker(object):
         )
 
     def make_time_transformer(self) -> BaseEstimator:
-        return Diff(dtype='float32', verbose=self.verbose)
+        return Diff(
+            dtype='float32',
+            n_jobs=self.n_jobs,
+            verbose=self.verbose
+        )
 
     def make_transformer(self) -> BaseEstimator:
         return make_column_transformer(
