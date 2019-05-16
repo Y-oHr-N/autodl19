@@ -114,6 +114,9 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         self.model_ = self.maker_.make_search_cv()
 
         X = merge_table(Xs, self.config_)
+
+        X.sort_values(self.info['time_col'], inplace=True)
+
         X_train, X_valid, y_train, y_valid = train_test_split(
             X,
             y,
