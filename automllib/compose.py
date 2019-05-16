@@ -228,9 +228,6 @@ class Maker(object):
             f'{model_name}__subsample':
                 optuna.distributions.UniformDistribution(0.5, 1.0)
         }
-        random_state = check_random_state(self.random_state)
-        seed = random_state.randint(0, np.iinfo(np.int32).max)
-        sampler = optuna.samplers.TPESampler(seed=seed)
 
         return OptunaSearchCV(
             model,
@@ -239,7 +236,6 @@ class Maker(object):
             n_jobs=self.n_jobs,
             n_trials=self.n_trials,
             random_state=self.random_state,
-            sampler=sampler,
             scoring=self.scoring,
             subsample=self.subsample,
             timeout=self.timeout,
