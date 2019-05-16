@@ -148,10 +148,13 @@ class Maker(object):
         )
 
     def make_time_transformer(self) -> BaseEstimator:
-        return Diff(
-            dtype='float32',
-            n_jobs=self.n_jobs,
-            verbose=self.verbose
+        return make_pipeline(
+            NAProportionThreshold(verbose=self.verbose),
+            Diff(
+                dtype='float32',
+                n_jobs=self.n_jobs,
+                verbose=self.verbose
+            )
         )
 
     def make_transformer(self) -> BaseEstimator:
