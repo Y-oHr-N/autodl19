@@ -58,30 +58,28 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
         dtype: Union[str, Type, List[Type]] = None,
         force_all_finite: Union[str, bool] = 'allow-nan'
     ) -> TWO_DIM_ARRAY_TYPE:
-        if self.validate:
-            if y is None:
-                X = check_array(
-                    X,
-                    accept_sparse=accept_sparse,
-                    estimator=self,
-                    dtype=dtype,
-                    force_all_finite=force_all_finite
-                )
-            else:
-                X, y = check_X_y(
-                    X,
-                    y,
-                    accept_sparse=accept_sparse,
-                    estimator=self,
-                    dtype=dtype,
-                    force_all_finite=force_all_finite
-                )
+        if y is None:
+            X = check_array(
+                X,
+                accept_sparse=accept_sparse,
+                estimator=self,
+                dtype=dtype,
+                force_all_finite=force_all_finite
+            )
+        else:
+            X, y = check_X_y(
+                X,
+                y,
+                accept_sparse=accept_sparse,
+                estimator=self,
+                dtype=dtype,
+                force_all_finite=force_all_finite
+            )
 
         return X, y
 
     def _check_is_fitted(self) -> None:
-        if self.validate:
-            check_is_fitted(self, self._attributes)
+        check_is_fitted(self, self._attributes)
 
     def _get_logger(self) -> logging.Logger:
         logger = logging.getLogger(__name__)
@@ -117,9 +115,10 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
             Return self.
         """
 
-        self._check_params()
+        if self.validate:
+            self._check_params()
 
-        X, y = self._check_X_y(X, y)
+            X, y = self._check_X_y(X, y)
 
         self.logger_ = self._get_logger()
         self.timeit_ = Timeit(self.logger_)
@@ -149,7 +148,8 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
             List of file names in which the data is stored.
         """
 
-        self._check_is_fitted()
+        if self.validate:
+            self._check_is_fitted()
 
         return dump(self, filename, **kwargs)
 
@@ -162,13 +162,14 @@ class BaseSampler(BaseEstimator):
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE,
     ) -> Tuple[TWO_DIM_ARRAY_TYPE, ONE_DIM_ARRAY_TYPE]:
-        self._check_is_fitted()
+        if self.validate:
+            self._check_is_fitted()
 
-        X, y = self._check_X_y(X, y)
-        n_input_samples = _num_samples(X)
+            X, y = self._check_X_y(X, y)
 
         X = safe_indexing(X, self.sample_indices_)
         y = safe_indexing(y, self.sample_indices_)
+        n_input_samples = _num_samples(X)
         n_output_samples = len(self.sample_indices_)
 
         self.logger_.info(
@@ -240,9 +241,10 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
             Transformed data.
         """
 
-        self._check_is_fitted()
+        if self.validate:
+            self._check_is_fitted()
 
-        X, _ = self._check_X_y(X)
+            X, _ = self._check_X_y(X)
 
         func = self.timeit_(self._transform)
 
