@@ -244,7 +244,7 @@ class Maker(object):
 
     def make_model(self) -> BaseEstimator:
         return make_pipeline(
-            self.make_sampler(),
             self.make_transformer(),
+            self.make_sampler(),
             self.make_search_cv()
         )

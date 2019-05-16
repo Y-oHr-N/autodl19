@@ -109,8 +109,8 @@ class Model(BaseEstimator, MetaEstimatorMixin):
             subsample=self.subsample,
             verbose=self.verbose
         )
-        self.sampler_ = self.maker_.make_sampler()
         self.transformer_ = self.maker_.make_transformer()
+        self.sampler_ = self.maker_.make_sampler()
         self.model_ = self.maker_.make_search_cv()
 
         X = merge_table(Xs, self.config_)
@@ -124,9 +124,9 @@ class Model(BaseEstimator, MetaEstimatorMixin):
             shuffle=self.shuffle,
             test_size=self.validation_size
         )
-        X_train, y_train = self.sampler_.fit_resample(X_train, y_train)
         X_train = self.transformer_.fit_transform(X_train)
         X_valid = self.transformer_.transform(X_valid)
+        X_train, y_train = self.sampler_.fit_resample(X_train, y_train)
         fit_params = {
             'lgbmclassifier__early_stopping_rounds': self.early_stopping_rounds,
             'lgbmclassifier__eval_set': [(X_valid, y_valid)],
