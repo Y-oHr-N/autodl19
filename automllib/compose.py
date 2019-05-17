@@ -145,7 +145,10 @@ class Maker(object):
                     )
                 ),
                 make_pipeline(
-                    SimpleImputer(fill_value=np.inf, strategy='constant'),
+                    SimpleImputer(
+                        fill_value=np.finfo('float32').max,
+                        strategy='constant'
+                    ),
                     CountEncoder(
                         dtype='float32',
                         n_jobs=self.n_jobs,
