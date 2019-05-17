@@ -29,7 +29,7 @@ from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
 from .preprocessing import Diff
-from .preprocessing import RowStatistics
+# from .preprocessing import RowStatistics
 from .preprocessing import StandardScaler
 from .under_sampling import RandomUnderSampler
 from .utils import get_categorical_feature_names
@@ -186,7 +186,7 @@ class Maker(object):
                     get_time_feature_names
                 )
             ),
-            RowStatistics(n_jobs=self.n_jobs, verbose=self.verbose)
+            # RowStatistics(n_jobs=self.n_jobs, verbose=self.verbose)
         )
 
     def make_model(self) -> BaseEstimator:
