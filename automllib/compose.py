@@ -17,7 +17,6 @@ from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import BaseCrossValidator
 from sklearn.pipeline import make_union
 from sklearn.preprocessing import PolynomialFeatures
-from sklearn.utils import check_random_state
 
 from .base import BaseEstimator
 from .feature_extraction import MultiValueCategoricalVectorizer
