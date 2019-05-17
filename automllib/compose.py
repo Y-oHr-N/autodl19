@@ -177,40 +177,36 @@ class Maker(object):
             )
         )
 
-    def make_classifier(self) -> BaseEstimator:
-        return make_pipeline(
-            # SelectFpr(),
-            lgb.LGBMClassifier(
-                max_depth=7,
-                metric=self.metric,
-                n_estimators=self.n_estimators,
-                n_jobs=1,
-                random_state=self.random_state,
-                subsample_freq=1
-            )
-        )
-
-    def make_regressor(self) -> BaseEstimator:
-        return make_pipeline(
-            # SelectFpr(score_func=f_regression),
-            lgb.LGBMRegressor(
-                max_depth=7,
-                metric=self.metric,
-                n_estimators=self.n_estimators,
-                n_jobs=1,
-                random_state=self.random_state,
-                subsample_freq=1
-            )
-        )
-
-    def make_search_cv(self) -> BaseEstimator:
+    def make_model(self) -> BaseEstimator:
         if self.estimator_type == 'classifier':
-            model = self.make_classifier()
+            return make_pipeline(
+                # SelectFpr(),
+                lgb.LGBMClassifier(
+                    max_depth=7,
+                    metric=self.metric,
+                    n_estimators=self.n_estimators,
+                    n_jobs=1,
+                    random_state=self.random_state,
+                    subsample_freq=1
+                )
+            )
         elif self.estimator_type == 'regressor':
-            model = self.make_regressor()
+            return make_pipeline(
+                # SelectFpr(score_func=f_regression),
+                lgb.LGBMRegressor(
+                    max_depth=7,
+                    metric=self.metric,
+                    n_estimators=self.n_estimators,
+                    n_jobs=1,
+                    random_state=self.random_state,
+                    subsample_freq=1
+                )
+            )
         else:
             raise ValueError(f'Unknown estimator_type: {self.estimator_type}.')
 
+    def make_search_cv(self) -> BaseEstimator:
+        model = self.make_model()
         model_name = model._final_estimator.__class__.__name__.lower()
         param_distributions = {
             f'{model_name}__colsample_bytree':
@@ -240,11 +236,4 @@ class Maker(object):
             subsample=self.subsample,
             timeout=self.timeout,
             verbose=self.verbose
-        )
-
-    def make_model(self) -> BaseEstimator:
-        return make_pipeline(
-            self.make_transformer(),
-            self.make_sampler(),
-            self.make_search_cv()
         )
