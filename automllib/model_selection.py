@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 from logging import DEBUG
 from logging import INFO
+from logging import Logger  # NOQA
 from logging import WARNING
 from numbers import Number
 from time import time
@@ -54,8 +55,6 @@ if types.TYPE_CHECKING:
 
     OneDimArrayType = Union[List[float], np.ndarray, pd.Series]
     TwoDimArrayType = Union[List[List[float]], np.ndarray, spmatrix, pd.DataFrame]
-
-logger = logging.get_logger(__name__)
 
 
 def _check_sklearn_availability():
@@ -194,7 +193,7 @@ class Objective(object):
 
         self._store_scores(trial, scores)
 
-        return - trial.user_attrs['mean_test_score']
+        return trial.user_attrs['mean_test_score']
 
     def _cross_validate_with_pruning(
         self,
@@ -241,7 +240,7 @@ class Objective(object):
                 scores['fit_time'][i] += out[1]
                 scores['score_time'][i] += out[2]
 
-            intermediate_value = - np.nanmean(scores['test_score'])
+            intermediate_value = np.nanmean(scores['test_score'])
 
             trial.report(intermediate_value, step=step)
 
@@ -249,7 +248,7 @@ class Objective(object):
                 self._store_scores(trial, scores)
 
                 raise structs.TrialPruned(
-                    'trial was pruned at iteration {}'.format(step)
+                    'trial was pruned at iteration {}.'.format(step)
                 )
 
         return scores
@@ -439,6 +438,9 @@ class OptunaSearchCV(BaseEstimator):
             Time for refitting the best estimator. This is present only if
             ``refit`` is set to :obj:`True`.
 
+        sample_indices_:
+            Indices of samples that are used during hyperparameter search.
+
         scorer_:
             Scorer function.
 
@@ -494,7 +496,9 @@ class OptunaSearchCV(BaseEstimator):
         # type: () -> float
         """Mean cross-validated score of the best estimator."""
 
-        return - self.best_value_
+        self._check_is_fitted()
+
+        return self.study_.best_value
 
     @property
     def best_trial_(self):
@@ -504,15 +508,6 @@ class OptunaSearchCV(BaseEstimator):
         self._check_is_fitted()
 
         return self.study_.best_trial
-
-    @property
-    def best_value_(self):
-        # type: () -> float
-        """Best objective value in the :class:`~optuna.study.Study`."""
-
-        self._check_is_fitted()
-
-        return self.study_.best_value
 
     @property
     def classes_(self):
@@ -700,7 +695,12 @@ class OptunaSearchCV(BaseEstimator):
     def _check_is_fitted(self):
         # type: () -> None
 
-        attributes = ['n_splits_', 'scorer_', 'study_']
+        attributes = [
+            'n_splits_',
+            'sample_indices_',
+            'scorer_',
+            'study_'
+        ]
 
         if self.refit:
             attributes += ['best_estimator_', 'refit_time_']
@@ -712,25 +712,42 @@ class OptunaSearchCV(BaseEstimator):
 
         if not hasattr(self.estimator, 'fit'):
             raise ValueError(
-                'estimator must be a scikit-learn estimator'
+                'estimator must be a scikit-learn estimator.'
             )
 
         if type(self.param_distributions) is not dict:
-            raise ValueError('param_distributions must be a dictionary')
+            raise ValueError('param_distributions must be a dictionary.')
 
         for name, distribution in self.param_distributions.items():
             if not isinstance(distribution, distributions.BaseDistribution):
                 raise ValueError(
-                    'value of {} must be a optuna distribution'.format(name)
+                    'Value of {} must be a optuna distribution.'.format(name)
                 )
 
         if self.enable_pruning and not hasattr(self.estimator, 'partial_fit'):
-            raise ValueError('estimator must support partial_fit')
+            raise ValueError('estimator must support partial_fit.')
 
         if self.max_iter <= 0:
             raise ValueError(
-                'max_iter must be > 0, got {}'.format(self.max_iter)
+                'max_iter must be > 0, got {}.'.format(self.max_iter)
             )
+
+        if self.study is not None and self.study.direction != 'maximize':
+            raise ValueError('direction of study must be \'maximize\'.')
+
+    def _get_logger(self):
+        # type: () -> Logger
+
+        logger = logging.get_logger(__name__)
+
+        if self.verbose > 1:
+            logger.setLevel(DEBUG)
+        elif self.verbose > 0:
+            logger.setLevel(INFO)
+        else:
+            logger.setLevel(WARNING)
+
+        return logger
 
     def _refit(
         self,
@@ -747,9 +764,9 @@ class OptunaSearchCV(BaseEstimator):
         try:
             self.best_estimator_.set_params(**self.study_.best_params)
         except ValueError as e:
-            logger.exception(e)
+            self.logger_.exception(e)
 
-        logger.info(
+        self.logger_.info(
             'Refitting the estimator using {} samples...'.format(n_samples)
         )
 
@@ -759,17 +776,12 @@ class OptunaSearchCV(BaseEstimator):
 
         self.refit_time_ = time() - start_time
 
+        self.logger_.info(
+            'Finished refitting! '
+            '(elapsed time: {:.3f} sec.)'.format(self.refit_time_)
+        )
+
         return self
-
-    def _set_verbosity(self):
-        # type: () -> None
-
-        if self.verbose > 1:
-            logging.set_verbosity(DEBUG)
-        elif self.verbose > 0:
-            logging.set_verbosity(INFO)
-        else:
-            logging.set_verbosity(WARNING)
 
     def fit(
         self,
@@ -801,24 +813,29 @@ class OptunaSearchCV(BaseEstimator):
         """
 
         self._check_params()
-        self._set_verbosity()
 
         random_state = check_random_state(self.random_state)
         max_samples = self.subsample
         n_samples = _num_samples(X)
-        indices = np.arange(n_samples)
+
+        self.logger_ = self._get_logger()
+        self.sample_indices_ = np.arange(n_samples)
 
         if type(max_samples) is float:
             max_samples = int(max_samples * n_samples)
 
         if max_samples < n_samples:
-            indices = random_state.choice(indices, max_samples, replace=False)
+            self.sample_indices_ = random_state.choice(
+                self.sample_indices_,
+                max_samples,
+                replace=False
+            )
 
-            indices.sort()
+            self.sample_indices_.sort()
 
-        X_res = safe_indexing(X, indices)
-        y_res = safe_indexing(y, indices)
-        groups_res = safe_indexing(groups, indices)
+        X_res = safe_indexing(X, self.sample_indices_)
+        y_res = safe_indexing(y, self.sample_indices_)
+        groups_res = safe_indexing(groups, self.sample_indices_)
         fit_params_res = fit_params
 
         if fit_params_res is not None:
@@ -826,7 +843,7 @@ class OptunaSearchCV(BaseEstimator):
                 key: _index_param_value(
                     X,
                     value,
-                    indices
+                    self.sample_indices_
                 ) for key, value in fit_params.items()
             }
 
@@ -837,10 +854,13 @@ class OptunaSearchCV(BaseEstimator):
         self.scorer_ = check_scoring(self.estimator, scoring=self.scoring)
 
         if self.study is None:
-            seed = random_state.randint(0, np.iinfo(np.int32).max)
+            seed = random_state.randint(0, np.iinfo('int32').max)
             sampler = samplers.TPESampler(seed=seed)
 
-            self.study_ = study_module.create_study(sampler=sampler)
+            self.study_ = study_module.create_study(
+                direction='maximize',
+                sampler=sampler
+            )
 
         else:
             self.study_ = self.study
@@ -860,9 +880,9 @@ class OptunaSearchCV(BaseEstimator):
             self.scorer_
         )
 
-        logger.info(
+        self.logger_.info(
             'Searching the best hyperparameters using {} '
-            'samples...'.format(_num_samples(indices))
+            'samples...'.format(_num_samples(self.sample_indices_))
         )
 
         self.study_.optimize(
@@ -871,6 +891,8 @@ class OptunaSearchCV(BaseEstimator):
             n_trials=self.n_trials,
             timeout=self.timeout
         )
+
+        self.logger_.info('Finished hyperparemeter search!')
 
         if self.refit:
             self._refit(X, y, **fit_params)
