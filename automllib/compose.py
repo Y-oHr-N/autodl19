@@ -144,17 +144,17 @@ class Maker(object):
                         interaction_only=True
                     )
                 ),
-                make_pipeline(
-                    SimpleImputer(
-                        fill_value=np.finfo('float32').max,
-                        strategy='constant'
-                    ),
-                    CountEncoder(
-                        dtype='float32',
-                        n_jobs=self.n_jobs,
-                        verbose=self.verbose
-                    )
-                ),
+                # make_pipeline(
+                #     SimpleImputer(
+                #         fill_value=np.finfo('float32').max,
+                #         strategy='constant'
+                #     ),
+                #     CountEncoder(
+                #         dtype='float32',
+                #         n_jobs=self.n_jobs,
+                #         verbose=self.verbose
+                #     )
+                # ),
                 MissingIndicator(error_on_new=False)
             )
         )
