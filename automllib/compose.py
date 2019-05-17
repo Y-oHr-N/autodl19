@@ -58,6 +58,7 @@ class Maker(object):
         n_estimators: int = 100,
         # Parameters for hyperpermeter search
         cv: Union[int, BaseCrossValidator] = 5,
+        max_depth: int = 7,
         n_trials: int = 10,
         scoring: Union[str, Callable[..., float]] = None,
         subsample: Union[int, float] = 1.0,
@@ -65,8 +66,9 @@ class Maker(object):
     ) -> None:
         self.cv = cv
         self.lowercase = lowercase
-        self.metric = metric
+        self.max_depth = max_depth
         self.max_iter = max_iter
+        self.metric = metric
         self.n_estimators = n_estimators
         self.n_features_per_column = n_features_per_column
         self.n_jobs = n_jobs
@@ -186,7 +188,7 @@ class Maker(object):
 
     def make_model(self) -> BaseEstimator:
         params = {
-            'max_depth': 7,
+            'max_depth': self.max_depth,
             'metric': self.metric,
             'n_estimators': self.n_estimators,
             'n_jobs': 1,
@@ -218,7 +220,10 @@ class Maker(object):
             f'{model_name}__min_child_samples':
                 optuna.distributions.IntUniformDistribution(1, 100),
             f'{model_name}__num_leaves':
-                optuna.distributions.IntUniformDistribution(2, 123),
+                optuna.distributions.IntUniformDistribution(
+                    2,
+                    2 ** self.max_depth - 1
+                ),
             f'{model_name}__reg_alpha':
                 optuna.distributions.LogUniformDistribution(1e-06, 10.0),
             f'{model_name}__reg_lambda':
