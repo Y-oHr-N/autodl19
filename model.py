@@ -116,6 +116,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         X = merge_table(Xs, self.config_)
 
         X = X.sort_values(self.info['time_col'])
+        y = y.loc[X.index]
 
         X_train, X_valid, y_train, y_valid = train_test_split(
             X,
