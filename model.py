@@ -115,7 +115,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
 
         X = merge_table(Xs, self.config_)
 
-        X.sort_values(self.info['time_col'], inplace=True)
+        X = X.sort_values(self.info['time_col'])
 
         X_train, X_valid, y_train, y_valid = train_test_split(
             X,
@@ -148,7 +148,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
 
         X = merge_table(Xs, self.config_)
 
-        X.sort_index(inplace=True)
+        X = X.sort_index()
 
         X = self.transformer_.transform(X)
         result = self.model_.predict_proba(X)
