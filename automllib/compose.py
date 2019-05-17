@@ -41,7 +41,7 @@ from .utils import get_time_feature_names
 class Maker(object):
     def __init__(
         self,
-        estimator_type: str,
+        target_type: str,
         n_jobs: int = 1,
         random_state: Union[int, np.random.RandomState] = None,
         verbose: int = 1,
@@ -64,7 +64,6 @@ class Maker(object):
         timeout: float = None
     ) -> None:
         self.cv = cv
-        self.estimator_type = estimator_type
         self.lowercase = lowercase
         self.metric = metric
         self.max_iter = max_iter
@@ -77,22 +76,22 @@ class Maker(object):
         self.scoring = scoring
         self.shuffle = shuffle
         self.subsample = subsample
+        self.target_type = target_type
         self.timeout = timeout
         self.verbose = verbose
 
     def make_sampler(self) -> BaseEstimator:
-        if self.estimator_type == 'classifier':
+        if self.target_type in ['binary', 'multiclass', 'multiclass-output']:
             return RandomUnderSampler(
                 random_state=self.random_state,
                 sampling_strategy=self.sampling_strategy,
                 shuffle=self.shuffle,
-                validate=False,
                 verbose=self.verbose
             )
-        elif self.estimator_type == 'regressor':
+        elif self.target_type in ['continuous', 'continuous-output']:
             return None
         else:
-            raise ValueError(f'Unknown estimator_type: {self.estimator_type}.')
+            raise ValueError(f'Unknown target_type: {self.target_type}.')
 
     def make_categorical_transformer(self) -> BaseEstimator:
         return make_pipeline(
@@ -186,32 +185,27 @@ class Maker(object):
         )
 
     def make_model(self) -> BaseEstimator:
-        if self.estimator_type == 'classifier':
+        params = {
+            'max_depth': 7,
+            'metric': self.metric,
+            'n_estimators': self.n_estimators,
+            'n_jobs': 1,
+            'random_state': self.random_state,
+            'subsample_freq': 1
+        }
+
+        if self.target_type in ['binary', 'multiclass', 'multiclass-output']:
             return make_pipeline(
                 # SelectFpr(),
-                lgb.LGBMClassifier(
-                    max_depth=7,
-                    metric=self.metric,
-                    n_estimators=self.n_estimators,
-                    n_jobs=1,
-                    random_state=self.random_state,
-                    subsample_freq=1
-                )
+                lgb.LGBMClassifier(**params)
             )
-        elif self.estimator_type == 'regressor':
+        elif self.target_type in ['continuous', 'continuous-output']:
             return make_pipeline(
                 # SelectFpr(score_func=f_regression),
-                lgb.LGBMRegressor(
-                    max_depth=7,
-                    metric=self.metric,
-                    n_estimators=self.n_estimators,
-                    n_jobs=1,
-                    random_state=self.random_state,
-                    subsample_freq=1
-                )
+                lgb.LGBMRegressor(**params)
             )
         else:
-            raise ValueError(f'Unknown estimator_type: {self.estimator_type}.')
+            raise ValueError(f'Unknown target_type: {self.target_type}.')
 
     def make_search_cv(self) -> BaseEstimator:
         model = self.make_model()

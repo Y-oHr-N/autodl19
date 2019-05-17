@@ -22,6 +22,7 @@ from sklearn.base import MetaEstimatorMixin
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.model_selection import train_test_split
 from sklearn.utils.validation import check_is_fitted
+from sklearn.utils.multiclass import type_of_target
 
 from automllib.compose import Maker
 from automllib.constants import MAIN_TABLE_NAME
@@ -42,7 +43,6 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         info: Dict[str, Any],
         cv: int = 3,
         early_stopping_rounds: int = 10,
-        estimator_type: str = 'classifier',
         lowercase: bool = False,
         max_iter: int = 10,
         metric: str = 'auc',
@@ -59,7 +59,6 @@ class Model(BaseEstimator, MetaEstimatorMixin):
     ) -> None:
         self.cv = cv
         self.early_stopping_rounds = early_stopping_rounds
-        self.estimator_type = estimator_type
         self.info = info
         self.lowercase = lowercase
         self.max_iter = max_iter
@@ -94,7 +93,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         self.config_ = Config(self.info)
         self.tables_ = copy.deepcopy(Xs)
         self.maker_ = Maker(
-            self.estimator_type,
+            type_of_target(y),
             cv=TimeSeriesSplit(self.cv),
             lowercase=self.lowercase,
             max_iter=self.max_iter,
