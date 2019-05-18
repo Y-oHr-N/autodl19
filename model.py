@@ -24,7 +24,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.utils.validation import check_is_fitted
 from sklearn.utils.multiclass import type_of_target
 
-from automllib.compose import Maker
+from automllib.compose import PipelineMaker
 from automllib.constants import MAIN_TABLE_NAME
 from automllib.constants import ONE_DIM_ARRAY_TYPE
 from automllib.constants import TWO_DIM_ARRAY_TYPE
@@ -93,6 +93,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         self.config_ = Config(self.info)
         self.tables_ = copy.deepcopy(Xs)
         self.maker_ = Maker(
+        self.maker_ = PipelineMaker(
             type_of_target(y),
             cv=TimeSeriesSplit(self.cv),
             lowercase=self.lowercase,

@@ -38,7 +38,7 @@ from .utils import get_numerical_feature_names
 from .utils import get_time_feature_names
 
 
-class Maker(object):
+class PipelineMaker(object):
     def __init__(
         self,
         target_type: str,
