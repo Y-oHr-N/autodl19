@@ -7,12 +7,12 @@ from typing import Callable
 from typing import Dict
 from typing import Union
 
-os.system("pip3 install colorlog")
-os.system("pip3 install imbalanced-learn")
-os.system("pip3 install lightgbm")
-os.system("pip3 install optuna")
-os.system("pip3 install pandas==0.24.2")
-os.system("pip3 install scikit-learn==0.21rc2")
+os.system("pip3 install -q colorlog")
+os.system("pip3 install -q imbalanced-learn")
+os.system("pip3 install -q lightgbm")
+os.system("pip3 install -q optuna")
+os.system("pip3 install -q pandas==0.24.2")
+os.system("pip3 install -q scikit-learn==0.21rc2")
 
 import numpy as np
 import pandas as pd
@@ -31,8 +31,6 @@ from automllib.constants import TWO_DIM_ARRAY_TYPE
 from automllib.table_join import Config
 from automllib.table_join import merge_table
 from automllib.utils import Timeit
-
-np.random.seed(0)
 
 logger = logging.getLogger(__name__)
 
