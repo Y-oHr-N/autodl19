@@ -1,4 +1,3 @@
-import copy
 import logging
 import os
 
@@ -21,15 +20,12 @@ from sklearn.base import BaseEstimator
 from sklearn.base import MetaEstimatorMixin
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.model_selection import train_test_split
-from sklearn.utils.validation import check_is_fitted
 from sklearn.utils.multiclass import type_of_target
 
 from automllib.compose import PipelineMaker
 from automllib.constants import MAIN_TABLE_NAME
 from automllib.constants import ONE_DIM_ARRAY_TYPE
 from automllib.constants import TWO_DIM_ARRAY_TYPE
-from automllib.table_join import Config
-from automllib.table_join import merge_table
 from automllib.utils import Timeit
 
 logger = logging.getLogger(__name__)
@@ -72,15 +68,6 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         self.validation_size = validation_size
         self.verbose = verbose
 
-    def _check_params(self) -> None:
-        pass
-
-    def _check_is_fitted(self) -> None:
-        check_is_fitted(
-            self,
-            ['config_', 'estimator_' 'preprocessor_' 'tables_']
-        )
-
     @Timeit(logger)
     def fit(
         self,
@@ -88,12 +75,25 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         y: ONE_DIM_ARRAY_TYPE,
         timeout: float = None
     ) -> 'Model':
-        self.config_ = Config(self.info)
-        self.tables_ = copy.deepcopy(Xs)
-        self.maker_ = Maker(
+        related_tables = Xs.copy()
+        X = related_tables.pop(MAIN_TABLE_NAME)
+        X = X.sort_values(self.info['time_col'])
+        y = y.loc[X.index]
+        X, X_valid, y, y_valid = train_test_split(
+            X,
+            y,
+            random_state=self.random_state,
+            shuffle=self.shuffle,
+            test_size=self.validation_size
+        )
+        target_type = type_of_target(y)
+        cv = TimeSeriesSplit(self.cv)
+
         self.maker_ = PipelineMaker(
-            type_of_target(y),
-            cv=TimeSeriesSplit(self.cv),
+            related_tables,
+            self.info,
+            target_type,
+            cv=cv,
             lowercase=self.lowercase,
             max_iter=self.max_iter,
             metric=self.metric,
@@ -111,25 +111,15 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         self.sampler_ = self.maker_.make_sampler()
         self.search_cv_ = self.maker_.make_search_cv()
 
-        X = merge_table(Xs, self.config_)
-
-        X = X.sort_values(self.info['time_col'])
-        y = y.loc[X.index]
-
-        X_train, X_valid, y_train, y_valid = train_test_split(
-            X,
-            y,
-            random_state=self.random_state,
-            shuffle=self.shuffle,
-            test_size=self.validation_size
-        )
-        X_train = self.transformer_.fit_transform(X_train)
+        X = self.transformer_.fit_transform(X)
         X_valid = self.transformer_.transform(X_valid)
-        X_train, y_train = self.sampler_.fit_resample(X_train, y_train)
+        X, y = self.sampler_.fit_resample(X, y)
+        model_name = \
+            self.search_cv_.estimator._final_estimator.__class__.__name__.lower()
         fit_params = {
-            'lgbmclassifier__early_stopping_rounds': self.early_stopping_rounds,
-            'lgbmclassifier__eval_set': [(X_valid, y_valid)],
-            'lgbmclassifier__verbose': False
+            f'{model_name}__early_stopping_rounds': self.early_stopping_rounds,
+            f'{model_name}__eval_set': [(X_valid, y_valid)],
+            f'{model_name}__verbose': False
         }
 
         self.search_cv_.fit(X, y, **fit_params)
@@ -139,17 +129,10 @@ class Model(BaseEstimator, MetaEstimatorMixin):
     @Timeit(logger)
     def predict(
         self,
-        X_test: TWO_DIM_ARRAY_TYPE,
+        X: TWO_DIM_ARRAY_TYPE,
         timeout: float = None
     ) -> ONE_DIM_ARRAY_TYPE:
-        Xs = self.tables_
-        Xs[MAIN_TABLE_NAME] = X_test
-
-        X = merge_table(Xs, self.config_)
-
-        X = X.sort_index()
-
         X = self.transformer_.transform(X)
-        result = self.search_cv_.predict_proba(X)
+        probas = self.search_cv_.predict_proba(X)
 
-        return pd.Series(result[:, 1])
+        return pd.Series(probas[:, 1])

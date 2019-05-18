@@ -1,3 +1,4 @@
+from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import Union
@@ -19,6 +20,7 @@ from sklearn.pipeline import make_union
 from sklearn.preprocessing import PolynomialFeatures
 
 from .base import BaseEstimator
+from .constants import TWO_DIM_ARRAY_TYPE
 from .feature_extraction import MultiValueCategoricalVectorizer
 # from .feature_selection import DropDuplicates
 from .feature_selection import DropCollinearFeatures
@@ -31,6 +33,7 @@ from .preprocessing import CountEncoder
 from .preprocessing import Diff
 # from .preprocessing import RowStatistics
 from .preprocessing import StandardScaler
+from .table_join import TableJoiner
 from .under_sampling import RandomUnderSampler
 from .utils import get_categorical_feature_names
 from .utils import get_multi_value_categorical_feature_names
@@ -41,6 +44,8 @@ from .utils import get_time_feature_names
 class PipelineMaker(object):
     def __init__(
         self,
+        related_tables: Dict[str, TWO_DIM_ARRAY_TYPE],
+        info: Dict[str, Any],
         target_type: str,
         n_jobs: int = 1,
         random_state: Union[int, np.random.RandomState] = None,
@@ -65,6 +70,7 @@ class PipelineMaker(object):
         timeout: float = None
     ) -> None:
         self.cv = cv
+        self.info = info
         self.lowercase = lowercase
         self.max_depth = max_depth
         self.max_iter = max_iter
@@ -74,6 +80,7 @@ class PipelineMaker(object):
         self.n_jobs = n_jobs
         self.n_trials = n_trials
         self.random_state = random_state
+        self.related_tables = related_tables
         self.sampling_strategy = sampling_strategy
         self.scoring = scoring
         self.shuffle = shuffle
@@ -170,26 +177,29 @@ class PipelineMaker(object):
         )
 
     def make_transformer(self) -> BaseEstimator:
-        return make_union(
-            make_column_transformer(
-                (
-                    self.make_categorical_transformer(),
-                    get_categorical_feature_names
+        return make_pipeline(
+            TableJoiner(self.related_tables, self.info),
+            make_union(
+                make_column_transformer(
+                    (
+                        self.make_categorical_transformer(),
+                        get_categorical_feature_names
+                    ),
+                    (
+                        self.make_multi_value_categorical_transformer(),
+                        get_multi_value_categorical_feature_names
+                    ),
+                    (
+                        self.make_numerical_transformer(),
+                        get_numerical_feature_names
+                    ),
+                    (
+                        self.make_time_transformer(),
+                        get_time_feature_names
+                    )
                 ),
-                (
-                    self.make_multi_value_categorical_transformer(),
-                    get_multi_value_categorical_feature_names
-                ),
-                (
-                    self.make_numerical_transformer(),
-                    get_numerical_feature_names
-                ),
-                (
-                    self.make_time_transformer(),
-                    get_time_feature_names
-                )
-            ),
-            # RowStatistics(n_jobs=self.n_jobs, verbose=self.verbose)
+                # RowStatistics(n_jobs=self.n_jobs, verbose=self.verbose)
+            )
         )
 
     def make_model(self) -> BaseEstimator:
