@@ -2,6 +2,7 @@ import logging
 
 from collections import defaultdict
 from collections import deque
+from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import List
@@ -9,32 +10,19 @@ from typing import Union
 
 import pandas as pd
 
+from .base import BaseTransformer
 from .constants import AGGREGATE_FUNCTIONS_MAP as AFS_MAP
 from .constants import CATEGORICAL_TYPE as C_TYPE
 from .constants import MAIN_TABLE_NAME
 from .constants import NUMERICAL_PREFIX
 from .constants import NUMERICAL_TYPE as N_TYPE
+from .constants import ONE_DIM_ARRAY_TYPE
 from .constants import TWO_DIM_ARRAY_TYPE
 from .utils import get_categorical_feature_names
 from .utils import get_numerical_feature_names
 from .utils import Timeit
 
 logger = logging.getLogger(__name__)
-
-
-def bfs(root_name, graph, tconfig):
-    tconfig[MAIN_TABLE_NAME]['depth'] = 0
-    queue = deque([root_name])
-
-    while queue:
-        u_name = queue.popleft()
-
-        for edge in graph[u_name]:
-            v_name = edge['to']
-
-            if 'depth' not in tconfig[v_name]:
-                tconfig[v_name]['depth'] = tconfig[u_name]['depth'] + 1
-                queue.append(v_name)
 
 
 @Timeit(logger)
@@ -112,31 +100,6 @@ def dfs(u_name, config, tables, graph):
     return u
 
 
-@Timeit(logger)
-def merge_table(tables, config):
-    graph = defaultdict(list)
-
-    for rel in config['relations']:
-        ta = rel['table_A']
-        tb = rel['table_B']
-
-        graph[ta].append({
-            "to": tb,
-            "key": rel['key'],
-            "type": rel['type']
-        })
-
-        graph[tb].append({
-            "to": ta,
-            "key": rel['key'],
-            "type": '_'.join(rel['type'].split('_')[::-1])
-        })
-
-    bfs(MAIN_TABLE_NAME, graph, config['tables'])
-
-    return dfs(MAIN_TABLE_NAME, config, tables, graph)
-
-
 def aggregate_functions(
     X: TWO_DIM_ARRAY_TYPE
 ) -> Dict[str, List[Union[str, Callable]]]:
@@ -155,20 +118,77 @@ def aggregate_functions(
     return func
 
 
-class Config(object):
-    def __init__(self, info):
-        self.data = info.copy()
-        self.data['tables'] = {}
+class TableJoiner(BaseTransformer):
+    _attributes = ['config_', 'graph_']
 
-        for tname, ttype in info['tables'].items():
-            self.data['tables'][tname] = {}
-            self.data['tables'][tname]['type'] = ttype
+    def __init__(
+        self,
+        related_tables: Dict[str, TWO_DIM_ARRAY_TYPE],
+        info: Dict[str, Any]
+    ) -> None:
+        super().__init__(validate=False)
 
-    def __getitem__(self, key):
-        return self.data[key]
+        self.related_tables = related_tables
+        self.info = info
 
-    def __setitem__(self, key, value):
-        self.data[key] = value
+    def _check_params(self) -> None:
+        pass
 
-    def __contains__(self, key):
-        return key in self.data
+    def _fit(
+        self,
+        X: TWO_DIM_ARRAY_TYPE,
+        y: ONE_DIM_ARRAY_TYPE = None
+    ) -> 'TableJoiner':
+        self.graph_ = defaultdict(list)
+
+        for rel in self.info['relations']:
+            ta = rel['table_A']
+            tb = rel['table_B']
+
+            self.graph_[ta].append({
+                'to': tb,
+                'key': rel['key'],
+                'type': rel['type']
+            })
+
+            self.graph_[tb].append({
+                'to': ta,
+                'key': rel['key'],
+                'type': '_'.join(rel['type'].split('_')[::-1])
+            })
+
+        self.config_ = self.info.copy()
+        self.config_['tables'] = {}
+
+        for tname, ttype in self.info['tables'].items():
+            self.config_['tables'][tname] = {}
+            self.config_['tables'][tname]['type'] = ttype
+
+        self.config_['tables'][MAIN_TABLE_NAME]['depth'] = 0
+
+        queue = deque([MAIN_TABLE_NAME])
+
+        while queue:
+            u_name = queue.popleft()
+
+            for edge in self.graph_[u_name]:
+                v_name = edge['to']
+
+                if 'depth' not in self.config_['tables'][v_name]:
+                    self.config_['tables'][v_name]['depth'] = \
+                        self.config_['tables'][u_name]['depth'] + 1
+
+                    queue.append(v_name)
+
+        return self
+
+    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
+        Xs = self.related_tables.copy()
+        Xs[MAIN_TABLE_NAME] = X
+
+        return dfs(
+            MAIN_TABLE_NAME,
+            self.config_,
+            Xs,
+            self.graph_
+        )
