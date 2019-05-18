@@ -203,17 +203,18 @@ class PipelineMaker(object):
         }
 
         if self.target_type in ['binary', 'multiclass', 'multiclass-output']:
-            return make_pipeline(
-                # SelectFpr(),
-                lgb.LGBMClassifier(**params)
-            )
+            # selector = SlelectFpr()
+            model = lgb.LGBMClassifier(**params)
         elif self.target_type in ['continuous', 'continuous-output']:
-            return make_pipeline(
-                # SelectFpr(score_func=f_regression),
-                lgb.LGBMRegressor(**params)
-            )
+            # selector = SelectFpr(score_func=f_regression),
+            model = lgb.LGBMRegressor(**params)
         else:
             raise ValueError(f'Unknown target_type: {self.target_type}.')
+
+        return make_pipeline(
+            # selector,
+            model
+        )
 
     def make_search_cv(self) -> BaseEstimator:
         model = self.make_model()
