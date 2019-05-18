@@ -109,7 +109,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         )
         self.transformer_ = self.maker_.make_transformer()
         self.sampler_ = self.maker_.make_sampler()
-        self.model_ = self.maker_.make_search_cv()
+        self.search_cv_ = self.maker_.make_search_cv()
 
         X = merge_table(Xs, self.config_)
 
@@ -132,7 +132,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
             'lgbmclassifier__verbose': False
         }
 
-        self.model_.fit(X_train, y_train, **fit_params)
+        self.search_cv_.fit(X, y, **fit_params)
 
         return self
 
@@ -150,6 +150,6 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         X = X.sort_index()
 
         X = self.transformer_.transform(X)
-        result = self.model_.predict_proba(X)
+        result = self.search_cv_.predict_proba(X)
 
         return pd.Series(result[:, 1])
