@@ -1,4 +1,3 @@
-import logging
 import os
 
 from typing import Any
@@ -16,22 +15,20 @@ os.system("pip3 install -q scikit-learn==0.21rc2")
 import numpy as np
 import pandas as pd
 
-from sklearn.base import BaseEstimator
-from sklearn.base import MetaEstimatorMixin
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.model_selection import train_test_split
 from sklearn.utils.multiclass import type_of_target
 
+from automllib.base import BaseEstimator
 from automllib.compose import PipelineMaker
 from automllib.constants import MAIN_TABLE_NAME
 from automllib.constants import ONE_DIM_ARRAY_TYPE
 from automllib.constants import TWO_DIM_ARRAY_TYPE
-from automllib.utils import Timeit
-
-logger = logging.getLogger(__name__)
 
 
-class Model(BaseEstimator, MetaEstimatorMixin):
+class Model(BaseEstimator):
+    _attributes = ['maker_', 'sampler_', 'search_cv_', 'transformer_']
+
     def __init__(
         self,
         info: Dict[str, Any],
@@ -51,6 +48,8 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         valid_size: float = 0.1,
         verbose: int = 1
     ) -> None:
+        super().__init__(validate=False, verbose=verbose)
+
         self.cv = cv
         self.early_stopping_rounds = early_stopping_rounds
         self.info = info
@@ -66,10 +65,11 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         self.shuffle = shuffle
         self.subsample = subsample
         self.valid_size = valid_size
-        self.verbose = verbose
 
-    @Timeit(logger)
-    def fit(
+    def _check_params(self) -> None:
+        pass
+
+    def _fit(
         self,
         Xs: Dict[str, TWO_DIM_ARRAY_TYPE],
         y: ONE_DIM_ARRAY_TYPE,
@@ -126,7 +126,6 @@ class Model(BaseEstimator, MetaEstimatorMixin):
 
         return self
 
-    @Timeit(logger)
     def predict(
         self,
         X: TWO_DIM_ARRAY_TYPE,
