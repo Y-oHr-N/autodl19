@@ -46,7 +46,8 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
         self,
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None,
-        **fit_params: Any
+        *args: Any,
+        **kwargs: Any
     ) -> 'BaseEstimator':
         pass
 
@@ -97,7 +98,8 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
         self,
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE = None,
-        **fit_params: Any
+        *args: Any,
+        **kwargs: Any
     ) -> 'BaseEstimator':
         """Fit the model according to the given training data.
 
@@ -125,7 +127,7 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
 
         func = self.timeit_(self._fit)
 
-        return func(X, y, **fit_params)
+        return func(X, y, *args, **kwargs)
 
     def to_pickle(
         self,
