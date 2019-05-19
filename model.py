@@ -48,7 +48,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         scoring: Union[str, Callable[..., float]] = 'roc_auc',
         shuffle: bool = False,
         subsample: Union[int, float] = 100_000,
-        validation_size: float = 0.1,
+        valid_size: float = 0.1,
         verbose: int = 1
     ) -> None:
         self.cv = cv
@@ -65,7 +65,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
         self.scoring = scoring
         self.shuffle = shuffle
         self.subsample = subsample
-        self.validation_size = validation_size
+        self.valid_size = valid_size
         self.verbose = verbose
 
     @Timeit(logger)
@@ -84,7 +84,7 @@ class Model(BaseEstimator, MetaEstimatorMixin):
             y,
             random_state=self.random_state,
             shuffle=self.shuffle,
-            test_size=self.validation_size
+            test_size=self.valid_size
         )
         target_type = type_of_target(y)
         cv = TimeSeriesSplit(self.cv)
