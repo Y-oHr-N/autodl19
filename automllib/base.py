@@ -169,9 +169,9 @@ class BaseSampler(BaseEstimator):
 
             X, y = self._check_X_y(X, y)
 
+        n_input_samples = _num_samples(X)
         X = safe_indexing(X, self.sample_indices_)
         y = safe_indexing(y, self.sample_indices_)
-        n_input_samples = _num_samples(X)
         n_output_samples = len(self.sample_indices_)
 
         self.logger_.info(
