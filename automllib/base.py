@@ -117,9 +117,9 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
             Return self.
         """
 
-        if self.validate:
-            self._check_params()
+        self._check_params()
 
+        if self.validate:
             X, y = self._check_X_y(X, y)
 
         self.logger_ = self._get_logger()
@@ -150,8 +150,7 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
             List of file names in which the data is stored.
         """
 
-        if self.validate:
-            self._check_is_fitted()
+        self._check_is_fitted()
 
         return dump(self, filename, **kwargs)
 
@@ -164,9 +163,9 @@ class BaseSampler(BaseEstimator):
         X: TWO_DIM_ARRAY_TYPE,
         y: ONE_DIM_ARRAY_TYPE,
     ) -> Tuple[TWO_DIM_ARRAY_TYPE, ONE_DIM_ARRAY_TYPE]:
-        if self.validate:
-            self._check_is_fitted()
+        self._check_is_fitted()
 
+        if self.validate:
             X, y = self._check_X_y(X, y)
 
         n_input_samples = _num_samples(X)
@@ -243,9 +242,9 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
             Transformed data.
         """
 
-        if self.validate:
-            self._check_is_fitted()
+        self._check_is_fitted()
 
+        if self.validate:
             X, _ = self._check_X_y(X)
 
         func = self.timeit_(self._transform)
