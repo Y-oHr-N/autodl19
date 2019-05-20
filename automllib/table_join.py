@@ -123,13 +123,13 @@ class TableJoiner(BaseTransformer):
 
     def __init__(
         self,
-        related_tables: Dict[str, TWO_DIM_ARRAY_TYPE],
-        info: Dict[str, Any]
+        info: Dict[str, Any],
+        related_tables: Dict[str, TWO_DIM_ARRAY_TYPE]
     ) -> None:
         super().__init__(validate=False)
 
-        self.related_tables = related_tables
         self.info = info
+        self.related_tables = related_tables
 
     def _check_params(self) -> None:
         pass

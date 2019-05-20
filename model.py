@@ -90,8 +90,8 @@ class Model(BaseEstimator):
         cv = TimeSeriesSplit(self.cv)
 
         self.maker_ = PipelineMaker(
-            related_tables,
             self.info,
+            related_tables,
             target_type,
             cv=cv,
             lowercase=self.lowercase,

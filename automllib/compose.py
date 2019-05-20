@@ -44,8 +44,8 @@ from .utils import get_time_feature_names
 class PipelineMaker(object):
     def __init__(
         self,
-        related_tables: Dict[str, TWO_DIM_ARRAY_TYPE],
         info: Dict[str, Any],
+        related_tables: Dict[str, TWO_DIM_ARRAY_TYPE],
         target_type: str,
         n_jobs: int = 1,
         random_state: Union[int, np.random.RandomState] = None,
@@ -165,7 +165,7 @@ class PipelineMaker(object):
 
     def make_transformer(self) -> BaseEstimator:
         return make_pipeline(
-            TableJoiner(self.related_tables, self.info),
+            TableJoiner(self.info, self.related_tables),
             make_union(
                 make_column_transformer(
                     (
