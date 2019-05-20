@@ -44,7 +44,7 @@ class Model(BaseEstimator):
         sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
         scoring: Union[str, Callable[..., float]] = 'roc_auc',
         shuffle: bool = False,
-        subsample: Union[int, float] = 100_000,
+        subsample: Union[int, float] = 1.0,
         valid_size: float = 0.1,
         verbose: int = 1
     ) -> None:
@@ -108,12 +108,10 @@ class Model(BaseEstimator):
             verbose=self.verbose
         )
         self.transformer_ = self.maker_.make_transformer()
-        self.sampler_ = self.maker_.make_sampler()
         self.search_cv_ = self.maker_.make_search_cv()
 
         X = self.transformer_.fit_transform(X)
         X_valid = self.transformer_.transform(X_valid)
-        X, y = self.sampler_.fit_resample(X, y)
         model_name = \
             self.search_cv_.estimator._final_estimator.__class__.__name__.lower()
         fit_params = {

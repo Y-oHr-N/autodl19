@@ -9,8 +9,8 @@ import optuna
 
 from imblearn.pipeline import make_pipeline
 from sklearn.compose import make_column_transformer
-# from sklearn.feature_selection import f_regression
-# from sklearn.feature_selection import SelectFpr
+from sklearn.feature_selection import f_regression
+from sklearn.feature_selection import SelectFpr
 from sklearn.impute import IterativeImputer
 from sklearn.impute import MissingIndicator
 from sklearn.impute import SimpleImputer
@@ -31,7 +31,7 @@ from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
 from .preprocessing import Diff
-# from .preprocessing import RowStatistics
+from .preprocessing import RowStatistics
 from .preprocessing import StandardScaler
 from .table_join import TableJoiner
 from .under_sampling import RandomUnderSampler
@@ -89,19 +89,6 @@ class PipelineMaker(object):
         self.timeout = timeout
         self.verbose = verbose
 
-    def make_sampler(self) -> BaseEstimator:
-        if self.target_type in ['binary', 'multiclass', 'multiclass-output']:
-            return RandomUnderSampler(
-                random_state=self.random_state,
-                sampling_strategy=self.sampling_strategy,
-                shuffle=self.shuffle,
-                verbose=self.verbose
-            )
-        elif self.target_type in ['continuous', 'continuous-output']:
-            return None
-        else:
-            raise ValueError(f'Unknown target_type: {self.target_type}.')
-
     def make_categorical_transformer(self) -> BaseEstimator:
         return make_pipeline(
             NAProportionThreshold(verbose=self.verbose),
@@ -151,17 +138,17 @@ class PipelineMaker(object):
                         interaction_only=True
                     )
                 ),
-                # make_pipeline(
-                #     SimpleImputer(
-                #         fill_value=np.finfo('float32').max,
-                #         strategy='constant'
-                #     ),
-                #     CountEncoder(
-                #         dtype='float32',
-                #         n_jobs=self.n_jobs,
-                #         verbose=self.verbose
-                #     )
-                # ),
+                make_pipeline(
+                    SimpleImputer(
+                        fill_value=np.finfo('float32').max,
+                        strategy='constant'
+                    ),
+                    CountEncoder(
+                        dtype='float32',
+                        n_jobs=self.n_jobs,
+                        verbose=self.verbose
+                    )
+                ),
                 MissingIndicator(error_on_new=False)
             )
         )
@@ -185,20 +172,20 @@ class PipelineMaker(object):
                         self.make_categorical_transformer(),
                         get_categorical_feature_names
                     ),
-                    (
-                        self.make_multi_value_categorical_transformer(),
-                        get_multi_value_categorical_feature_names
-                    ),
+                    # (
+                    #     self.make_multi_value_categorical_transformer(),
+                    #     get_multi_value_categorical_feature_names
+                    # ),
                     (
                         self.make_numerical_transformer(),
                         get_numerical_feature_names
                     ),
-                    (
-                        self.make_time_transformer(),
-                        get_time_feature_names
-                    )
+                    # (
+                    #     self.make_time_transformer(),
+                    #     get_time_feature_names
+                    # )
                 ),
-                # RowStatistics(n_jobs=self.n_jobs, verbose=self.verbose)
+                RowStatistics(n_jobs=self.n_jobs, verbose=self.verbose)
             )
         )
 
@@ -213,16 +200,23 @@ class PipelineMaker(object):
         }
 
         if self.target_type in ['binary', 'multiclass', 'multiclass-output']:
-            # selector = SlelectFpr()
+            sampler = RandomUnderSampler(
+                random_state=self.random_state,
+                sampling_strategy=self.sampling_strategy,
+                shuffle=self.shuffle
+            )
+            selector = SelectFpr()
             model = lgb.LGBMClassifier(**params)
         elif self.target_type in ['continuous', 'continuous-output']:
-            # selector = SelectFpr(score_func=f_regression),
+            sampler = None
+            selector = SelectFpr(score_func=f_regression)
             model = lgb.LGBMRegressor(**params)
         else:
             raise ValueError(f'Unknown target_type: {self.target_type}.')
 
         return make_pipeline(
-            # selector,
+            sampler,
+            selector,
             model
         )
 
