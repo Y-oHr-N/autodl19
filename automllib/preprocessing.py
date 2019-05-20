@@ -55,24 +55,17 @@ class Clip(BaseTransformer):
         dtype: Union[str, Type] = None,
         high: float = 99.9,
         low: float = 0.1,
-        n_jobs: int = 1,
-        validate: bool = True,
         verbose: int = 0
     ) -> None:
-        super().__init__(dtype=dtype, validate=validate, verbose=verbose)
+        super().__init__(dtype=dtype, verbose=verbose)
 
         self.high = high
         self.low = low
-        self.n_jobs = n_jobs
 
     def _check_params(self) -> None:
         pass
 
-    def _fit(
-        self,
-        X: TWO_DIM_ARRAY_TYPE,
-        y: ONE_DIM_ARRAY_TYPE = None
-    ) -> 'Clip':
+    def _fit(self, X: pd.DataFrame, y: pd.Series = None) -> 'Clip':
         self.data_min_, self.data_max_ = np.nanpercentile(
             X,
             [self.low, self.high],
@@ -81,18 +74,8 @@ class Clip(BaseTransformer):
 
         return self
 
-    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
-        n_samples, _ = X.shape
-        n_jobs = effective_n_jobs(self.n_jobs)
-        parallel = Parallel(n_jobs=n_jobs)
-        func = delayed(np.clip)
-        result = parallel(
-            func(
-                safe_indexing(X, s), self.data_min_, self.data_max_
-            ) for s in gen_even_slices(n_samples, n_jobs)
-        )
-
-        return np.concatenate(result)
+    def _transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        return X.clip(axis=1, lower=self.data_min_, upper=self.data_max_)
 
 
 class CountEncoder(BaseTransformer):
@@ -102,10 +85,9 @@ class CountEncoder(BaseTransformer):
         self,
         dtype: Union[str, Type] = None,
         n_jobs: int = 1,
-        validate: bool = True,
         verbose: int = 0
     ) -> None:
-        super().__init__(dtype=dtype, validate=validate, verbose=verbose)
+        super().__init__(dtype=dtype, verbose=verbose)
 
         self.n_jobs = n_jobs
 
@@ -142,10 +124,9 @@ class Diff(BaseTransformer):
         self,
         dtype: Union[str, Type] = None,
         n_jobs: int = 1,
-        validate: bool = True,
         verbose: int = 0
     ) -> None:
-        super().__init__(dtype=dtype, validate=validate, verbose=verbose)
+        super().__init__(dtype=dtype, verbose=verbose)
 
         self.n_jobs = n_jobs
 
@@ -179,35 +160,18 @@ class RowStatistics(BaseTransformer):
     def __init__(
         self,
         dtype: Union[str, Type] = None,
-        n_jobs: int = 1,
         verbose: int = 0
     ) -> None:
         super().__init__(dtype=dtype, verbose=verbose)
 
-        self.n_jobs = n_jobs
-
     def _check_params(self) -> None:
         pass
 
-    def _fit(
-        self,
-        X: TWO_DIM_ARRAY_TYPE,
-        y: ONE_DIM_ARRAY_TYPE = None
-    ) -> 'RowStatistics':
+    def _fit(self, X: pd.DataFrame, y: pd.Series = None) -> 'RowStatistics':
         return self
 
-    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
-        n_samples, _ = X.shape
-        n_jobs = effective_n_jobs(self.n_jobs)
-        parallel = Parallel(n_jobs=n_jobs)
-        func = delayed(lambda X: pd.isnull(X).sum(axis=1).reshape(-1, 1))
-        result = parallel(
-            func(
-                safe_indexing(X, s)
-            ) for s in gen_even_slices(n_samples, n_jobs)
-        )
-
-        return np.concatenate(result)
+    def _transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        return X.isnull().sum(axis=1).to_frame()
 
 
 class StandardScaler(BaseTransformer):
@@ -216,38 +180,24 @@ class StandardScaler(BaseTransformer):
     def __init__(
         self,
         dtype: Union[str, Type] = None,
-        n_jobs: int = 1,
-        validate: bool = True,
         verbose: int = 0
     ) -> None:
-        super().__init__(dtype=dtype, validate=validate, verbose=verbose)
-
-        self.n_jobs = n_jobs
+        super().__init__(dtype=dtype, verbose=verbose)
 
     def _check_params(self) -> None:
         pass
 
     def _fit(
         self,
-        X: TWO_DIM_ARRAY_TYPE,
-        y: ONE_DIM_ARRAY_TYPE = None
+        X: pd.DataFrame,
+        y: pd.Series = None
     ) -> 'StandardScaler':
-        self.mean_ = np.nanmean(X, axis=0)
-        self.std_ = np.nanstd(X, axis=0)
+        self.mean_ = X.mean().values
+        self.std_ = X.std().values
         self.scale_ = self.std_.copy()
         self.scale_[self.scale_ == 0.0] = 1.0
 
         return self
 
-    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
-        n_samples, _ = X.shape
-        n_jobs = effective_n_jobs(self.n_jobs)
-        parallel = Parallel(n_jobs=n_jobs)
-        func = delayed(lambda X, mean, scale: (X - mean) / scale)
-        result = parallel(
-            func(
-                safe_indexing(X, s), self.mean_, self.scale_
-            ) for s in gen_even_slices(n_samples, n_jobs)
-        )
-
-        return np.concatenate(result)
+    def _transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        return (X - self.mean_) / self.scale_

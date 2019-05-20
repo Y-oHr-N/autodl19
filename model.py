@@ -48,7 +48,7 @@ class Model(BaseEstimator):
         valid_size: float = 0.1,
         verbose: int = 1
     ) -> None:
-        super().__init__(validate=False, verbose=verbose)
+        super().__init__(verbose=verbose)
 
         self.cv = cv
         self.early_stopping_rounds = early_stopping_rounds

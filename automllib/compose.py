@@ -123,12 +123,8 @@ class PipelineMaker(object):
             DropCollinearFeatures(verbose=self.verbose),
             make_union(
                 make_pipeline(
-                    Clip(
-                        dtype='float32',
-                        n_jobs=self.n_jobs,
-                        verbose=self.verbose
-                    ),
-                    StandardScaler(n_jobs=self.n_jobs, verbose=self.verbose),
+                    Clip(dtype='float32', verbose=self.verbose),
+                    StandardScaler(verbose=self.verbose),
                     IterativeImputer(
                         estimator=LinearRegression(n_jobs=self.n_jobs),
                         max_iter=self.max_iter
@@ -165,7 +161,7 @@ class PipelineMaker(object):
 
     def make_transformer(self) -> BaseEstimator:
         return make_pipeline(
-            TableJoiner(self.info, self.related_tables),
+            TableJoiner(self.info, self.related_tables, verbose=self.verbose),
             make_union(
                 make_column_transformer(
                     (
@@ -185,7 +181,7 @@ class PipelineMaker(object):
                     #     get_time_feature_names
                     # )
                 ),
-                RowStatistics(n_jobs=self.n_jobs, verbose=self.verbose)
+                RowStatistics(verbose=self.verbose)
             )
         )
 
