@@ -99,10 +99,15 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
             subsample=self.subsample,
             verbose=self.verbose
         )
+        self.joiner_ = self.maker_.make_joiner()
+        self.sampler_ = self.maker_.make_sampler()
         self.transformer_ = self.maker_.make_transformer()
         self.search_cv_ = self.maker_.make_search_cv()
 
+        X = self.joiner_.fit_transform(X)
+        X, y = self.sampler_.fit_resample(X, y)
         X = self.transformer_.fit_transform(X)
+        X_valid = self.joiner_.transform(X_valid)
         X_valid = self.transformer_.transform(X_valid)
         model_name = \
             self.search_cv_.estimator._final_estimator.__class__.__name__.lower()

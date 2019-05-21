@@ -89,6 +89,26 @@ class PipelineMaker(object):
         self.timeout = timeout
         self.verbose = verbose
 
+    def make_joiner(self) -> BaseEstimator:
+        return TableJoiner(
+            self.info,
+            self.related_tables,
+            verbose=self.verbose
+        )
+
+    def make_sampler(self) -> BaseEstimator:
+        if self.target_type in ['binary', 'multiclass', 'multiclass-output']:
+            return RandomUnderSampler(
+                random_state=self.random_state,
+                sampling_strategy=self.sampling_strategy,
+                shuffle=self.shuffle,
+                verbose=self.verbose
+            )
+        elif self.target_type in ['continuous', 'continuous-output']:
+            return None
+        else:
+            raise ValueError(f'Unknown target_type: {self.target_type}.')
+
     def make_categorical_transformer(self) -> BaseEstimator:
         return make_pipeline(
             NAProportionThreshold(verbose=self.verbose),
@@ -167,29 +187,26 @@ class PipelineMaker(object):
         )
 
     def make_transformer(self) -> BaseEstimator:
-        return make_pipeline(
-            TableJoiner(self.info, self.related_tables, verbose=self.verbose),
-            make_union(
-                make_column_transformer(
-                    (
-                        self.make_categorical_transformer(),
-                        get_categorical_feature_names
-                    ),
-                    # (
-                    #     self.make_multi_value_categorical_transformer(),
-                    #     get_multi_value_categorical_feature_names
-                    # ),
-                    (
-                        self.make_numerical_transformer(),
-                        get_numerical_feature_names
-                    ),
-                    # (
-                    #     self.make_time_transformer(),
-                    #     get_time_feature_names
-                    # )
+        return make_union(
+            make_column_transformer(
+                (
+                    self.make_categorical_transformer(),
+                    get_categorical_feature_names
                 ),
-                RowStatistics(verbose=self.verbose)
-            )
+                (
+                    self.make_multi_value_categorical_transformer(),
+                    get_multi_value_categorical_feature_names
+                ),
+                (
+                    self.make_numerical_transformer(),
+                    get_numerical_feature_names
+                ),
+                # (
+                #     self.make_time_transformer(),
+                #     get_time_feature_names
+                # )
+            ),
+            RowStatistics(verbose=self.verbose)
         )
 
     def make_model(self) -> BaseEstimator:
@@ -203,22 +220,15 @@ class PipelineMaker(object):
         }
 
         if self.target_type in ['binary', 'multiclass', 'multiclass-output']:
-            sampler = RandomUnderSampler(
-                random_state=self.random_state,
-                sampling_strategy=self.sampling_strategy,
-                shuffle=self.shuffle
-            )
             selector = SelectFpr()
             model = lgb.LGBMClassifier(**params)
         elif self.target_type in ['continuous', 'continuous-output']:
-            sampler = None
             selector = SelectFpr(score_func=f_regression)
             model = lgb.LGBMRegressor(**params)
         else:
             raise ValueError(f'Unknown target_type: {self.target_type}.')
 
         return make_pipeline(
-            sampler,
             selector,
             model
         )
