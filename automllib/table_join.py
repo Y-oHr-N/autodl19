@@ -11,13 +11,13 @@ from typing import Union
 import pandas as pd
 
 from .base import BaseTransformer
+from .base import ONE_DIM_ARRAYLIKE_TYPE
+from .base import TWO_DIM_ARRAYLIKE_TYPE
 from .constants import AGGREGATE_FUNCTIONS_MAP as AFS_MAP
 from .constants import CATEGORICAL_TYPE as C_TYPE
 from .constants import MAIN_TABLE_NAME
 from .constants import NUMERICAL_PREFIX
 from .constants import NUMERICAL_TYPE as N_TYPE
-from .constants import ONE_DIM_ARRAY_TYPE
-from .constants import TWO_DIM_ARRAY_TYPE
 from .utils import get_categorical_feature_names
 from .utils import get_numerical_feature_names
 from .utils import Timeit
@@ -101,7 +101,7 @@ def dfs(u_name, config, tables, graph):
 
 
 def aggregate_functions(
-    X: TWO_DIM_ARRAY_TYPE
+    X: TWO_DIM_ARRAYLIKE_TYPE
 ) -> Dict[str, List[Union[str, Callable]]]:
     func = {}
 
@@ -120,11 +120,12 @@ def aggregate_functions(
 
 class TableJoiner(BaseTransformer):
     _attributes = ['config_', 'graph_']
+    _validate = False
 
     def __init__(
         self,
         info: Dict[str, Any],
-        related_tables: Dict[str, TWO_DIM_ARRAY_TYPE],
+        related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE],
         verbose: int = 0,
     ) -> None:
         super().__init__(verbose=verbose)
@@ -137,8 +138,8 @@ class TableJoiner(BaseTransformer):
 
     def _fit(
         self,
-        X: TWO_DIM_ARRAY_TYPE,
-        y: ONE_DIM_ARRAY_TYPE = None
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'TableJoiner':
         self.graph_ = defaultdict(list)
 
@@ -183,7 +184,7 @@ class TableJoiner(BaseTransformer):
 
         return self
 
-    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
+    def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
         Xs = self.related_tables.copy()
         Xs[MAIN_TABLE_NAME] = X
 

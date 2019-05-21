@@ -4,21 +4,22 @@ from typing import Dict
 from typing import Union
 
 import numpy as np
-import pandas as pd
 
+from sklearn.base import ClassifierMixin
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.model_selection import train_test_split
 from sklearn.utils.multiclass import type_of_target
 
 from .base import BaseEstimator
+from .base import ONE_DIM_ARRAYLIKE_TYPE
+from .base import TWO_DIM_ARRAYLIKE_TYPE
 from .compose import PipelineMaker
 from .constants import MAIN_TABLE_NAME
-from .constants import ONE_DIM_ARRAY_TYPE
-from .constants import TWO_DIM_ARRAY_TYPE
 
 
-class AutoMLClassifier(BaseEstimator):
-    _attributes = ['maker_', 'sampler_', 'search_cv_', 'transformer_']
+class AutoMLClassifier(BaseEstimator, ClassifierMixin):
+    _attributes = ['maker_', 'search_cv_', 'transformer_']
+    _validate = False
 
     def __init__(
         self,
@@ -35,7 +36,7 @@ class AutoMLClassifier(BaseEstimator):
         sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
         scoring: Union[str, Callable[..., float]] = 'roc_auc',
         shuffle: bool = False,
-        subsample: Union[int, float] = 1.0,
+        subsample: Union[int, float] = 100_000,
         valid_size: float = 0.1,
         verbose: int = 1
     ) -> None:
@@ -62,10 +63,10 @@ class AutoMLClassifier(BaseEstimator):
 
     def _fit(
         self,
-        Xs: Dict[str, TWO_DIM_ARRAY_TYPE],
-        y: ONE_DIM_ARRAY_TYPE,
+        Xs: Dict[str, TWO_DIM_ARRAYLIKE_TYPE],
+        y: ONE_DIM_ARRAYLIKE_TYPE,
         timeout: float = None
-    ) -> 'Model':
+    ) -> 'AutoMLClassifier':
         related_tables = Xs.copy()
         X = related_tables.pop(MAIN_TABLE_NAME)
         X = X.sort_values(self.info['time_col'])
@@ -117,9 +118,11 @@ class AutoMLClassifier(BaseEstimator):
 
     def predict_proba(
         self,
-        X: TWO_DIM_ARRAY_TYPE,
+        X: TWO_DIM_ARRAYLIKE_TYPE,
         timeout: float = None
-    ) -> ONE_DIM_ARRAY_TYPE:
+    ) -> ONE_DIM_ARRAYLIKE_TYPE:
+        self._check_is_fitted()
+
         X = self.transformer_.transform(X)
 
         return self.search_cv_.predict_proba(X)
