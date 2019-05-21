@@ -9,6 +9,7 @@ import optuna
 
 from imblearn.pipeline import make_pipeline
 from sklearn.compose import make_column_transformer
+from sklearn.experimental import enable_iterative_imputer  # noqa
 from sklearn.feature_selection import f_regression
 from sklearn.feature_selection import SelectFpr
 from sklearn.impute import IterativeImputer
