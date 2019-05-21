@@ -15,14 +15,14 @@ from sklearn.utils import gen_even_slices
 from sklearn.utils import safe_indexing
 
 from .base import BaseTransformer
-from .constants import ONE_DIM_ARRAY_TYPE
-from .constants import TWO_DIM_ARRAY_TYPE
+from .base import ONE_DIM_ARRAYLIKE_TYPE
+from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
 def multi_value_categorical_vectorize(
-    X: TWO_DIM_ARRAY_TYPE,
+    X: TWO_DIM_ARRAYLIKE_TYPE,
     vectorizers: List[HashingVectorizer]
-) -> TWO_DIM_ARRAY_TYPE:
+) -> TWO_DIM_ARRAYLIKE_TYPE:
     Xs = [vectorizers[j].transform(column) for j, column in enumerate(X.T)]
 
     return hstack(Xs)
@@ -30,6 +30,7 @@ def multi_value_categorical_vectorize(
 
 class TimeVectorizer(BaseTransformer):
     _attributes = []
+    _validate = True
 
     def __init__(
         self,
@@ -43,12 +44,12 @@ class TimeVectorizer(BaseTransformer):
 
     def _fit(
         self,
-        X: TWO_DIM_ARRAY_TYPE,
-        y: ONE_DIM_ARRAY_TYPE = None
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'TimeVectorizer':
         return self
 
-    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
+    def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
         X = pd.DataFrame(X)
         dfs = []
 
@@ -85,6 +86,7 @@ class TimeVectorizer(BaseTransformer):
 
 class MultiValueCategoricalVectorizer(BaseTransformer):
     _attributes = ['vectorizers_']
+    _validate = True
 
     def __init__(
         self,
@@ -105,8 +107,8 @@ class MultiValueCategoricalVectorizer(BaseTransformer):
 
     def _fit(
         self,
-        X: TWO_DIM_ARRAY_TYPE,
-        y: ONE_DIM_ARRAY_TYPE = None
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'MultiValueCategoricalVectorizer':
         v = HashingVectorizer(
             lowercase=self.lowercase,
@@ -117,7 +119,7 @@ class MultiValueCategoricalVectorizer(BaseTransformer):
 
         return self
 
-    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
+    def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
         n_samples, _ = X.shape
         n_jobs = effective_n_jobs(self.n_jobs)
         parallel = Parallel(n_jobs=n_jobs)

@@ -1,9 +1,10 @@
 import logging
+import pathlib
 
 from abc import ABC
 from abc import abstractmethod
-from pathlib import Path
 from typing import Any
+from typing import Dict
 from typing import List
 from typing import Tuple
 from typing import Type
@@ -13,8 +14,11 @@ import numpy as np
 import pandas as pd
 
 from joblib import dump
+from scipy.sparse import spmatrix
 from sklearn.base import BaseEstimator as SKLearnBaseEstimator
 from sklearn.base import TransformerMixin
+from sklearn.utils import check_array
+from sklearn.utils import check_X_y
 from sklearn.utils import safe_indexing
 from sklearn.utils import safe_mask
 from sklearn.utils.validation import _num_samples
@@ -22,11 +26,19 @@ from sklearn.utils.validation import check_is_fitted
 
 from .utils import Timeit
 
+ONE_DIM_ARRAYLIKE_TYPE = Union[np.ndarray, pd.Series]
+TWO_DIM_ARRAYLIKE_TYPE = Union[np.ndarray, spmatrix, pd.DataFrame]
+
 
 class BaseEstimator(SKLearnBaseEstimator, ABC):
     @property
     @abstractmethod
     def _attributes(self) -> Union[str, List[str]]:
+        pass
+
+    @property
+    @abstractmethod
+    def _validate(self) -> bool:
         pass
 
     @abstractmethod
@@ -40,11 +52,39 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
     @abstractmethod
     def _fit(
         self,
-        X: Any,
-        y: pd.Series = None,
+        X: Union[Dict[str, TWO_DIM_ARRAYLIKE_TYPE], TWO_DIM_ARRAYLIKE_TYPE],
+        y: ONE_DIM_ARRAYLIKE_TYPE = None,
         **fit_params: Any
     ) -> 'BaseEstimator':
         pass
+
+    def _check_X_y(
+        self,
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE = None,
+        accept_sparse: Union[str, bool, List[str]] = True,
+        dtype: Union[str, Type, List[Type]] = None,
+        force_all_finite: Union[str, bool] = 'allow-nan'
+    ) -> Tuple[TWO_DIM_ARRAYLIKE_TYPE, ONE_DIM_ARRAYLIKE_TYPE]:
+        if y is None:
+            X = check_array(
+                X,
+                accept_sparse=accept_sparse,
+                estimator=self,
+                dtype=dtype,
+                force_all_finite=force_all_finite
+            )
+        else:
+            X, y = check_X_y(
+                X,
+                y,
+                accept_sparse=accept_sparse,
+                estimator=self,
+                dtype=dtype,
+                force_all_finite=force_all_finite
+            )
+
+        return X, y
 
     def _check_is_fitted(self) -> None:
         check_is_fitted(self, self._attributes)
@@ -63,8 +103,8 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
 
     def fit(
         self,
-        X: Any,
-        y: pd.Series = None,
+        X: Union[Dict[str, TWO_DIM_ARRAYLIKE_TYPE], TWO_DIM_ARRAYLIKE_TYPE],
+        y: ONE_DIM_ARRAYLIKE_TYPE = None,
         *args: Any,
         **kwargs: Any
     ) -> 'BaseEstimator':
@@ -86,6 +126,9 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
 
         self._check_params()
 
+        if self._validate:
+            X, y = self._check_X_y(X, y)
+
         self.logger_ = self._get_logger()
         self.timeit_ = Timeit(self.logger_)
 
@@ -95,7 +138,7 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
 
     def to_pickle(
         self,
-        filename: Union[str, Path],
+        filename: Union[str, pathlib.Path],
         **kwargs: Any
     ) -> List[str]:
         """Persist an estimator object.
@@ -121,16 +164,17 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
 
 class BaseSampler(BaseEstimator):
     _estimator_type = 'sampler'
+    _validate = False
 
     def _resample(
         self,
-        X: Any,
-        y: pd.Series,
-    ) -> Tuple[pd.DataFrame, pd.Series]:
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE,
+    ) -> Tuple[TWO_DIM_ARRAYLIKE_TYPE, ONE_DIM_ARRAYLIKE_TYPE]:
         n_input_samples = _num_samples(X)
+        n_output_samples = _num_samples(self.sample_indices_)
         X = safe_indexing(X, self.sample_indices_)
         y = safe_indexing(y, self.sample_indices_)
-        n_output_samples = len(self.sample_indices_)
 
         self.logger_.info(
             f'{self.__class__.__name__} selects {n_output_samples} samples '
@@ -141,11 +185,11 @@ class BaseSampler(BaseEstimator):
 
     def fit_resample(
         self,
-        X: Any,
-        y: pd.Series,
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE,
         *args: Any,
         **kwargs: Any
-    ) -> Tuple[pd.DataFrame, pd.Series]:
+    ) -> Tuple[TWO_DIM_ARRAYLIKE_TYPE, ONE_DIM_ARRAYLIKE_TYPE]:
         """Fit the model, then resample the data.
 
         Parameters
@@ -184,10 +228,10 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self.dtype = dtype
 
     @abstractmethod
-    def _transform(self, X: Any) -> pd.DataFrame:
+    def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
         pass
 
-    def transform(self, X: Any) -> pd.DataFrame:
+    def transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
         """Transform the data.
 
         Parameters
@@ -203,6 +247,9 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
 
         self._check_is_fitted()
 
+        if self._validate:
+            X, _ = self._check_X_y(X)
+
         func = self.timeit_(self._transform)
 
         X = func(X)
@@ -214,15 +261,16 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
 
 
 class BaseSelector(BaseTransformer):
+    _validate = True
+
     @abstractmethod
-    def _get_support(self) -> np.ndarray:
+    def _get_support(self) -> ONE_DIM_ARRAYLIKE_TYPE:
         pass
 
-    def _transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        X = pd.DataFrame(X)
-        _, n_input_features = X.shape
+    def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
         support = self.get_support()
         support = safe_mask(X, support)
+        _, n_input_features = X.shape
         n_output_features = np.sum(support)
 
         self.logger_.info(
@@ -231,9 +279,9 @@ class BaseSelector(BaseTransformer):
             f'features.'
         )
 
-        return X.iloc[:, support]
+        return X[:, support]
 
-    def get_support(self, indices: bool = False) -> np.ndarray:
+    def get_support(self, indices: bool = False) -> ONE_DIM_ARRAYLIKE_TYPE:
         """Get a mask of the features selected.
 
         Parameters

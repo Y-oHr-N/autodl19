@@ -8,8 +8,8 @@ from imblearn.utils import check_sampling_strategy
 from sklearn.utils import check_random_state
 
 from .base import BaseSampler
-from .constants import ONE_DIM_ARRAY_TYPE
-from .constants import TWO_DIM_ARRAY_TYPE
+from .base import ONE_DIM_ARRAYLIKE_TYPE
+from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
 class RandomUnderSampler(BaseSampler):
@@ -36,8 +36,8 @@ class RandomUnderSampler(BaseSampler):
 
     def _fit(
         self,
-        X: TWO_DIM_ARRAY_TYPE,
-        y: ONE_DIM_ARRAY_TYPE,
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE,
         **fit_params: Any
     ) -> 'RandomUnderSampler':
         random_state = check_random_state(self.random_state)

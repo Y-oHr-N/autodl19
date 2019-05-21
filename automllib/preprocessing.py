@@ -15,14 +15,14 @@ from sklearn.utils import gen_even_slices
 from sklearn.utils import safe_indexing
 
 from .base import BaseTransformer
-from .constants import ONE_DIM_ARRAY_TYPE
-from .constants import TWO_DIM_ARRAY_TYPE
+from .base import ONE_DIM_ARRAYLIKE_TYPE
+from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
 def count_encode(
-    X: TWO_DIM_ARRAY_TYPE,
+    X: TWO_DIM_ARRAYLIKE_TYPE,
     counters: List[collections.Counter],
-) -> TWO_DIM_ARRAY_TYPE:
+) -> TWO_DIM_ARRAYLIKE_TYPE:
     Xt = np.empty_like(X)
     vectorized = np.vectorize(
         lambda counter, xj: counter.get(xj, 0.0),
@@ -35,13 +35,13 @@ def count_encode(
     return Xt
 
 
-def diff(X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
+def subtracted_features(X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
     n_samples, n_input_features = X.shape
     n_output_features = n_input_features * (n_input_features - 1) // 2
     Xt = np.empty((n_samples, n_output_features))
-    iterator = itertools.combinations(range(n_input_features), 2)
+    iterable = itertools.combinations(range(n_input_features), 2)
 
-    for j, (k, l) in enumerate(iterator):
+    for j, (k, l) in enumerate(iterable):
         Xt[:, j] = X[:, k] - X[:, l]
 
     return Xt
@@ -49,6 +49,7 @@ def diff(X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
 
 class Clip(BaseTransformer):
     _attributes = ['data_max_', 'data_min_']
+    _validate = True
 
     def __init__(
         self,
@@ -65,7 +66,11 @@ class Clip(BaseTransformer):
     def _check_params(self) -> None:
         pass
 
-    def _fit(self, X: pd.DataFrame, y: pd.Series = None) -> 'Clip':
+    def _fit(
+        self,
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE = None
+    ) -> 'Clip':
         self.data_min_, self.data_max_ = np.nanpercentile(
             X,
             [self.low, self.high],
@@ -75,11 +80,12 @@ class Clip(BaseTransformer):
         return self
 
     def _transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        return X.clip(axis=1, lower=self.data_min_, upper=self.data_max_)
+        return np.clip(X, self.data_min_, self.data_max_)
 
 
 class CountEncoder(BaseTransformer):
     _attributes = ['counters_']
+    _validate = True
 
     def __init__(
         self,
@@ -96,14 +102,14 @@ class CountEncoder(BaseTransformer):
 
     def _fit(
         self,
-        X: TWO_DIM_ARRAY_TYPE,
-        y: ONE_DIM_ARRAY_TYPE = None
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'CountEncoder':
         self.counters_ = [collections.Counter(column) for column in X.T]
 
         return self
 
-    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
+    def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
         n_samples, _ = X.shape
         n_jobs = effective_n_jobs(self.n_jobs)
         parallel = Parallel(n_jobs=n_jobs)
@@ -119,6 +125,7 @@ class CountEncoder(BaseTransformer):
 
 class SubtractedFeatures(BaseTransformer):
     _attributes = []
+    _validate = True
 
     def __init__(
         self,
@@ -135,16 +142,16 @@ class SubtractedFeatures(BaseTransformer):
 
     def _fit(
         self,
-        X: TWO_DIM_ARRAY_TYPE,
-        y: ONE_DIM_ARRAY_TYPE = None
-    ) -> 'Diff':
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE = None
+    ) -> 'SubtractedFeatures':
         return self
 
-    def _transform(self, X: TWO_DIM_ARRAY_TYPE) -> TWO_DIM_ARRAY_TYPE:
+    def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
         n_samples, _ = X.shape
         n_jobs = effective_n_jobs(self.n_jobs)
         parallel = Parallel(n_jobs=n_jobs)
-        func = delayed(diff)
+        func = delayed(subtracted_features)
         result = parallel(
             func(
                 safe_indexing(X, s)
@@ -156,26 +163,7 @@ class SubtractedFeatures(BaseTransformer):
 
 class RowStatistics(BaseTransformer):
     _attributes = []
-
-    def __init__(
-        self,
-        dtype: Union[str, Type] = None,
-        verbose: int = 0
-    ) -> None:
-        super().__init__(dtype=dtype, verbose=verbose)
-
-    def _check_params(self) -> None:
-        pass
-
-    def _fit(self, X: pd.DataFrame, y: pd.Series = None) -> 'RowStatistics':
-        return self
-
-    def _transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        return X.isnull().sum(axis=1).to_frame()
-
-
-class StandardScaler(BaseTransformer):
-    _attributes = ['mean_', 'std_']
+    _validate = True
 
     def __init__(
         self,
@@ -189,15 +177,40 @@ class StandardScaler(BaseTransformer):
 
     def _fit(
         self,
-        X: pd.DataFrame,
-        y: pd.Series = None
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE = None
+    ) -> 'RowStatistics':
+        return self
+
+    def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
+        return pd.isnull(X).sum(axis=1).reshape(-1, 1)
+
+
+class StandardScaler(BaseTransformer):
+    _attributes = ['mean_', 'std_', 'scale_']
+    _validate = True
+
+    def __init__(
+        self,
+        dtype: Union[str, Type] = None,
+        verbose: int = 0
+    ) -> None:
+        super().__init__(dtype=dtype, verbose=verbose)
+
+    def _check_params(self) -> None:
+        pass
+
+    def _fit(
+        self,
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'StandardScaler':
-        self.mean_ = X.mean().values
-        self.std_ = X.std().values
+        self.mean_ = np.nanmean(X, axis=0)
+        self.std_ = np.nanstd(X, axis=0)
         self.scale_ = self.std_.copy()
         self.scale_[self.scale_ == 0.0] = 1.0
 
         return self
 
-    def _transform(self, X: pd.DataFrame) -> pd.DataFrame:
+    def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
         return (X - self.mean_) / self.scale_

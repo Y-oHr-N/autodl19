@@ -91,6 +91,8 @@ class PipelineMaker(object):
 
     def make_categorical_transformer(self) -> BaseEstimator:
         return make_pipeline(
+            NAProportionThreshold(verbose=self.verbose),
+            DropInvariant(verbose=self.verbose),
             DropUniqueKey(verbose=self.verbose),
             # DropDuplicates(verbose=self.verbose),
             SimpleImputer(fill_value='missing', strategy='constant'),
@@ -116,6 +118,8 @@ class PipelineMaker(object):
 
     def make_numerical_transformer(self) -> BaseEstimator:
         return make_pipeline(
+            NAProportionThreshold(verbose=self.verbose),
+            DropInvariant(verbose=self.verbose),
             DropCollinearFeatures(verbose=self.verbose),
             make_union(
                 make_pipeline(
@@ -154,6 +158,7 @@ class PipelineMaker(object):
 
     def make_time_transformer(self) -> BaseEstimator:
         return make_pipeline(
+            NAProportionThreshold(verbose=self.verbose),
             SubtractedFeatures(
                 dtype='float32',
                 n_jobs=self.n_jobs,
@@ -164,8 +169,6 @@ class PipelineMaker(object):
     def make_transformer(self) -> BaseEstimator:
         return make_pipeline(
             TableJoiner(self.info, self.related_tables, verbose=self.verbose),
-            NAProportionThreshold(verbose=self.verbose),
-            DropInvariant(verbose=self.verbose),
             make_union(
                 make_column_transformer(
                     (
