@@ -125,9 +125,16 @@ class PipelineMaker(object):
                         estimator=LinearRegression(n_jobs=self.n_jobs),
                         max_iter=self.max_iter
                     ),
-                    PolynomialFeatures(
-                        include_bias=False,
-                        interaction_only=True
+                    make_union(
+                        PolynomialFeatures(
+                            include_bias=False,
+                            interaction_only=True
+                        ),
+                        SubtractedFeatures(
+                            n_jobs=self.n_jobs,
+                            verbose=self.verbose
+                        )
+
                     )
                 ),
                 make_pipeline(
