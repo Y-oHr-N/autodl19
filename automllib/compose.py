@@ -30,7 +30,7 @@ from .feature_selection import NAProportionThreshold
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
-from .preprocessing import Diff
+from .preprocessing import SubtractedFeatures
 from .preprocessing import RowStatistics
 from .preprocessing import StandardScaler
 from .table_join import TableJoiner
@@ -147,7 +147,7 @@ class PipelineMaker(object):
 
     def make_time_transformer(self) -> BaseEstimator:
         return make_pipeline(
-            Diff(
+            SubtractedFeatures(
                 dtype='float32',
                 n_jobs=self.n_jobs,
                 verbose=self.verbose

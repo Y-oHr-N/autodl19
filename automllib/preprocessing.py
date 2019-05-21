@@ -117,7 +117,7 @@ class CountEncoder(BaseTransformer):
         return np.concatenate(result)
 
 
-class Diff(BaseTransformer):
+class SubtractedFeatures(BaseTransformer):
     _attributes = []
 
     def __init__(
