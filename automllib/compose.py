@@ -21,7 +21,7 @@ from sklearn.pipeline import make_union
 from sklearn.preprocessing import PolynomialFeatures
 
 from .base import BaseEstimator
-from .constants import TWO_DIM_ARRAY_TYPE
+from .base import TWO_DIM_ARRAYLIKE_TYPE
 from .feature_extraction import MultiValueCategoricalVectorizer
 # from .feature_selection import DropDuplicates
 from .feature_selection import DropCollinearFeatures
@@ -31,22 +31,22 @@ from .feature_selection import NAProportionThreshold
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
-from .preprocessing import SubtractedFeatures
 from .preprocessing import RowStatistics
 from .preprocessing import StandardScaler
+from .preprocessing import SubtractedFeatures
 from .table_join import TableJoiner
 from .under_sampling import RandomUnderSampler
 from .utils import get_categorical_feature_names
 from .utils import get_multi_value_categorical_feature_names
 from .utils import get_numerical_feature_names
-from .utils import get_time_feature_names
+# from .utils import get_time_feature_names
 
 
 class PipelineMaker(object):
     def __init__(
         self,
         info: Dict[str, Any],
-        related_tables: Dict[str, TWO_DIM_ARRAY_TYPE],
+        related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE],
         target_type: str,
         n_jobs: int = 1,
         random_state: Union[int, np.random.RandomState] = None,
@@ -173,7 +173,8 @@ class PipelineMaker(object):
                         verbose=self.verbose
                     )
                 ),
-                MissingIndicator(error_on_new=False)
+                MissingIndicator(error_on_new=False),
+                RowStatistics(verbose=self.verbose)
             )
         )
 
