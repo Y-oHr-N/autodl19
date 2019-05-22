@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 
 from .base import BaseTransformer
-from .base import TWO_DIM_ARRAYLIKE_TYPE
 from .base import ONE_DIM_ARRAYLIKE_TYPE
+from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
 class SimpleImputer(BaseTransformer):
@@ -31,10 +31,14 @@ class SimpleImputer(BaseTransformer):
     def _check_params(self) -> None:
         pass
 
-    def _fit(self, X, y=None):
+    def _fit(
+        self,
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE = None
+    ) -> 'SimpleImputer':
         return self
 
-    def _transform(self, X):
+    def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
         if self.copy:
             X = np.copy(X)
 
