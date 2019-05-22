@@ -38,7 +38,7 @@ def count_encode(
 def subtracted_features(X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
     n_samples, n_input_features = X.shape
     n_output_features = n_input_features * (n_input_features - 1) // 2
-    Xt = np.empty((n_samples, n_output_features))
+    Xt = np.empty((n_samples, n_output_features), dtype=X.dtype)
     iterable = itertools.combinations(range(n_input_features), 2)
 
     for j, (k, l) in enumerate(iterable):
