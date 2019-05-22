@@ -113,6 +113,8 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
         X = self.engineer_.fit_transform(X)
         X_valid = self.engineer_.transform(X_valid)
 
+        assert X.dtype == 'float32'
+
         model_name = self.search_cv_ \
             .estimator._final_estimator \
             .__class__.__name__.lower()

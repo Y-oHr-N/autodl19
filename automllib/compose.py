@@ -118,7 +118,11 @@ class PipelineMaker(object):
             DropInvariant(verbose=self.verbose),
             DropUniqueKey(verbose=self.verbose),
             # DropDuplicates(verbose=self.verbose),
-            SimpleImputer(fill_value='missing', strategy='constant'),
+            SimpleImputer(
+                fill_value='missing',
+                strategy='constant',
+                verbose=self.verbose
+            ),
             CountEncoder(
                 dtype='float32',
                 n_jobs=self.n_jobs,
@@ -129,7 +133,11 @@ class PipelineMaker(object):
     def make_multi_value_categorical_transformer(self) -> BaseEstimator:
         return make_pipeline(
             NAProportionThreshold(verbose=self.verbose),
-            SimpleImputer(fill_value='missing', strategy='constant'),
+            SimpleImputer(
+                fill_value='missing',
+                strategy='constant',
+                verbose=self.verbose
+            ),
             MultiValueCategoricalVectorizer(
                 dtype='float32',
                 lowercase=self.lowercase,
@@ -161,13 +169,13 @@ class PipelineMaker(object):
                             n_jobs=self.n_jobs,
                             verbose=self.verbose
                         )
-
                     )
                 ),
                 make_pipeline(
                     SimpleImputer(
                         fill_value=np.finfo('float32').max,
-                        strategy='constant'
+                        strategy='constant',
+                        verbose=self.verbose
                     ),
                     CountEncoder(
                         dtype='float32',
@@ -176,7 +184,7 @@ class PipelineMaker(object):
                     )
                 ),
                 MissingIndicator(error_on_new=False),
-                RowStatistics(verbose=self.verbose)
+                RowStatistics(dtype='float32', verbose=self.verbose)
             )
         )
 
@@ -185,7 +193,8 @@ class PipelineMaker(object):
             NAProportionThreshold(verbose=self.verbose),
             SimpleImputer(
                 fill_value=datetime.datetime(1970, 1, 1),
-                strategy='constant'
+                strategy='constant',
+                verbose=self.verbose
             ),
             SubtractedFeatures(
                 dtype='float32',
