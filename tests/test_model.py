@@ -133,6 +133,7 @@ def test_model() -> None:
     data_path = pathlib.Path('data')
     ref_path = pathlib.Path('ref')
     probabilities = {}
+    scores = []
     experiment = make_experiment()
 
     for path in data_path.iterdir():
@@ -164,9 +165,16 @@ def test_model() -> None:
 
         score = roc_auc_score(test_label, probabilities[path.name])
 
-        logger.info(f'The AUC is {score:.3f}.')
+        logger.info(f'The AUC of {path.name} is {score:.3f}.')
 
         assert score > 0.5
 
+        scores.append(score)
+
         if experiment is not None:
             experiment.log_metric(f'AUC of {path.name}', score)
+
+    with np.errstate(invalid='ignore'):
+        mean_score = np.mean(scores)
+
+    logger.info(f'The mean AUC is {mean_score:.3f}')
