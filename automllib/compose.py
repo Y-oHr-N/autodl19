@@ -1,3 +1,5 @@
+import datetime
+
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -14,7 +16,6 @@ from sklearn.feature_selection import f_regression
 from sklearn.feature_selection import SelectFpr
 from sklearn.impute import IterativeImputer
 from sklearn.impute import MissingIndicator
-from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import BaseCrossValidator
 from sklearn.pipeline import make_union
@@ -28,6 +29,7 @@ from .feature_selection import DropCollinearFeatures
 from .feature_selection import DropInvariant
 from .feature_selection import DropUniqueKey
 from .feature_selection import NAProportionThreshold
+from .impute import SimpleImputer
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
@@ -39,7 +41,7 @@ from .under_sampling import RandomUnderSampler
 from .utils import get_categorical_feature_names
 from .utils import get_multi_value_categorical_feature_names
 from .utils import get_numerical_feature_names
-# from .utils import get_time_feature_names
+from .utils import get_time_feature_names
 
 
 class PipelineMaker(object):
@@ -181,6 +183,10 @@ class PipelineMaker(object):
     def make_time_transformer(self) -> BaseEstimator:
         return make_pipeline(
             NAProportionThreshold(verbose=self.verbose),
+            SimpleImputer(
+                fill_value=datetime.datetime(1970, 1, 1),
+                strategy='constant'
+            ),
             SubtractedFeatures(
                 dtype='float32',
                 n_jobs=self.n_jobs,
@@ -202,10 +208,10 @@ class PipelineMaker(object):
                 self.make_numerical_transformer(),
                 get_numerical_feature_names
             ),
-            # (
-            #     self.make_time_transformer(),
-            #     get_time_feature_names
-            # )
+            (
+                self.make_time_transformer(),
+                get_time_feature_names
+            )
         )
 
     def make_model(self) -> BaseEstimator:
