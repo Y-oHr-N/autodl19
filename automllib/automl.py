@@ -18,13 +18,12 @@ from .constants import MAIN_TABLE_NAME
 
 
 class AutoMLClassifier(BaseEstimator, ClassifierMixin):
-    _attributes = ['maker_', 'search_cv_', 'transformer_']
+    _attributes = ['joiner_', 'sampler_', 'engineer_', 'search_cv_']
     _validate = False
 
     def __init__(
         self,
         info: Dict[str, Any],
-        cv: int = 3,
         early_stopping_rounds: int = 10,
         lowercase: bool = False,
         max_iter: int = 10,
@@ -32,17 +31,16 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
         n_estimators: int = 100,
         n_features_per_column: int = 32,
         n_jobs: int = -1,
+        n_splits: int = 3,
         random_state: Union[int, np.random.RandomState] = 0,
         sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
         scoring: Union[str, Callable[..., float]] = 'roc_auc',
-        shuffle: bool = False,
-        subsample: Union[int, float] = 100_000,
-        valid_size: float = 0.1,
+        subsample: Union[int, float] = 1.0,
+        valid_size: Union[int, float] = 0.25,
         verbose: int = 1
     ) -> None:
         super().__init__(verbose=verbose)
 
-        self.cv = cv
         self.early_stopping_rounds = early_stopping_rounds
         self.info = info
         self.lowercase = lowercase
@@ -51,10 +49,10 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
         self.n_estimators = n_estimators
         self.n_features_per_column = n_features_per_column
         self.n_jobs = n_jobs
+        self.n_splits = n_splits
         self.random_state = random_state
         self.sampling_strategy = sampling_strategy
         self.scoring = scoring
-        self.shuffle = shuffle
         self.subsample = subsample
         self.valid_size = valid_size
 
@@ -69,23 +67,24 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
     ) -> 'AutoMLClassifier':
         related_tables = Xs.copy()
         X = related_tables.pop(MAIN_TABLE_NAME)
-        X = X.sort_values(self.info['time_col'])
-        y = y.loc[X.index]
+
+        index = X[self.info['time_col']].sort_values(na_position='first').index
+        X = X.loc[index]
+        y = y.loc[index]
+
         X, X_valid, y, y_valid = train_test_split(
             X,
             y,
             random_state=self.random_state,
-            shuffle=self.shuffle,
+            shuffle=False,
             test_size=self.valid_size
         )
-        target_type = type_of_target(y)
-        cv = TimeSeriesSplit(self.cv)
 
-        self.maker_ = PipelineMaker(
+        maker = PipelineMaker(
             self.info,
             related_tables,
-            target_type,
-            cv=cv,
+            type_of_target(y),
+            cv=TimeSeriesSplit(self.n_splits),
             lowercase=self.lowercase,
             max_iter=self.max_iter,
             metric=self.metric,
@@ -95,22 +94,28 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
             random_state=self.random_state,
             sampling_strategy=self.sampling_strategy,
             scoring=self.scoring,
-            shuffle=self.shuffle,
+            shuffle=False,
             subsample=self.subsample,
             verbose=self.verbose
         )
-        self.joiner_ = self.maker_.make_joiner()
-        self.sampler_ = self.maker_.make_sampler()
-        self.transformer_ = self.maker_.make_transformer()
-        self.search_cv_ = self.maker_.make_search_cv()
+
+        self.joiner_ = maker.make_joiner()
+        self.sampler_ = maker.make_sampler()
+        self.engineer_ = maker.make_engineer()
+        self.search_cv_ = maker.make_search_cv()
 
         X = self.joiner_.fit_transform(X)
-        X, y = self.sampler_.fit_resample(X, y)
-        X = self.transformer_.fit_transform(X)
         X_valid = self.joiner_.transform(X_valid)
-        X_valid = self.transformer_.transform(X_valid)
-        model_name = \
-            self.search_cv_.estimator._final_estimator.__class__.__name__.lower()
+
+        if self.sampler_ is not None:
+            X, y = self.sampler_.fit_resample(X, y)
+
+        X = self.engineer_.fit_transform(X)
+        X_valid = self.engineer_.transform(X_valid)
+
+        model_name = self.search_cv_ \
+            .estimator._final_estimator \
+            .__class__.__name__.lower()
         fit_params = {
             f'{model_name}__early_stopping_rounds': self.early_stopping_rounds,
             f'{model_name}__eval_set': [(X_valid, y_valid)],
@@ -121,13 +126,21 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
 
         return self
 
+    def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
+        self._check_is_fitted()
+
+        X = self.joiner_.transform(X)
+        X = self.engineer_.transform(X)
+
+        return self.search_cv_.predict(X)
+
     def predict_proba(
         self,
-        X: TWO_DIM_ARRAYLIKE_TYPE,
-        timeout: float = None
+        X: TWO_DIM_ARRAYLIKE_TYPE
     ) -> ONE_DIM_ARRAYLIKE_TYPE:
         self._check_is_fitted()
 
-        X = self.transformer_.transform(X)
+        X = self.joiner_.transform(X)
+        X = self.engineer_.transform(X)
 
         return self.search_cv_.predict_proba(X)

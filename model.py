@@ -19,9 +19,9 @@ class Model(object):
     def fit(self, Xs, y, timeout):
         self.model_ = AutoMLClassifier(self.info)
 
-        self.model_.fit(Xs, y, timeout)
+        self.model_.fit(Xs, y, timeout=timeout)
 
     def predict(self, X, timeout):
-        probas = self.model_.predict_proba(X, timeout)
+        probas = self.model_.predict_proba(X)
 
         return pd.Series(probas[:, 1])
