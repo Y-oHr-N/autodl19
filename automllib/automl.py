@@ -1,5 +1,4 @@
 from typing import Any
-from typing import Callable
 from typing import Dict
 from typing import Union
 
@@ -27,14 +26,13 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
         early_stopping_rounds: int = 10,
         lowercase: bool = False,
         max_iter: int = 10,
-        metric: str = 'auc',
         n_estimators: int = 100,
         n_features_per_column: int = 32,
         n_jobs: int = -1,
         n_splits: int = 3,
+        n_trials: int = 10,
         random_state: Union[int, np.random.RandomState] = 0,
         sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
-        scoring: Union[str, Callable[..., float]] = 'roc_auc',
         subsample: Union[int, float] = 1.0,
         valid_size: Union[int, float] = 0.25,
         verbose: int = 1
@@ -45,14 +43,13 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
         self.info = info
         self.lowercase = lowercase
         self.max_iter = max_iter
-        self.metric = metric
         self.n_estimators = n_estimators
         self.n_features_per_column = n_features_per_column
         self.n_jobs = n_jobs
         self.n_splits = n_splits
+        self.n_trials = n_trials
         self.random_state = random_state
         self.sampling_strategy = sampling_strategy
-        self.scoring = scoring
         self.subsample = subsample
         self.valid_size = valid_size
 
@@ -80,22 +77,35 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
             test_size=self.valid_size
         )
 
+        target_type = type_of_target(y)
+
+        if target_type == 'binary':
+            metric = 'auc'
+            scoring = 'roc_auc'
+        elif target_type in ['multiclass', 'multiclass-output']:
+            metric = 'multiclass'
+            scoring = 'f1_micro'
+        else:
+            raise ValueError(f'Unknown target_type: {self.target_type}.')
+
         maker = PipelineMaker(
             self.info,
             related_tables,
-            type_of_target(y),
+            target_type,
             cv=TimeSeriesSplit(self.n_splits),
             lowercase=self.lowercase,
             max_iter=self.max_iter,
-            metric=self.metric,
+            metric=metric,
             n_estimators=self.n_estimators,
             n_features_per_column=self.n_features_per_column,
             n_jobs=self.n_jobs,
+            n_trials=self.n_trials,
             random_state=self.random_state,
             sampling_strategy=self.sampling_strategy,
-            scoring=self.scoring,
+            scoring=scoring,
             shuffle=False,
             subsample=self.subsample,
+            timeout=None,
             verbose=self.verbose
         )
 
