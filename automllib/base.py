@@ -52,7 +52,7 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
     @abstractmethod
     def _fit(
         self,
-        X: Union[Dict[str, TWO_DIM_ARRAYLIKE_TYPE], TWO_DIM_ARRAYLIKE_TYPE],
+        X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE = None,
         **fit_params: Any
     ) -> 'BaseEstimator':
@@ -103,7 +103,7 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
 
     def fit(
         self,
-        X: Union[Dict[str, TWO_DIM_ARRAYLIKE_TYPE], TWO_DIM_ARRAYLIKE_TYPE],
+        X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE = None,
         *args: Any,
         **kwargs: Any

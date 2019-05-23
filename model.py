@@ -9,7 +9,10 @@ os.system('pip3 install -q scikit-learn>=0.21.0')
 
 import pandas as pd
 
+from sklearn.model_selection import TimeSeriesSplit
+
 from automllib.automl import AutoMLClassifier
+from automllib.constants import MAIN_TABLE_NAME
 
 
 class Model(object):
@@ -17,9 +20,22 @@ class Model(object):
         self.info = info
 
     def fit(self, Xs, y, timeout):
-        self.model_ = AutoMLClassifier(self.info)
+        related_tables = Xs.copy()
+        X = related_tables.pop(MAIN_TABLE_NAME)
 
-        self.model_.fit(Xs, y, timeout=timeout)
+        self.model_ = AutoMLClassifier(
+            self.info,
+            related_tables,
+            cv=TimeSeriesSplit(3),
+            n_features_per_column=32,
+            n_jobs=-1,
+            random_state=0,
+            shuffle=False,
+            timeout=timeout,
+            verbose=1
+        )
+
+        self.model_.fit(X, y)
 
     def predict(self, X, timeout):
         probas = self.model_.predict_proba(X)

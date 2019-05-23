@@ -5,6 +5,7 @@ from typing import Union
 import numpy as np
 
 from sklearn.base import ClassifierMixin
+from sklearn.model_selection import BaseCrossValidator
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.model_selection import train_test_split
 from sklearn.utils.multiclass import type_of_target
@@ -23,22 +24,26 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
     def __init__(
         self,
         info: Dict[str, Any],
+        related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE],
+        cv: Union[int, BaseCrossValidator] = 5,
         early_stopping_rounds: int = 10,
         lowercase: bool = False,
         max_iter: int = 10,
         n_estimators: int = 100,
-        n_features_per_column: int = 32,
-        n_jobs: int = -1,
-        n_splits: int = 3,
+        n_features_per_column: int = 1_048_576,
+        n_jobs: int = 1,
         n_trials: int = 10,
-        random_state: Union[int, np.random.RandomState] = 0,
+        random_state: Union[int, np.random.RandomState] = None,
         sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
+        shuffle: bool = True,
         subsample: Union[int, float] = 1.0,
+        timeout: float = None,
         valid_size: Union[int, float] = 0.25,
-        verbose: int = 1
+        verbose: int = 0
     ) -> None:
         super().__init__(verbose=verbose)
 
+        self.cv = cv
         self.early_stopping_rounds = early_stopping_rounds
         self.info = info
         self.lowercase = lowercase
@@ -46,11 +51,13 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
         self.n_estimators = n_estimators
         self.n_features_per_column = n_features_per_column
         self.n_jobs = n_jobs
-        self.n_splits = n_splits
         self.n_trials = n_trials
         self.random_state = random_state
+        self.related_tables = related_tables
         self.sampling_strategy = sampling_strategy
+        self.shuffle = shuffle
         self.subsample = subsample
+        self.timeout = timeout
         self.valid_size = valid_size
 
     def _check_params(self) -> None:
@@ -58,13 +65,9 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
 
     def _fit(
         self,
-        Xs: Dict[str, TWO_DIM_ARRAYLIKE_TYPE],
-        y: ONE_DIM_ARRAYLIKE_TYPE,
-        timeout: float = None
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE
     ) -> 'AutoMLClassifier':
-        related_tables = Xs.copy()
-        X = related_tables.pop(MAIN_TABLE_NAME)
-
         index = X[self.info['time_col']].sort_values(na_position='first').index
         X = X.loc[index]
         y = y.loc[index]
@@ -73,7 +76,7 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
             X,
             y,
             random_state=self.random_state,
-            shuffle=False,
+            shuffle=self.shuffle,
             test_size=self.valid_size
         )
 
@@ -90,9 +93,9 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
 
         maker = PipelineMaker(
             self.info,
-            related_tables,
+            self.related_tables,
             target_type,
-            cv=TimeSeriesSplit(self.n_splits),
+            cv=self.cv,
             lowercase=self.lowercase,
             max_iter=self.max_iter,
             metric=metric,
@@ -103,7 +106,7 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
             random_state=self.random_state,
             sampling_strategy=self.sampling_strategy,
             scoring=scoring,
-            shuffle=False,
+            shuffle=self.shuffle,
             subsample=self.subsample,
             timeout=None,
             verbose=self.verbose
