@@ -86,7 +86,7 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
             metric = 'multiclass'
             scoring = 'f1_micro'
         else:
-            raise ValueError(f'Unknown target_type: {self.target_type}.')
+            raise ValueError(f'Unknown target_type: {target_type}.')
 
         maker = PipelineMaker(
             self.info,
@@ -135,6 +135,9 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
         }
 
         self.search_cv_.fit(X, y, **fit_params)
+
+        if target_type == 'binary':
+            assert self.search_cv_.best_score_ > 0.5
 
         return self
 
