@@ -4,7 +4,6 @@ import pathlib
 from abc import ABC
 from abc import abstractmethod
 from typing import Any
-from typing import Dict
 from typing import List
 from typing import Tuple
 from typing import Type
@@ -165,6 +164,11 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
 class BaseSampler(BaseEstimator):
     _estimator_type = 'sampler'
     _validate = False
+
+    @property
+    @abstractmethod
+    def _sampling_type(self) -> str:
+        pass
 
     def _resample(
         self,
