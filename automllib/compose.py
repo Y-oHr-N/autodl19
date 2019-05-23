@@ -199,11 +199,7 @@ class PipelineMaker(object):
     def make_time_transformer(self) -> BaseEstimator:
         return make_pipeline(
             NAProportionThreshold(verbose=self.verbose),
-            SimpleImputer(
-                fill_value=datetime.datetime(1970, 1, 1),
-                strategy='constant',
-                verbose=self.verbose
-            ),
+            SimpleImputer(strategy='min', verbose=self.verbose),
             SubtractedFeatures(
                 dtype='float32',
                 n_jobs=self.n_jobs,

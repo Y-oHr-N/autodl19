@@ -36,13 +36,27 @@ class SimpleImputer(BaseTransformer):
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'SimpleImputer':
+        _, n_features = X.shape
+
+        self.fill_value_ = np.empty(n_features, dtype=X.dtype)
+
+        if self.strategy == 'constant':
+            self.fill_value_[:] = self.fill_value
+        elif self.strategy == 'min':
+            for j, column in enumerate(X.T):
+                is_nan = pd.isnull(column)
+                self.fill_value_[j] = np.min(column[~is_nan])
+        else:
+            raise ValueError(f'Unknown strategy: {self.strategy}.')
+
         return self
 
     def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
         if self.copy:
             X = np.copy(X)
 
-        is_nan = pd.isnull(X)
-        X[is_nan] = self.fill_value
+        for j, column in enumerate(X.T):
+            is_nan = pd.isnull(column)
+            X[is_nan, j] = self.fill_value_[j]
 
         return X
