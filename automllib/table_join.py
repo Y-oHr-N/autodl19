@@ -53,7 +53,6 @@ def temporal_join(u, v, v_name, key, time_col):
     tmp_u = tmp_u.sort_values(time_col)
     tmp_u = tmp_u.groupby(key).ffill()
 
-    # TODO: Check exceptions for all relations (one2one, one2many, many2many)
     tmp_u.columns = tmp_u.columns.map(
         lambda a: f"{a}_NEAREST({v_name})" if not (a == key or a == time_col) else a
     )
@@ -63,7 +62,7 @@ def temporal_join(u, v, v_name, key, time_col):
         logger.info('Return u because temp_u is empty.')
         return u
 
-    ret = pd.concat([u, tmp_u.loc['u']], axis=1, sort=False)
+    ret = pd.concat([u, tmp_u.loc['u']], axis=1, join_axes=[u.index])
     del tmp_u
     return ret
 
