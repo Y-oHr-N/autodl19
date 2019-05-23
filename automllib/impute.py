@@ -11,7 +11,7 @@ from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
 class SimpleImputer(BaseTransformer):
-    _attributes = []
+    _attributes = ['fill_value_']
     _validate = True
 
     def __init__(
@@ -20,7 +20,7 @@ class SimpleImputer(BaseTransformer):
         dtype: Union[str, Type] = None,
         fill_value: Any = None,
         strategy: str = 'mean',
-        verbose: bool = False
+        verbose: int = 0
     ) -> None:
         super().__init__(dtype=dtype, verbose=verbose)
 
