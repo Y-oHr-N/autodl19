@@ -5,8 +5,8 @@ from typing import Union
 import numpy as np
 
 from sklearn.base import ClassifierMixin
+from sklearn.base import RegressorMixin
 from sklearn.model_selection import BaseCrossValidator
-from sklearn.model_selection import TimeSeriesSplit
 from sklearn.model_selection import train_test_split
 from sklearn.utils.multiclass import type_of_target
 
@@ -14,11 +14,10 @@ from .base import BaseEstimator
 from .base import ONE_DIM_ARRAYLIKE_TYPE
 from .base import TWO_DIM_ARRAYLIKE_TYPE
 from .compose import PipelineMaker
-from .constants import MAIN_TABLE_NAME
 
 
-class AutoMLClassifier(BaseEstimator, ClassifierMixin):
-    _attributes = ['joiner_', 'sampler_', 'engineer_', 'search_cv_']
+class AutoMLModel(BaseEstimator):
+    _attributes = ['engineer_', 'joiner_', 'sampler_', 'search_cv_']
     _validate = False
 
     def __init__(
@@ -28,6 +27,7 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
         cv: Union[int, BaseCrossValidator] = 5,
         early_stopping_rounds: int = 10,
         lowercase: bool = False,
+        max_depth: int = 7,
         max_iter: int = 10,
         n_estimators: int = 100,
         n_features_per_column: int = 1_048_576,
@@ -47,6 +47,7 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
         self.early_stopping_rounds = early_stopping_rounds
         self.info = info
         self.lowercase = lowercase
+        self.max_depth = max_depth
         self.max_iter = max_iter
         self.n_estimators = n_estimators
         self.n_features_per_column = n_features_per_column
@@ -67,10 +68,13 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE
-    ) -> 'AutoMLClassifier':
-        index = X[self.info['time_col']].sort_values(na_position='first').index
-        X = X.loc[index]
-        y = y.loc[index]
+    ) -> 'AutoMLModel':
+        if not self.shuffle:
+            index = X[self.info['time_col']].sort_values(
+                na_position='first'
+            ).index
+            X = X.loc[index]
+            y = y.loc[index]
 
         X, X_valid, y, y_valid = train_test_split(
             X,
@@ -85,11 +89,9 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
         if target_type == 'binary':
             metric = 'auc'
             scoring = 'roc_auc'
-        elif target_type in ['multiclass', 'multiclass-output']:
-            metric = 'multiclass'
-            scoring = 'f1_micro'
         else:
-            raise ValueError(f'Unknown target_type: {target_type}.')
+            metric = ''
+            scoring = None
 
         maker = PipelineMaker(
             self.info,
@@ -97,6 +99,7 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
             target_type,
             cv=self.cv,
             lowercase=self.lowercase,
+            max_depth=self.max_depth,
             max_iter=self.max_iter,
             metric=metric,
             n_estimators=self.n_estimators,
@@ -152,6 +155,8 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
 
         return self.search_cv_.predict(X)
 
+
+class AutoMLClassifier(AutoMLModel, ClassifierMixin):
     def predict_proba(
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE
@@ -162,3 +167,7 @@ class AutoMLClassifier(BaseEstimator, ClassifierMixin):
         X = self.engineer_.transform(X)
 
         return self.search_cv_.predict_proba(X)
+
+
+class AutoMLRegressor(AutoMLModel, RegressorMixin):
+    pass
