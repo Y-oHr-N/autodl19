@@ -1,6 +1,9 @@
 import collections
 import itertools
 
+from typing import Any
+from typing import Callable
+from typing import Dict
 from typing import List
 from typing import Type
 from typing import Union
@@ -19,6 +22,29 @@ from .base import ONE_DIM_ARRAYLIKE_TYPE
 from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
+def parallel_transform(
+    X: TWO_DIM_ARRAYLIKE_TYPE,
+    func: Callable[..., TWO_DIM_ARRAYLIKE_TYPE],
+    kwargs: Dict[str, Any] = None,
+    n_jobs: int = 1
+) -> TWO_DIM_ARRAYLIKE_TYPE:
+    n_samples, _ = X.shape
+    n_jobs = effective_n_jobs(n_jobs)
+    parallel = Parallel(n_jobs=n_jobs)
+    func = delayed(func)
+
+    if kwargs is None:
+        kwargs = {}
+
+    result = parallel(
+        func(
+            safe_indexing(X, s), **kwargs
+        ) for s in gen_even_slices(n_samples, n_jobs)
+    )
+
+    return np.concatenate(result)
+
+
 def count_encode(
     X: TWO_DIM_ARRAYLIKE_TYPE,
     counters: List[collections.Counter],
@@ -35,7 +61,7 @@ def count_encode(
     return Xt
 
 
-def subtracted_features(X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
+def subtract_features(X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
     n_samples, n_input_features = X.shape
     n_output_features = n_input_features * (n_input_features - 1) // 2
     Xt = np.empty((n_samples, n_output_features), dtype=X.dtype)
@@ -56,12 +82,14 @@ class Clip(BaseTransformer):
         dtype: Union[str, Type] = None,
         high: float = 99.9,
         low: float = 0.1,
+        n_jobs: int = 1,
         verbose: int = 0
     ) -> None:
         super().__init__(dtype=dtype, verbose=verbose)
 
         self.high = high
         self.low = low
+        self.n_jobs = n_jobs
 
     def _check_params(self) -> None:
         pass
@@ -80,7 +108,12 @@ class Clip(BaseTransformer):
         return self
 
     def _transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        return np.clip(X, self.data_min_, self.data_max_)
+        return parallel_transform(
+            X,
+            np.clip,
+            kwargs={'a_min': self.data_min_, 'a_max': self.data_max_},
+            n_jobs=self.n_jobs
+        )
 
 
 class CountEncoder(BaseTransformer):
@@ -110,17 +143,12 @@ class CountEncoder(BaseTransformer):
         return self
 
     def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
-        n_samples, _ = X.shape
-        n_jobs = effective_n_jobs(self.n_jobs)
-        parallel = Parallel(n_jobs=n_jobs)
-        func = delayed(count_encode)
-        result = parallel(
-            func(
-                safe_indexing(X, s), self.counters_
-            ) for s in gen_even_slices(n_samples, n_jobs)
+        return parallel_transform(
+            X,
+            count_encode,
+            kwargs={'counters': self.counters_},
+            n_jobs=self.n_jobs
         )
-
-        return np.concatenate(result)
 
 
 class SubtractedFeatures(BaseTransformer):
@@ -148,17 +176,7 @@ class SubtractedFeatures(BaseTransformer):
         return self
 
     def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
-        n_samples, _ = X.shape
-        n_jobs = effective_n_jobs(self.n_jobs)
-        parallel = Parallel(n_jobs=n_jobs)
-        func = delayed(subtracted_features)
-        result = parallel(
-            func(
-                safe_indexing(X, s)
-            ) for s in gen_even_slices(n_samples, n_jobs)
-        )
-
-        return np.concatenate(result)
+        return parallel_transform(X, subtract_features, n_jobs=self.n_jobs)
 
 
 class RowStatistics(BaseTransformer):
@@ -168,9 +186,12 @@ class RowStatistics(BaseTransformer):
     def __init__(
         self,
         dtype: Union[str, Type] = None,
+        n_jobs: int = 1,
         verbose: int = 0
     ) -> None:
         super().__init__(dtype=dtype, verbose=verbose)
+
+        self.n_jobs = n_jobs
 
     def _check_params(self) -> None:
         pass
@@ -183,7 +204,11 @@ class RowStatistics(BaseTransformer):
         return self
 
     def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
-        return pd.isnull(X).sum(axis=1).reshape(-1, 1)
+        return parallel_transform(
+            X,
+            lambda X: pd.isnull(X).sum(axis=1).reshape(-1, 1),
+            n_jobs=self.n_jobs
+        )
 
 
 class StandardScaler(BaseTransformer):
@@ -193,9 +218,12 @@ class StandardScaler(BaseTransformer):
     def __init__(
         self,
         dtype: Union[str, Type] = None,
+        n_jobs: int = 1,
         verbose: int = 0
     ) -> None:
         super().__init__(dtype=dtype, verbose=verbose)
+
+        self.n_jobs = n_jobs
 
     def _check_params(self) -> None:
         pass
@@ -213,4 +241,9 @@ class StandardScaler(BaseTransformer):
         return self
 
     def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
-        return (X - self.mean_) / self.scale_
+        return parallel_transform(
+            X,
+            lambda X, mean, scale: (X - mean) / scale,
+            kwargs={'mean': self.mean_, 'scale': self.scale_},
+            n_jobs=self.n_jobs
+        )

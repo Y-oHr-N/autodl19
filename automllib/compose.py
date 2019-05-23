@@ -154,8 +154,12 @@ class PipelineMaker(object):
             DropCollinearFeatures(verbose=self.verbose),
             make_union(
                 make_pipeline(
-                    Clip(dtype='float32', verbose=self.verbose),
-                    StandardScaler(verbose=self.verbose),
+                    Clip(
+                        dtype='float32',
+                        n_jobs=self.n_jobs,
+                        verbose=self.verbose
+                    ),
+                    StandardScaler(n_jobs=self.n_jobs, verbose=self.verbose),
                     IterativeImputer(
                         estimator=LinearRegression(n_jobs=self.n_jobs),
                         max_iter=self.max_iter
@@ -184,7 +188,11 @@ class PipelineMaker(object):
                     )
                 ),
                 MissingIndicator(error_on_new=False),
-                RowStatistics(dtype='float32', verbose=self.verbose)
+                RowStatistics(
+                    dtype='float32',
+                    n_jobs=self.n_jobs,
+                    verbose=self.verbose
+                )
             )
         )
 
