@@ -49,7 +49,7 @@ def count_encode(
     X: TWO_DIM_ARRAYLIKE_TYPE,
     counters: List[collections.Counter],
 ) -> TWO_DIM_ARRAYLIKE_TYPE:
-    Xt = np.empty_like(X)
+    Xt = np.empty_like(X, dtype='float64')
     vectorized = np.vectorize(
         lambda counter, xj: counter.get(xj, 0.0),
         excluded='counter'
@@ -79,7 +79,7 @@ class Clip(BaseTransformer):
 
     def __init__(
         self,
-        dtype: Union[str, Type] = None,
+        dtype: Union[str, Type] = 'float64',
         high: float = 99.9,
         low: float = 0.1,
         n_jobs: int = 1,
@@ -122,7 +122,7 @@ class CountEncoder(BaseTransformer):
 
     def __init__(
         self,
-        dtype: Union[str, Type] = None,
+        dtype: Union[str, Type] = 'float64',
         n_jobs: int = 1,
         verbose: int = 0
     ) -> None:
@@ -157,7 +157,7 @@ class SubtractedFeatures(BaseTransformer):
 
     def __init__(
         self,
-        dtype: Union[str, Type] = None,
+        dtype: Union[str, Type] = 'float64',
         n_jobs: int = 1,
         verbose: int = 0
     ) -> None:
@@ -185,7 +185,7 @@ class RowStatistics(BaseTransformer):
 
     def __init__(
         self,
-        dtype: Union[str, Type] = None,
+        dtype: Union[str, Type] = 'float64',
         n_jobs: int = 1,
         verbose: int = 0
     ) -> None:
@@ -217,7 +217,7 @@ class StandardScaler(BaseTransformer):
 
     def __init__(
         self,
-        dtype: Union[str, Type] = None,
+        dtype: Union[str, Type] = 'float64',
         n_jobs: int = 1,
         verbose: int = 0
     ) -> None:
@@ -233,8 +233,8 @@ class StandardScaler(BaseTransformer):
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'StandardScaler':
-        self.mean_ = np.nanmean(X, axis=0)
-        self.std_ = np.nanstd(X, axis=0)
+        self.mean_ = np.nanmean(X, axis=0, dtype=self.dtype)
+        self.std_ = np.nanstd(X, axis=0, dtype=self.dtype)
         self.scale_ = self.std_.copy()
         self.scale_[self.scale_ == 0.0] = 1.0
 

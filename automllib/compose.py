@@ -1,5 +1,3 @@
-import datetime
-
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -159,7 +157,11 @@ class PipelineMaker(object):
                         n_jobs=self.n_jobs,
                         verbose=self.verbose
                     ),
-                    StandardScaler(n_jobs=self.n_jobs, verbose=self.verbose),
+                    StandardScaler(
+                        dtype='float32',
+                        n_jobs=self.n_jobs,
+                        verbose=self.verbose
+                    ),
                     IterativeImputer(
                         estimator=LinearRegression(n_jobs=self.n_jobs),
                         max_iter=self.max_iter
@@ -170,6 +172,7 @@ class PipelineMaker(object):
                             interaction_only=True
                         ),
                         SubtractedFeatures(
+                            dtype='float32',
                             n_jobs=self.n_jobs,
                             verbose=self.verbose
                         )
