@@ -136,12 +136,19 @@ class PipelineMaker(object):
                 strategy='constant',
                 verbose=self.verbose
             ),
-            MultiValueCategoricalVectorizer(
-                dtype='float32',
-                lowercase=self.lowercase,
-                n_features_per_column=self.n_features_per_column,
-                n_jobs=self.n_jobs,
-                verbose=self.verbose
+            make_union(
+                CountEncoder(
+                    dtype='float32',
+                    n_jobs=self.n_jobs,
+                    verbose=self.verbose
+                ),
+                # MultiValueCategoricalVectorizer(
+                #     dtype='float32',
+                #     lowercase=self.lowercase,
+                #     n_features_per_column=self.n_features_per_column,
+                #     n_jobs=self.n_jobs,
+                #     verbose=self.verbose
+                # )
             )
         )
 
