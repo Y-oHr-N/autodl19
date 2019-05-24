@@ -218,7 +218,7 @@ class PipelineMaker(object):
             ),
             (
                 self.make_multi_value_categorical_transformer(),
-                get_categorical_feature_names
+                get_multi_value_categorical_feature_names
             ),
             (
                 self.make_numerical_transformer(),
