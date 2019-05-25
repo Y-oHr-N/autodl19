@@ -119,6 +119,7 @@ class PipelineMaker(object):
             # DropDuplicates(verbose=self.verbose),
             SimpleImputer(
                 fill_value='missing',
+                n_jobs=self.n_jobs,
                 strategy='constant',
                 verbose=self.verbose
             ),
@@ -134,6 +135,7 @@ class PipelineMaker(object):
             NAProportionThreshold(verbose=self.verbose),
             SimpleImputer(
                 fill_value='missing',
+                n_jobs=self.n_jobs,
                 strategy='constant',
                 verbose=self.verbose
             ),
@@ -165,11 +167,7 @@ class PipelineMaker(object):
                         n_jobs=self.n_jobs,
                         verbose=self.verbose
                     ),
-                    StandardScaler(
-                        dtype='float32',
-                        n_jobs=self.n_jobs,
-                        verbose=self.verbose
-                    ),
+                    StandardScaler(n_jobs=self.n_jobs, verbose=self.verbose),
                     IterativeImputer(
                         estimator=LinearRegression(n_jobs=self.n_jobs),
                         max_iter=self.max_iter
@@ -179,16 +177,16 @@ class PipelineMaker(object):
                             include_bias=False,
                             interaction_only=True
                         ),
-                        SubtractedFeatures(
-                            dtype='float32',
-                            n_jobs=self.n_jobs,
-                            verbose=self.verbose
-                        )
+                        # SubtractedFeatures(
+                        #     n_jobs=self.n_jobs,
+                        #     verbose=self.verbose
+                        # )
                     )
                 ),
                 make_pipeline(
                     SimpleImputer(
                         fill_value=np.finfo('float32').max,
+                        n_jobs=self.n_jobs,
                         strategy='constant',
                         verbose=self.verbose
                     ),
@@ -210,7 +208,11 @@ class PipelineMaker(object):
     def make_time_transformer(self) -> BaseEstimator:
         return make_pipeline(
             NAProportionThreshold(verbose=self.verbose),
-            SimpleImputer(strategy='min', verbose=self.verbose),
+            SimpleImputer(
+                n_jobs=self.n_jobs,
+                strategy='min',
+                verbose=self.verbose
+            ),
             make_union(
                 # TimeVectorizer(
                 #     dtype='float32',
