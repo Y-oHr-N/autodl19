@@ -32,7 +32,7 @@ class Model(object):
             random_state=0,
             shuffle=False,
             timeout=timeout,
-            valid_size=0.0,
+            valid_size=0.01,
             verbose=1
         )
 
