@@ -106,35 +106,40 @@ class AutoMLModel(BaseEstimator):
         self.search_cv_ = maker.make_search_cv()
 
         if not self.shuffle:
-            X = X.sort_values(self.info['time_col'])
+            X = X.sort_values(self.info['time_col'], na_position='first')
             y = y.loc[X.index]
 
         X = self.joiner_.fit_transform(X)
 
-        X, X_valid, y, y_valid = train_test_split(
-            X,
-            y,
-            random_state=self.random_state,
-            shuffle=self.shuffle,
-            test_size=self.valid_size
-        )
+        if self.valid_size > 0.0:
+            X, X_valid, y, y_valid = train_test_split(
+                X,
+                y,
+                random_state=self.random_state,
+                shuffle=self.shuffle,
+                test_size=self.valid_size
+            )
 
         if self.sampler_ is not None:
             X, y = self.sampler_.fit_resample(X, y)
 
         X = self.engineer_.fit_transform(X)
-        X_valid = self.engineer_.transform(X_valid)
 
         assert X.dtype == 'float32'
 
-        model_name = self.search_cv_ \
-            .estimator._final_estimator \
-            .__class__.__name__.lower()
-        fit_params = {
-            f'{model_name}__early_stopping_rounds': self.early_stopping_rounds,
-            f'{model_name}__eval_set': [(X_valid, y_valid)],
-            f'{model_name}__verbose': False
-        }
+        fit_params = {}
+
+        if self.valid_size > 0.0:
+            X_valid = self.engineer_.transform(X_valid)
+
+            model_name = self.search_cv_ \
+                .estimator._final_estimator \
+                .__class__.__name__.lower()
+
+            fit_params[f'{model_name}__early_stopping_rounds'] = \
+                self.early_stopping_rounds
+            fit_params[f'{model_name}__eval_set'] = [(X_valid, y_valid)]
+            fit_params[f'{model_name}__verbose'] = False
 
         self.search_cv_.fit(X, y, **fit_params)
 
