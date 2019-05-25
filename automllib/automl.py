@@ -30,7 +30,7 @@ class AutoMLModel(BaseEstimator):
         max_depth: int = 7,
         max_iter: int = 10,
         n_estimators: int = 100,
-        n_features_per_column: int = 1_048_576,
+        n_features: int = 1_048_576,
         n_jobs: int = 1,
         n_trials: int = 10,
         random_state: Union[int, np.random.RandomState] = None,
@@ -50,7 +50,7 @@ class AutoMLModel(BaseEstimator):
         self.max_depth = max_depth
         self.max_iter = max_iter
         self.n_estimators = n_estimators
-        self.n_features_per_column = n_features_per_column
+        self.n_features = n_features
         self.n_jobs = n_jobs
         self.n_trials = n_trials
         self.random_state = random_state
@@ -88,7 +88,7 @@ class AutoMLModel(BaseEstimator):
             max_iter=self.max_iter,
             metric=metric,
             n_estimators=self.n_estimators,
-            n_features_per_column=self.n_features_per_column,
+            n_features=self.n_features,
             n_jobs=self.n_jobs,
             n_trials=self.n_trials,
             random_state=self.random_state,

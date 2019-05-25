@@ -12,12 +12,18 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
+from joblib import delayed
 from joblib import dump
+from joblib import effective_n_jobs
+from joblib import Parallel
+from scipy.sparse import issparse
 from scipy.sparse import spmatrix
+from scipy.sparse import vstack
 from sklearn.base import BaseEstimator as SKLearnBaseEstimator
 from sklearn.base import TransformerMixin
 from sklearn.utils import check_array
 from sklearn.utils import check_X_y
+from sklearn.utils import gen_even_slices
 from sklearn.utils import safe_indexing
 from sklearn.utils import safe_mask
 from sklearn.utils.validation import _num_samples
@@ -258,8 +264,46 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
 
         X = func(X)
 
-        if self.dtype is not None:
-            X = X.astype(self.dtype)
+        return X
+
+
+class BasePreprocessor(BaseTransformer):
+    _validate = True
+
+    @abstractmethod
+    def __init__(
+        self,
+        dtype: Union[str, Type] = None,
+        n_jobs: int = 1,
+        verbose: int = 0
+    ) -> None:
+        super().__init__(verbose=verbose)
+
+        self.dtype = dtype
+        self.n_jobs = n_jobs
+
+    @abstractmethod
+    def _parallel_transform(
+        self,
+        X: TWO_DIM_ARRAYLIKE_TYPE
+    ) -> TWO_DIM_ARRAYLIKE_TYPE:
+        pass
+
+    def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
+        n_samples, _ = X.shape
+        n_jobs = effective_n_jobs(self.n_jobs)
+        parallel = Parallel(n_jobs=n_jobs)
+        func = delayed(self._parallel_transform)
+        iterable = gen_even_slices(n_samples, n_jobs)
+        Xs = parallel(func(X[s]) for s in iterable)
+
+        if np.any([issparse(Xt) for Xt in Xs]):
+            X = vstack(Xs)
+        else:
+            X = np.concatenate(Xs)
+
+        if self.dtype is not None and self.dtype != X.dtype:
+            X = X.astype(dtype=self.dtype)
 
         return X
 

@@ -57,7 +57,7 @@ class PipelineMaker(object):
         shuffle: bool = True,
         # Parameters for a multi-value categorical transformer
         lowercase: bool = True,
-        n_features_per_column: int = 1_048_576,
+        n_features: int = 1_048_576,
         # Parameters for a numerical transformer
         max_iter: int = 10,
         # Parameters for a model
@@ -78,7 +78,7 @@ class PipelineMaker(object):
         self.max_iter = max_iter
         self.metric = metric
         self.n_estimators = n_estimators
-        self.n_features_per_column = n_features_per_column
+        self.n_features = n_features
         self.n_jobs = n_jobs
         self.n_trials = n_trials
         self.random_state = random_state
@@ -141,7 +141,7 @@ class PipelineMaker(object):
                 MultiValueCategoricalVectorizer(
                     dtype='float32',
                     lowercase=self.lowercase,
-                    n_features_per_column=self.n_features_per_column,
+                    n_features=self.n_features,
                     n_jobs=self.n_jobs,
                     verbose=self.verbose
                 ),

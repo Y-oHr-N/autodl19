@@ -27,7 +27,7 @@ class Model(object):
             self.info,
             related_tables,
             cv=TimeSeriesSplit(3),
-            n_features_per_column=32,
+            n_features=32,
             n_jobs=-1,
             random_state=0,
             shuffle=False,

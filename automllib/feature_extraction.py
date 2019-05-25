@@ -1,106 +1,34 @@
-from typing import List
 from typing import Type
 from typing import Union
 
-import pandas as pd
-
-from joblib import delayed
-from joblib import effective_n_jobs
-from joblib import Parallel
 from scipy.sparse import hstack
-from scipy.sparse import vstack
 from sklearn.base import clone
 from sklearn.feature_extraction.text import HashingVectorizer
-from sklearn.utils import gen_even_slices
-from sklearn.utils import safe_indexing
 
-from .base import BaseTransformer
+from .base import BasePreprocessor
 from .base import ONE_DIM_ARRAYLIKE_TYPE
 from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
-def multi_value_categorical_vectorize(
-    X: TWO_DIM_ARRAYLIKE_TYPE,
-    vectorizers: List[HashingVectorizer]
-) -> TWO_DIM_ARRAYLIKE_TYPE:
-    Xs = [vectorizers[j].transform(column) for j, column in enumerate(X.T)]
-
-    return hstack(Xs)
+class TimeVectorizer(BasePreprocessor):
+    pass
 
 
-class TimeVectorizer(BaseTransformer):
-    _attributes = []
-    _validate = True
-
-    def __init__(
-        self,
-        dtype: Union[str, Type] = None,
-        verbose: int = 0
-    ) -> None:
-        super().__init__(dtype=dtype, verbose=verbose)
-
-    def _check_params(self) -> None:
-        pass
-
-    def _fit(
-        self,
-        X: TWO_DIM_ARRAYLIKE_TYPE,
-        y: ONE_DIM_ARRAYLIKE_TYPE = None
-    ) -> 'TimeVectorizer':
-        return self
-
-    def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
-        X = pd.DataFrame(X)
-        dfs = []
-
-        attributes = [
-            # 'year',
-            'weekofyear',
-            'dayofyear',
-            'quarter',
-            'month',
-            'day',
-            'weekday',
-            'hour',
-            'minute',
-            'second'
-        ]
-
-        for column in X:
-            df = pd.DataFrame()
-
-            for attr in attributes:
-                df[f'{column}_{attr}'] = getattr(X[column].dt, attr)
-
-            dfs.append(df)
-
-        Xt = pd.concat(dfs, axis=1)
-        _, n_features = Xt.shape
-
-        self.logger_.info(
-            f'{self.__class__.__name__} extracts {n_features} features.'
-        )
-
-        return Xt
-
-
-class MultiValueCategoricalVectorizer(BaseTransformer):
+class MultiValueCategoricalVectorizer(BasePreprocessor):
     _attributes = ['vectorizers_']
-    _validate = True
 
     def __init__(
         self,
         dtype: Union[str, Type] = None,
         lowercase: bool = True,
-        n_features_per_column: int = 1_048_576,
+        n_features: int = 1_048_576,
         n_jobs: int = 1,
         verbose: int = 0
     ) -> None:
-        super().__init__(dtype=dtype, verbose=verbose)
+        super().__init__(dtype=dtype, n_jobs=n_jobs, verbose=verbose)
 
         self.lowercase = lowercase
-        self.n_features_per_column = n_features_per_column
-        self.n_jobs = n_jobs
+        self.n_features = n_features
 
     def _check_params(self) -> None:
         pass
@@ -111,23 +39,23 @@ class MultiValueCategoricalVectorizer(BaseTransformer):
         y: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'MultiValueCategoricalVectorizer':
         v = HashingVectorizer(
+            dtype=self.dtype,
             lowercase=self.lowercase,
-            n_features=self.n_features_per_column
+            n_features=self.n_features
         )
 
         self.vectorizers_ = [clone(v).fit(column) for column in X.T]
 
         return self
 
-    def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
-        n_samples, _ = X.shape
-        n_jobs = effective_n_jobs(self.n_jobs)
-        parallel = Parallel(n_jobs=n_jobs)
-        func = delayed(multi_value_categorical_vectorize)
-        result = parallel(
-            func(
-                safe_indexing(X, s), self.vectorizers_
-            ) for s in gen_even_slices(n_samples, n_jobs)
-        )
+    def _parallel_transform(
+        self,
+        X: TWO_DIM_ARRAYLIKE_TYPE
+    ) -> TWO_DIM_ARRAYLIKE_TYPE:
+        Xs = [
+            self.vectorizers_[j].transform(
+                column
+            ) for j, column in enumerate(X.T)
+        ]
 
-        return vstack(result)
+        return hstack(Xs)
