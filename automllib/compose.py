@@ -22,6 +22,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from .base import BaseEstimator
 from .base import TWO_DIM_ARRAYLIKE_TYPE
 from .feature_extraction import MultiValueCategoricalVectorizer
+# form .feature_extraction import TimeVectorizer
 # from .feature_selection import DropDuplicates
 from .feature_selection import DropCollinearFeatures
 from .feature_selection import DropInvariant
@@ -137,18 +138,18 @@ class PipelineMaker(object):
                 verbose=self.verbose
             ),
             make_union(
+                MultiValueCategoricalVectorizer(
+                    dtype='float32',
+                    lowercase=self.lowercase,
+                    n_features_per_column=self.n_features_per_column,
+                    n_jobs=self.n_jobs,
+                    verbose=self.verbose
+                ),
                 CountEncoder(
                     dtype='float32',
                     n_jobs=self.n_jobs,
                     verbose=self.verbose
-                ),
-                # MultiValueCategoricalVectorizer(
-                #     dtype='float32',
-                #     lowercase=self.lowercase,
-                #     n_features_per_column=self.n_features_per_column,
-                #     n_jobs=self.n_jobs,
-                #     verbose=self.verbose
-                # )
+                )
             )
         )
 
@@ -210,10 +211,17 @@ class PipelineMaker(object):
         return make_pipeline(
             NAProportionThreshold(verbose=self.verbose),
             SimpleImputer(strategy='min', verbose=self.verbose),
-            SubtractedFeatures(
-                dtype='float32',
-                n_jobs=self.n_jobs,
-                verbose=self.verbose
+            make_union(
+                # TimeVectorizer(
+                #     dtype='float32',
+                #     n_jobs=self.n_jobs,
+                #     verbose=self.verbose
+                # ),
+                SubtractedFeatures(
+                    dtype='float32',
+                    n_jobs=self.n_jobs,
+                    verbose=self.verbose
+                )
             )
         )
 
