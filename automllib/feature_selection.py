@@ -1,6 +1,3 @@
-from typing import Type
-from typing import Union
-
 import numpy as np
 import pandas as pd
 
@@ -16,13 +13,8 @@ class DropDuplicates(BaseSelector):
 class DropCollinearFeatures(BaseSelector):
     _attributes = ['corr_']
 
-    def __init__(
-        self,
-        dtype: Union[str, Type] = None,
-        threshold: float = 0.95,
-        verbose: int = 0
-    ) -> None:
-        super().__init__(dtype=dtype, verbose=verbose)
+    def __init__(self, threshold: float = 0.95, verbose: int = 0) -> None:
+        super().__init__(verbose=verbose)
 
         self.threshold = threshold
 
@@ -51,12 +43,8 @@ class DropCollinearFeatures(BaseSelector):
 class DropInvariant(BaseSelector):
     _attributes = ['nunique_']
 
-    def __init__(
-        self,
-        dtype: Union[str, Type] = None,
-        verbose: int = 0
-    ) -> None:
-        super().__init__(dtype=dtype, verbose=verbose)
+    def __init__(self, verbose: int = 0) -> None:
+        super().__init__(verbose=verbose)
 
     def _check_params(self) -> None:
         pass
@@ -77,12 +65,8 @@ class DropInvariant(BaseSelector):
 class DropUniqueKey(BaseSelector):
     _attributes = ['nunique_', 'n_samples_']
 
-    def __init__(
-        self,
-        dtype: Union[str, Type] = None,
-        verbose: int = 0
-    ) -> None:
-        super().__init__(dtype=dtype, verbose=verbose)
+    def __init__(self, verbose: int = 0) -> None:
+        super().__init__(verbose=verbose)
 
     def _check_params(self) -> None:
         pass
@@ -104,13 +88,8 @@ class DropUniqueKey(BaseSelector):
 class NAProportionThreshold(BaseSelector):
     _attributes = ['count_', 'n_samples_']
 
-    def __init__(
-        self,
-        dtype: Union[str, Type] = None,
-        threshold: float = 0.6,
-        verbose: int = 0
-    ) -> None:
-        super().__init__(dtype=dtype, verbose=verbose)
+    def __init__(self, threshold: float = 0.6, verbose: int = 0) -> None:
+        super().__init__(verbose=verbose)
 
         self.threshold = threshold
 

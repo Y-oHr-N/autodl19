@@ -272,7 +272,7 @@ class BaseSelector(BaseTransformer):
         pass
 
     def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
-        support = self.get_support()
+        support = self._get_support()
         support = safe_mask(X, support)
         _, n_input_features = X.shape
         n_output_features = np.sum(support)
@@ -298,6 +298,8 @@ class BaseSelector(BaseTransformer):
         support
             Mask.
         """
+
+        self._check_is_fitted()
 
         support = self._get_support()
 
