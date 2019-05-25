@@ -69,21 +69,6 @@ class AutoMLModel(BaseEstimator):
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE
     ) -> 'AutoMLModel':
-        if not self.shuffle:
-            index = X[self.info['time_col']].sort_values(
-                na_position='first'
-            ).index
-            X = X.loc[index]
-            y = y.loc[index]
-
-        X, X_valid, y, y_valid = train_test_split(
-            X,
-            y,
-            random_state=self.random_state,
-            shuffle=self.shuffle,
-            test_size=self.valid_size
-        )
-
         target_type = type_of_target(y)
 
         if target_type == 'binary':
@@ -120,8 +105,19 @@ class AutoMLModel(BaseEstimator):
         self.engineer_ = maker.make_engineer()
         self.search_cv_ = maker.make_search_cv()
 
+        if not self.shuffle:
+            X = X.sort_values(self.info['time_col'])
+            y = y.loc[X.index]
+
         X = self.joiner_.fit_transform(X)
-        X_valid = self.joiner_.transform(X_valid)
+
+        X, X_valid, y, y_valid = train_test_split(
+            X,
+            y,
+            random_state=self.random_state,
+            shuffle=self.shuffle,
+            test_size=self.valid_size
+        )
 
         if self.sampler_ is not None:
             X, y = self.sampler_.fit_resample(X, y)
