@@ -26,7 +26,7 @@ class AutoMLModel(BaseEstimator):
         related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE],
         cv: Union[int, BaseCrossValidator] = 5,
         early_stopping_rounds: int = 10,
-        lowercase: bool = False,
+        lowercase: bool = True,
         max_depth: int = 7,
         max_iter: int = 10,
         n_estimators: int = 100,
@@ -105,9 +105,9 @@ class AutoMLModel(BaseEstimator):
         self.engineer_ = maker.make_engineer()
         self.search_cv_ = maker.make_search_cv()
 
-        if not self.shuffle:
-            X = X.sort_values(self.info['time_col'], na_position='first')
-            y = y.loc[X.index]
+        # if not self.shuffle:
+            # X = X.sort_values(self.info['time_col'], na_position='first')
+            # y = y.loc[X.index]
 
         X = self.joiner_.fit_transform(X)
 
