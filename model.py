@@ -32,9 +32,8 @@ class Model(object):
             n_jobs=-1,
             random_state=0,
             shuffle=False,
-            subsample=100_000,
             timeout=timeout,
-            valid_size=0.0,
+            valid_size=0.01,
             verbose=1
         )
 

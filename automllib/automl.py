@@ -105,9 +105,9 @@ class AutoMLModel(BaseEstimator):
         self.engineer_ = maker.make_engineer()
         self.search_cv_ = maker.make_search_cv()
 
-        # if not self.shuffle:
-            # X = X.sort_values(self.info['time_col'], na_position='first')
-            # y = y.loc[X.index]
+        if not self.shuffle:
+            X = X.sort_values(self.info['time_col'], na_position='first')
+            y = y.loc[X.index]
 
         X = self.joiner_.fit_transform(X)
 
