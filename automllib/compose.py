@@ -61,13 +61,11 @@ class PipelineMaker(object):
         # Parameters for a numerical transformer
         max_iter: int = 10,
         # Parameters for a model
-        metric: str = '',
+        max_depth: int = 5,
         n_estimators: int = 100,
         # Parameters for hyperpermeter search
         cv: Union[int, BaseCrossValidator] = 5,
-        max_depth: int = 7,
         n_trials: int = 10,
-        scoring: Union[str, Callable[..., float]] = None,
         subsample: Union[int, float] = 1.0,
         timeout: float = None
     ) -> None:
@@ -76,7 +74,6 @@ class PipelineMaker(object):
         self.lowercase = lowercase
         self.max_depth = max_depth
         self.max_iter = max_iter
-        self.metric = metric
         self.n_estimators = n_estimators
         self.n_features = n_features
         self.n_jobs = n_jobs
@@ -84,7 +81,6 @@ class PipelineMaker(object):
         self.random_state = random_state
         self.related_tables = related_tables
         self.sampling_strategy = sampling_strategy
-        self.scoring = scoring
         self.shuffle = shuffle
         self.subsample = subsample
         self.target_type = target_type
@@ -250,7 +246,6 @@ class PipelineMaker(object):
     def make_model(self) -> BaseEstimator:
         params = {
             'max_depth': self.max_depth,
-            'metric': self.metric,
             'n_estimators': self.n_estimators,
             'n_jobs': 1,
             'random_state': self.random_state,
@@ -258,11 +253,16 @@ class PipelineMaker(object):
         }
 
         if self.target_type in ['binary', 'multiclass', 'multiclass-output']:
+            if self.target_type == 'binary':
+                params['metric'] = 'auc'
+
             selector = SelectFpr()
             model = lgb.LGBMClassifier(**params)
+
         elif self.target_type in ['continuous', 'continuous-output']:
             selector = SelectFpr(score_func=f_regression)
             model = lgb.LGBMRegressor(**params)
+
         else:
             raise ValueError(f'Unknown target_type: {self.target_type}.')
 
@@ -294,6 +294,11 @@ class PipelineMaker(object):
                 optuna.distributions.UniformDistribution(0.5, 1.0)
         }
 
+        if self.target_type == 'binary':
+            scoring = 'roc_auc'
+        else:
+            scoring = None
+
         return OptunaSearchCV(
             model,
             param_distributions,
@@ -301,7 +306,7 @@ class PipelineMaker(object):
             n_jobs=self.n_jobs,
             n_trials=self.n_trials,
             random_state=self.random_state,
-            scoring=self.scoring,
+            scoring=scoring,
             subsample=self.subsample,
             timeout=self.timeout,
             verbose=self.verbose

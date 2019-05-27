@@ -70,14 +70,6 @@ class AutoMLModel(BaseEstimator):
         y: ONE_DIM_ARRAYLIKE_TYPE
     ) -> 'AutoMLModel':
         target_type = type_of_target(y)
-
-        if target_type == 'binary':
-            metric = 'auc'
-            scoring = 'roc_auc'
-        else:
-            metric = ''
-            scoring = None
-
         maker = PipelineMaker(
             self.info,
             self.related_tables,
@@ -86,14 +78,12 @@ class AutoMLModel(BaseEstimator):
             lowercase=self.lowercase,
             max_depth=self.max_depth,
             max_iter=self.max_iter,
-            metric=metric,
             n_estimators=self.n_estimators,
             n_features=self.n_features,
             n_jobs=self.n_jobs,
             n_trials=self.n_trials,
             random_state=self.random_state,
             sampling_strategy=self.sampling_strategy,
-            scoring=scoring,
             shuffle=self.shuffle,
             subsample=self.subsample,
             timeout=None,
