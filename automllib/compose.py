@@ -267,7 +267,7 @@ class PipelineMaker(object):
             raise ValueError(f'Unknown target_type: {self.target_type}.')
 
         return make_pipeline(
-            selector,
+            # selector,
             model
         )
 
