@@ -147,11 +147,11 @@ class PipelineMaker(object):
                     n_jobs=self.n_jobs,
                     verbose=self.verbose
                 ),
-                CountEncoder(
-                    dtype='float32',
-                    n_jobs=self.n_jobs,
-                    verbose=self.verbose
-                )
+                # CountEncoder(
+                #     dtype='float32',
+                #     n_jobs=self.n_jobs,
+                #     verbose=self.verbose
+                # )
             )
         )
 
@@ -183,19 +183,19 @@ class PipelineMaker(object):
                         # )
                     )
                 ),
-                make_pipeline(
-                    SimpleImputer(
-                        fill_value=np.finfo('float32').max,
-                        n_jobs=self.n_jobs,
-                        strategy='constant',
-                        verbose=self.verbose
-                    ),
-                    CountEncoder(
-                        dtype='float32',
-                        n_jobs=self.n_jobs,
-                        verbose=self.verbose
-                    )
-                ),
+                # make_pipeline(
+                #     SimpleImputer(
+                #         fill_value=np.finfo('float32').max,
+                #         n_jobs=self.n_jobs,
+                #         strategy='constant',
+                #         verbose=self.verbose
+                #     ),
+                #     CountEncoder(
+                #         dtype='float32',
+                #         n_jobs=self.n_jobs,
+                #         verbose=self.verbose
+                #     )
+                # ),
                 MissingIndicator(error_on_new=False),
                 # RowStatistics(
                 #     dtype='float32',
