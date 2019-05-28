@@ -35,7 +35,6 @@ class AutoMLModel(BaseEstimator):
         sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
         shuffle: bool = True,
         subsample: Union[int, float] = 1.0,
-        timeout: float = None,
         validation_fraction: Union[int, float] = 0.25,
         verbose: int = 0
     ) -> None:
@@ -54,7 +53,6 @@ class AutoMLModel(BaseEstimator):
         self.sampling_strategy = sampling_strategy
         self.shuffle = shuffle
         self.subsample = subsample
-        self.timeout = timeout
         self.validation_fraction = validation_fraction
 
     def _check_params(self) -> None:
@@ -63,7 +61,8 @@ class AutoMLModel(BaseEstimator):
     def _fit(
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
-        y: ONE_DIM_ARRAYLIKE_TYPE
+        y: ONE_DIM_ARRAYLIKE_TYPE,
+        timeout: float = None
     ) -> 'AutoMLModel':
         target_type = type_of_target(y)
         maker = PipelineMaker(
@@ -82,7 +81,7 @@ class AutoMLModel(BaseEstimator):
             sampling_strategy=self.sampling_strategy,
             shuffle=self.shuffle,
             subsample=self.subsample,
-            timeout=None,
+            # timeout=None,
             verbose=self.verbose
         )
 

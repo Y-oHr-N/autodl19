@@ -30,12 +30,11 @@ class Model(object):
             n_jobs=-1,
             random_state=0,
             shuffle=False,
-            timeout=timeout,
             validation_fraction=0.01,
             verbose=1
         )
 
-        self.model_.fit(X, y)
+        self.model_.fit(X, y, timeout=timeout)
 
     def predict(self, X, timeout):
         probas = self.model_.predict_proba(X)
