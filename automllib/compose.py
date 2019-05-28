@@ -9,6 +9,7 @@ import optuna
 
 from imblearn.pipeline import make_pipeline
 from sklearn.compose import make_column_transformer
+from sklearn.decomposition import TruncatedSVD
 from sklearn.experimental import enable_iterative_imputer  # noqa
 from sklearn.feature_selection import f_regression
 from sklearn.feature_selection import SelectFpr
@@ -57,7 +58,7 @@ class PipelineMaker(object):
         shuffle: bool = True,
         # Parameters for a multi-value categorical transformer
         lowercase: bool = True,
-        n_features: int = 1_048_576,
+        n_components: int = 100,
         # Parameters for a numerical transformer
         max_iter: int = 10,
         # Parameters for a model
@@ -74,8 +75,8 @@ class PipelineMaker(object):
         self.lowercase = lowercase
         self.max_depth = max_depth
         self.max_iter = max_iter
+        self.n_components = n_components
         self.n_estimators = n_estimators
-        self.n_features = n_features
         self.n_jobs = n_jobs
         self.n_trials = n_trials
         self.random_state = random_state
@@ -136,13 +137,18 @@ class PipelineMaker(object):
                 verbose=self.verbose
             ),
             make_union(
-                MultiValueCategoricalVectorizer(
-                    dtype='float32',
-                    lowercase=self.lowercase,
-                    n_features=self.n_features,
-                    n_jobs=self.n_jobs,
-                    verbose=self.verbose
-                ),
+                make_pipeline(
+                    MultiValueCategoricalVectorizer(
+                        dtype='float32',
+                        lowercase=self.lowercase,
+                        n_jobs=self.n_jobs,
+                        verbose=self.verbose
+                    ),
+                    TruncatedSVD(
+                        n_components=self.n_components,
+                        random_state=self.random_state
+                    )
+                )
                 # CountEncoder(
                 #     dtype='float32',
                 #     n_jobs=self.n_jobs,
@@ -230,7 +236,7 @@ class PipelineMaker(object):
                 get_categorical_feature_names
             ),
             (
-                self.make_categorical_transformer(),
+                self.make_multi_value_categorical_transformer(),
                 get_multi_value_categorical_feature_names
             ),
             (
