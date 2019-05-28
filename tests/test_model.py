@@ -177,4 +177,4 @@ def test_model() -> None:
     with np.errstate(invalid='ignore'):
         mean_score = np.mean(scores)
 
-    logger.info(f'The mean AUC is {mean_score:.3f}')
+    logger.info(f'The mean AUC is {mean_score:.3f}.')
