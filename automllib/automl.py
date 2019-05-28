@@ -26,7 +26,7 @@ class AutoMLModel(BaseEstimator):
         related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE],
         cv: Union[int, BaseCrossValidator] = 5,
         early_stopping_rounds: int = 10,
-        max_depth: int = 5,
+        max_depth: int = 7,
         max_iter: int = 10,
         n_estimators: int = 100,
         n_jobs: int = 1,
@@ -90,9 +90,9 @@ class AutoMLModel(BaseEstimator):
         self.engineer_ = maker.make_engineer()
         self.search_cv_ = maker.make_search_cv()
 
-        X = X.sort_values(self.info['time_col'], na_position='first')
-        y = y.loc[X.index]
-        fit_params = {}
+        if not self.shuffle:
+            X = X.sort_values(self.info['time_col'], na_position='first')
+            y = y.loc[X.index]
 
         X = self.joiner_.fit_transform(X)
 
@@ -112,10 +112,13 @@ class AutoMLModel(BaseEstimator):
 
         assert X.dtype == 'float32'
 
+        fit_params = {}
+
         if self.validation_fraction > 0.0:
             X_valid = self.engineer_.transform(X_valid)
 
-            model_name = self.search_cv_.estimator._final_estimator \
+            model_name = self.search_cv_ \
+                .estimator._final_estimator \
                 .__class__.__name__.lower()
 
             fit_params[f'{model_name}__early_stopping_rounds'] = \
