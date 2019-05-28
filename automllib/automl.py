@@ -38,7 +38,7 @@ class AutoMLModel(BaseEstimator):
         shuffle: bool = True,
         subsample: Union[int, float] = 1.0,
         timeout: float = None,
-        valid_size: Union[int, float] = 0.25,
+        validation_fraction: Union[int, float] = 0.25,
         verbose: int = 0
     ) -> None:
         super().__init__(verbose=verbose)
@@ -59,7 +59,7 @@ class AutoMLModel(BaseEstimator):
         self.shuffle = shuffle
         self.subsample = subsample
         self.timeout = timeout
-        self.valid_size = valid_size
+        self.validation_fraction = validation_fraction
 
     def _check_params(self) -> None:
         pass
@@ -101,13 +101,13 @@ class AutoMLModel(BaseEstimator):
 
         X = self.joiner_.fit_transform(X)
 
-        if self.valid_size > 0.0:
+        if self.validation_fraction > 0.0:
             X, X_valid, y, y_valid = train_test_split(
                 X,
                 y,
                 random_state=self.random_state,
                 shuffle=self.shuffle,
-                test_size=self.valid_size
+                test_size=self.validation_fraction
             )
 
         X = self.engineer_.fit_transform(X)
@@ -116,7 +116,7 @@ class AutoMLModel(BaseEstimator):
 
         fit_params = {}
 
-        if self.valid_size > 0.0:
+        if self.validation_fraction > 0.0:
             X_valid = self.engineer_.transform(X_valid)
 
             model_name = self.search_cv_ \
