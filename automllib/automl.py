@@ -28,7 +28,7 @@ class AutoMLPredictor(BaseEstimator):
         early_stopping_rounds: int = 10,
         learning_rate: float = 0.01,
         lowercase: bool = True,
-        max_depth: int = 7,
+        max_depth: int = 5,
         max_iter: int = 10,
         n_components: int = 100,
         n_estimators: int = 100,

@@ -28,6 +28,7 @@ class Model(object):
             related_tables,
             cv=TimeSeriesSplit(3),
             lowercase=False,
+            max_depth=7,
             n_jobs=-1,
             random_state=0,
             shuffle=False,
