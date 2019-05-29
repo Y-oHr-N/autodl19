@@ -149,7 +149,7 @@ class PipelineMaker(object):
                         n_components=self.n_components,
                         random_state=self.random_state
                     )
-                )
+                ),
                 # CountEncoder(
                 #     dtype='float32',
                 #     n_jobs=self.n_jobs,
@@ -247,10 +247,10 @@ class PipelineMaker(object):
                 self.make_numerical_transformer(),
                 get_numerical_feature_names
             ),
-            (
-                self.make_time_transformer(),
-                get_time_feature_names
-            )
+            # (
+            #     self.make_time_transformer(),
+            #     get_time_feature_names
+            # )
         )
 
     def make_model(self) -> BaseEstimator:
@@ -265,7 +265,10 @@ class PipelineMaker(object):
 
         if self.target_type in ['binary', 'multiclass', 'multiclass-output']:
             if self.target_type == 'binary':
+                # params['is_unbalance'] = True
                 params['metric'] = 'auc'
+            # else:
+                # params['class_weight'] = 'balanced'
 
             selector = SelectFpr()
             model = lgb.LGBMClassifier(**params)
