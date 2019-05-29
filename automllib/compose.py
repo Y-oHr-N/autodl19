@@ -68,6 +68,7 @@ class PipelineMaker(object):
         # Parameters for hyperpermeter search
         cv: Union[int, BaseCrossValidator] = 5,
         n_trials: int = 10,
+        refit: bool = True,
         subsample: Union[int, float] = 1.0,
         timeout: float = None
     ) -> None:
@@ -82,6 +83,7 @@ class PipelineMaker(object):
         self.n_jobs = n_jobs
         self.n_trials = n_trials
         self.random_state = random_state
+        self.refit = refit
         self.related_tables = related_tables
         self.sampling_strategy = sampling_strategy
         self.shuffle = shuffle
@@ -316,6 +318,7 @@ class PipelineMaker(object):
             n_jobs=self.n_jobs,
             n_trials=self.n_trials,
             random_state=self.random_state,
+            refit=self.refit,
             scoring=scoring,
             subsample=self.subsample,
             timeout=timeout,
