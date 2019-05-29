@@ -21,6 +21,10 @@ class AutoMLPredictor(BaseEstimator):
     _validate = False
 
     @property
+    def best_params_(self) -> Dict[str, Any]:
+        return self.search_cv_.best_params_
+
+    @property
     def best_score_(self) -> float:
         return self.search_cv_.best_score_
 

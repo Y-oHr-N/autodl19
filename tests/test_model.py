@@ -151,6 +151,9 @@ def test_model() -> None:
 
         assert model.best_score_ > 0.5
 
+        if experiment is not None:
+            experiment.log_parameters(model.best_params_)
+
         y_score = model.predict(test_data, timer.get_remaining_time())
 
         assert len(test_data) == len(y_score)

@@ -17,6 +17,10 @@ from automllib.constants import MAIN_TABLE_NAME
 
 class Model(object):
     @property
+    def best_params_(self):
+        return self.model_.best_params_
+
+    @property
     def best_score_(self):
         return self.model_.best_score_
 
