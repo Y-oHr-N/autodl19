@@ -62,6 +62,7 @@ class PipelineMaker(object):
         # Parameters for a numerical transformer
         max_iter: int = 10,
         # Parameters for a model
+        learning_rate: float = 0.01,
         max_depth: int = 5,
         n_estimators: int = 100,
         # Parameters for hyperpermeter search
@@ -72,6 +73,7 @@ class PipelineMaker(object):
     ) -> None:
         self.cv = cv
         self.info = info
+        self.learning_rate = learning_rate
         self.lowercase = lowercase
         self.max_depth = max_depth
         self.max_iter = max_iter
@@ -251,6 +253,7 @@ class PipelineMaker(object):
 
     def make_model(self) -> BaseEstimator:
         params = {
+            'learning_rate': self.learning_rate,
             'max_depth': self.max_depth,
             'n_estimators': self.n_estimators,
             'n_jobs': 1,
@@ -283,8 +286,6 @@ class PipelineMaker(object):
         param_distributions = {
             f'{model_name}__colsample_bytree':
                 optuna.distributions.UniformDistribution(0.5, 1.0),
-            f'{model_name}__learning_rate':
-                optuna.distributions.LogUniformDistribution(0.001, 0.1),
             f'{model_name}__min_child_samples':
                 optuna.distributions.IntUniformDistribution(1, 100),
             f'{model_name}__num_leaves':

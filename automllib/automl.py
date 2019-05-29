@@ -26,6 +26,7 @@ class AutoMLModel(BaseEstimator):
         related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE],
         cv: Union[int, BaseCrossValidator] = 5,
         early_stopping_rounds: int = 10,
+        learning_rate: float = 0.01,
         lowercase: bool = True,
         max_depth: int = 7,
         max_iter: int = 10,
@@ -45,6 +46,7 @@ class AutoMLModel(BaseEstimator):
         self.cv = cv
         self.early_stopping_rounds = early_stopping_rounds
         self.info = info
+        self.learning_rate = learning_rate
         self.lowercase = lowercase
         self.max_depth = max_depth
         self.max_iter = max_iter
@@ -74,6 +76,7 @@ class AutoMLModel(BaseEstimator):
             self.related_tables,
             target_type,
             cv=self.cv,
+            learning_rate=self.learning_rate,
             lowercase=self.lowercase,
             max_depth=self.max_depth,
             max_iter=self.max_iter,
