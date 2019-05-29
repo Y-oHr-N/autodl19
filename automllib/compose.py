@@ -26,8 +26,7 @@ from .feature_extraction import MultiValueCategoricalVectorizer
 # form .feature_extraction import TimeVectorizer
 # from .feature_selection import DropDuplicates
 from .feature_selection import DropCollinearFeatures
-from .feature_selection import DropInvariant
-from .feature_selection import DropUniqueKey
+from .feature_selection import FrequencyThreshold
 from .feature_selection import NAProportionThreshold
 from .impute import SimpleImputer
 from .model_selection import OptunaSearchCV
@@ -115,8 +114,7 @@ class PipelineMaker(object):
     def make_categorical_transformer(self) -> BaseEstimator:
         return make_pipeline(
             NAProportionThreshold(verbose=self.verbose),
-            DropInvariant(verbose=self.verbose),
-            DropUniqueKey(verbose=self.verbose),
+            FrequencyThreshold(verbose=self.verbose),
             # DropDuplicates(verbose=self.verbose),
             SimpleImputer(
                 fill_value='missing',
@@ -164,7 +162,10 @@ class PipelineMaker(object):
     def make_numerical_transformer(self) -> BaseEstimator:
         return make_pipeline(
             NAProportionThreshold(verbose=self.verbose),
-            DropInvariant(verbose=self.verbose),
+            FrequencyThreshold(
+                max_frequency=np.iinfo('int64').max,
+                verbose=self.verbose
+            ),
             DropCollinearFeatures(verbose=self.verbose),
             make_union(
                 make_pipeline(

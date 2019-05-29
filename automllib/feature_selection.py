@@ -1,3 +1,5 @@
+from typing import Union
+
 import numpy as np
 import pandas as pd
 
@@ -40,11 +42,19 @@ class DropCollinearFeatures(BaseSelector):
         return np.all(triu <= self.threshold, axis=0)
 
 
-class DropInvariant(BaseSelector):
-    _attributes = ['nunique_']
+class FrequencyThreshold(BaseSelector):
+    _attributes = ['frequency_', 'n_samples_']
 
-    def __init__(self, verbose: int = 0) -> None:
+    def __init__(
+        self,
+        max_frequency: Union[int, float] = 1.0,
+        min_frequency: Union[int, float] = 1,
+        verbose: int = 0
+    ) -> None:
         super().__init__(verbose=verbose)
+
+        self.max_frequency = max_frequency
+        self.min_frequency = min_frequency
 
     def _check_params(self) -> None:
         pass
@@ -53,36 +63,24 @@ class DropInvariant(BaseSelector):
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE = None
-    ) -> 'DropInvariant':
-        self.nunique_ = np.array([len(pd.unique(column)) for column in X.T])
-
-        return self
-
-    def _get_support(self) -> ONE_DIM_ARRAYLIKE_TYPE:
-        return self.nunique_ > 1
-
-
-class DropUniqueKey(BaseSelector):
-    _attributes = ['nunique_', 'n_samples_']
-
-    def __init__(self, verbose: int = 0) -> None:
-        super().__init__(verbose=verbose)
-
-    def _check_params(self) -> None:
-        pass
-
-    def _fit(
-        self,
-        X: TWO_DIM_ARRAYLIKE_TYPE,
-        y: ONE_DIM_ARRAYLIKE_TYPE = None
-    ) -> 'DropUniqueKey':
+    ) -> 'FrequencyThreshold':
         self.n_samples_, _ = X.shape
-        self.nunique_ = np.array([len(pd.unique(column)) for column in X.T])
+        self.frequency_ = np.array([len(pd.unique(column)) for column in X.T])
 
         return self
 
     def _get_support(self) -> ONE_DIM_ARRAYLIKE_TYPE:
-        return self.nunique_ < self.n_samples_
+        max_frequency = self.max_frequency
+        min_frequency = self.min_frequency
+
+        if isinstance(max_frequency, float):
+            max_frequency = int(max_frequency * self.n_samples_)
+
+        if isinstance(min_frequency, float):
+            min_frequency = int(min_frequency * self.n_samples_)
+
+        return (self.frequency_ > min_frequency) \
+            & (self.frequency_ < max_frequency)
 
 
 class NAProportionThreshold(BaseSelector):
