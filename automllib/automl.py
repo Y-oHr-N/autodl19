@@ -20,6 +20,10 @@ class AutoMLPredictor(BaseEstimator):
     _attributes = ['engineer_', 'joiner_', 'sampler_', 'search_cv_']
     _validate = False
 
+    @property
+    def best_score_(self) -> float:
+        return self.search_cv_.best_score_
+
     def __init__(
         self,
         info: Dict[str, Any],
@@ -132,9 +136,6 @@ class AutoMLPredictor(BaseEstimator):
             fit_params[f'{model_name}__verbose'] = False
 
         self.search_cv_.fit(X, y, **fit_params)
-
-        if target_type == 'binary':
-            assert self.search_cv_.best_score_ > 0.5
 
         return self
 

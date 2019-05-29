@@ -16,6 +16,10 @@ from automllib.constants import MAIN_TABLE_NAME
 
 
 class Model(object):
+    @property
+    def best_score_(self):
+        return self.model_.best_score_
+
     def __init__(self, info):
         self.info = info
 

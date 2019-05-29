@@ -149,6 +149,8 @@ def test_model() -> None:
 
         model.fit(train_data, train_label, timer.get_remaining_time())
 
+        assert model.best_score_ > 0.5
+
         y_score = model.predict(test_data, timer.get_remaining_time())
 
         assert len(test_data) == len(y_score)
