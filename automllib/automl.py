@@ -16,7 +16,7 @@ from .base import TWO_DIM_ARRAYLIKE_TYPE
 from .compose import PipelineMaker
 
 
-class AutoMLModel(BaseEstimator):
+class AutoMLPredictor(BaseEstimator):
     _attributes = ['engineer_', 'joiner_', 'sampler_', 'search_cv_']
     _validate = False
 
@@ -147,7 +147,7 @@ class AutoMLModel(BaseEstimator):
         return self.search_cv_.predict(X)
 
 
-class AutoMLClassifier(AutoMLModel, ClassifierMixin):
+class AutoMLClassifier(AutoMLPredictor, ClassifierMixin):
     def predict_proba(
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE
@@ -160,5 +160,5 @@ class AutoMLClassifier(AutoMLModel, ClassifierMixin):
         return self.search_cv_.predict_proba(X)
 
 
-class AutoMLRegressor(AutoMLModel, RegressorMixin):
+class AutoMLRegressor(AutoMLPredictor, RegressorMixin):
     pass
