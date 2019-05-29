@@ -280,7 +280,7 @@ class PipelineMaker(object):
             model
         )
 
-    def make_search_cv(self) -> BaseEstimator:
+    def make_search_cv(self, timeout: float = None) -> BaseEstimator:
         model = self.make_model()
         model_name = model._final_estimator.__class__.__name__.lower()
         param_distributions = {
@@ -306,6 +306,9 @@ class PipelineMaker(object):
         else:
             scoring = None
 
+        if timeout is None:
+            timeout = self.timeout
+
         return OptunaSearchCV(
             model,
             param_distributions,
@@ -315,6 +318,6 @@ class PipelineMaker(object):
             random_state=self.random_state,
             scoring=scoring,
             subsample=self.subsample,
-            timeout=self.timeout,
+            timeout=timeout,
             verbose=self.verbose
         )
