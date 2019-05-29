@@ -150,11 +150,11 @@ class PipelineMaker(object):
                         random_state=self.random_state
                     )
                 ),
-                # CountEncoder(
-                #     dtype='float32',
-                #     n_jobs=self.n_jobs,
-                #     verbose=self.verbose
-                # )
+                CountEncoder(
+                    dtype='float32',
+                    n_jobs=self.n_jobs,
+                    verbose=self.verbose
+                )
             )
         )
 
@@ -183,25 +183,25 @@ class PipelineMaker(object):
                             include_bias=False,
                             interaction_only=True
                         ),
-                        # SubtractedFeatures(
-                        #     n_jobs=self.n_jobs,
-                        #     verbose=self.verbose
-                        # )
+                        SubtractedFeatures(
+                            n_jobs=self.n_jobs,
+                            verbose=self.verbose
+                        )
                     )
                 ),
-                # make_pipeline(
-                #     SimpleImputer(
-                #         fill_value=np.finfo('float32').max,
-                #         n_jobs=self.n_jobs,
-                #         strategy='constant',
-                #         verbose=self.verbose
-                #     ),
-                #     CountEncoder(
-                #         dtype='float32',
-                #         n_jobs=self.n_jobs,
-                #         verbose=self.verbose
-                #     )
-                # ),
+                make_pipeline(
+                    SimpleImputer(
+                        fill_value=np.finfo('float32').max,
+                        n_jobs=self.n_jobs,
+                        strategy='constant',
+                        verbose=self.verbose
+                    ),
+                    CountEncoder(
+                        dtype='float32',
+                        n_jobs=self.n_jobs,
+                        verbose=self.verbose
+                    )
+                ),
                 MissingIndicator(error_on_new=False),
                 # RowStatistics(
                 #     dtype='float32',
@@ -247,10 +247,10 @@ class PipelineMaker(object):
                 self.make_numerical_transformer(),
                 get_numerical_feature_names
             ),
-            # (
-            #     self.make_time_transformer(),
-            #     get_time_feature_names
-            # )
+            (
+                self.make_time_transformer(),
+                get_time_feature_names
+            )
         )
 
     def make_model(self) -> BaseEstimator:
