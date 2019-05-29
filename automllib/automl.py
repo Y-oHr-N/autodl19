@@ -73,7 +73,7 @@ class AutoMLPredictor(BaseEstimator):
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE,
         timeout: float = None
-    ) -> 'AutoMLModel':
+    ) -> 'AutoMLPredictor':
         target_type = type_of_target(y)
         maker = PipelineMaker(
             self.info,
