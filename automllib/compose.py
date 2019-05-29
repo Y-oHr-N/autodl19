@@ -33,7 +33,7 @@ from .impute import SimpleImputer
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
-from .preprocessing import RowStatistics
+# from .preprocessing import RowStatistics
 from .preprocessing import StandardScaler
 from .preprocessing import SubtractedFeatures
 from .table_join import TableJoiner
@@ -52,8 +52,8 @@ class PipelineMaker(object):
         target_type: str,
         n_jobs: int = 1,
         random_state: Union[int, np.random.RandomState] = None,
-        verbose: int = 1,
-        # Parameters for a sampler
+        verbose: int = 0,
+        # Parameters for a under sampler
         sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
         shuffle: bool = True,
         # Parameters for a multi-value categorical transformer
