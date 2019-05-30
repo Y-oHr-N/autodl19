@@ -25,7 +25,6 @@ from .utils import Timeit
 logger = logging.getLogger(__name__)
 
 
-@Timeit(logger)
 def join(u, v, v_name, key, type_):
     if type_.split("_")[2] == 'many':
         columns = v.columns.drop(key)
@@ -42,7 +41,6 @@ def join(u, v, v_name, key, type_):
     return u.join(v, on=key)
 
 
-@Timeit(logger)
 def temporal_join(u, v, v_name, key, time_col):
     if isinstance(key, list):
         assert len(key) == 1
@@ -62,9 +60,7 @@ def temporal_join(u, v, v_name, key, time_col):
         logger.info('Return u because temp_u is empty.')
         return u
 
-    ret = pd.concat([u, tmp_u.loc['u']], axis=1, join_axes=[u.index])
-    del tmp_u
-    return ret
+    return pd.concat([u, tmp_u.loc['u']], axis=1, join_axes=[u.index])
 
 
 def dfs(u_name, config, tables, graph):
@@ -119,13 +115,12 @@ def aggregate_functions(
 
 class TableJoiner(BaseTransformer):
     _attributes = ['config_', 'graph_']
-    _validate = False
 
     def __init__(
         self,
         info: Dict[str, Any],
         related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE],
-        verbose: int = 0,
+        verbose: int = 0
     ) -> None:
         super().__init__(verbose=verbose)
 
