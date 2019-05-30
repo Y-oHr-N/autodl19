@@ -46,18 +46,23 @@ def get_time_feature_names(X: TWO_DIM_ARRAY_TYPE) -> ONE_DIM_ARRAY_TYPE:
 
 
 class Timeit(object):
-    def __init__(self, logger: logging.Logger) -> None:
+    def __init__(self, logger: logging.Logger = None) -> None:
         self.logger = logger
 
     def __call__(self, func: Callable) -> Callable:
         def wrapper(*args: Tuple[Any], **kwargs: Any) -> Any:
-            self.logger.info(f'==> Start {func}.')
+            if self.logger is None:
+                logger = logging.getLogger(__name__)
+            else:
+                logger = self.logger
+
+            logger.info(f'==> Start {func}.')
 
             timer = Timer()
             ret = func(*args, **kwargs)
             elapsed_time = timer.get_elapsed_time()
 
-            self.logger.info(f'==> End {func}. ({elapsed_time:.3f} sec.)')
+            logger.info(f'==> End {func}. ({elapsed_time:.3f} sec.)')
 
             return ret
 
