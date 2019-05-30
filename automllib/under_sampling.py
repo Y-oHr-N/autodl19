@@ -71,3 +71,6 @@ class RandomUnderSampler(BaseSampler):
             self.sample_indices_.sort()
 
         return self
+
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'non_deterministic': True, 'no_validation': True}

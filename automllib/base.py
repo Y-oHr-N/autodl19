@@ -41,11 +41,6 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
     def _attributes(self) -> Union[str, List[str]]:
         pass
 
-    @property
-    @abstractmethod
-    def _validate(self) -> bool:
-        pass
-
     @abstractmethod
     def __init__(self, verbose: int = 0) -> None:
         self.verbose = verbose
@@ -67,10 +62,17 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE = None,
-        accept_sparse: Union[str, bool, List[str]] = True,
-        dtype: Union[str, Type, List[Type]] = None,
-        force_all_finite: Union[str, bool] = 'allow-nan'
+        dtype: Union[str, Type, List[Type]] = None
     ) -> Tuple[TWO_DIM_ARRAYLIKE_TYPE, ONE_DIM_ARRAYLIKE_TYPE]:
+        tags = self._get_tags()
+
+        accept_sparse = 'sparse' in tags['X_types']
+
+        if tags['allow_nan']:
+            force_all_finite = 'allow-nan'
+        else:
+            force_all_finite = True
+
         if y is None:
             X = check_array(
                 X,
@@ -131,7 +133,9 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
 
         self._check_params()
 
-        if self._validate:
+        tags = self._get_tags()
+
+        if not tags['no_validation']:
             X, y = self._check_X_y(X, y)
 
         self.logger_ = self._get_logger()
@@ -169,7 +173,6 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
 
 class BaseSampler(BaseEstimator):
     _estimator_type = 'sampler'
-    _validate = False
 
     @property
     @abstractmethod
@@ -257,7 +260,9 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
 
         self._check_is_fitted()
 
-        if self._validate:
+        tags = self._get_tags()
+
+        if not tags['no_validation']:
             X, _ = self._check_X_y(X)
 
         func = self.timeit_(self._transform)
@@ -268,8 +273,6 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
 
 
 class BasePreprocessor(BaseTransformer):
-    _validate = True
-
     @abstractmethod
     def __init__(
         self,
@@ -309,8 +312,6 @@ class BasePreprocessor(BaseTransformer):
 
 
 class BaseSelector(BaseTransformer):
-    _validate = True
-
     @abstractmethod
     def _get_support(self) -> ONE_DIM_ARRAYLIKE_TYPE:
         pass

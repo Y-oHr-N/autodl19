@@ -1,6 +1,8 @@
 import collections
 import itertools
 
+from typing import Any
+from typing import Dict
 from typing import Type
 from typing import Union
 
@@ -44,6 +46,9 @@ class Clip(BasePreprocessor):
 
         return self
 
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'allow_nan': True}
+
     def _parallel_transform(
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE
@@ -73,6 +78,9 @@ class CountEncoder(BasePreprocessor):
         self.counters_ = [collections.Counter(column) for column in X.T]
 
         return self
+
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'allow_nan': True}
 
     def _parallel_transform(
         self,
@@ -112,6 +120,9 @@ class RowStatistics(BasePreprocessor):
         y: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'RowStatistics':
         return self
+
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'allow_nan': True, 'stateless': True}
 
     def _parallel_transform(
         self,
@@ -156,6 +167,9 @@ class StandardScaler(BasePreprocessor):
 
         return self
 
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'allow_nan': True}
+
     def _parallel_transform(
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE
@@ -183,6 +197,9 @@ class SubtractedFeatures(BasePreprocessor):
         y: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'SubtractedFeatures':
         return self
+
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'allow_nan': True, 'stateless': True}
 
     def _parallel_transform(
         self,

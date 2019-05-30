@@ -1,3 +1,5 @@
+from typing import Any
+from typing import Dict
 from typing import Union
 
 import numpy as np
@@ -41,6 +43,9 @@ class DropCollinearFeatures(BaseSelector):
 
         return np.all(triu <= self.threshold, axis=0)
 
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'allow_nan': True}
+
 
 class FrequencyThreshold(BaseSelector):
     _attributes = ['frequency_', 'n_samples_']
@@ -82,6 +87,9 @@ class FrequencyThreshold(BaseSelector):
         return (self.frequency_ > min_frequency) \
             & (self.frequency_ < max_frequency)
 
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'allow_nan': True}
+
 
 class NAProportionThreshold(BaseSelector):
     _attributes = ['count_', 'n_samples_']
@@ -106,3 +114,6 @@ class NAProportionThreshold(BaseSelector):
 
     def _get_support(self) -> ONE_DIM_ARRAYLIKE_TYPE:
         return self.count_ >= (1.0 - self.threshold) * self.n_samples_
+
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'allow_nan': True}

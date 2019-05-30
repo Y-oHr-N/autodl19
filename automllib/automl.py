@@ -18,7 +18,6 @@ from .compose import PipelineMaker
 
 class AutoMLPredictor(BaseEstimator):
     _attributes = ['engineer_', 'joiner_', 'sampler_', 'search_cv_']
-    _validate = False
 
     @property
     def best_params_(self) -> Dict[str, Any]:
@@ -164,6 +163,10 @@ class AutoMLClassifier(AutoMLPredictor, ClassifierMixin):
 
         return self.search_cv_.predict_proba(X)
 
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'no_validation': True}
+
 
 class AutoMLRegressor(AutoMLPredictor, RegressorMixin):
-    pass
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'no_validation': True}

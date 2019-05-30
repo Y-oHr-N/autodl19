@@ -193,3 +193,6 @@ class TableJoiner(BaseTransformer):
             Xs,
             self.graph_
         )
+
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'no_validation': True}

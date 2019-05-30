@@ -1,4 +1,5 @@
 from typing import Any
+from typing import Dict
 from typing import Type
 from typing import Union
 
@@ -64,6 +65,9 @@ class SimpleImputer(BasePreprocessor):
             raise ValueError(f'Unknown strategy: {self.strategy}.')
 
         return self
+
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'allow_nan': True}
 
     def _parallel_transform(
         self,
