@@ -784,6 +784,11 @@ class OptunaSearchCV(BaseEstimator):
 
         return self
 
+    def _more_tags(self):
+        # type () -> Dict[str, bool]
+
+        return {'non_deterministic': True, 'no_validation': True}
+
     def fit(
         self,
         X,  # type: TwoDimArrayLikeType
