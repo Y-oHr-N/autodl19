@@ -34,12 +34,12 @@ from .preprocessing import CountEncoder
 # from .preprocessing import RowStatistics
 from .preprocessing import StandardScaler
 from .preprocessing import SubtractedFeatures
+from .table_join import get_categorical_feature_names
+from .table_join import get_multi_value_categorical_feature_names
+from .table_join import get_numerical_feature_names
+from .table_join import get_time_feature_names
 from .table_join import TableJoiner
 from .under_sampling import RandomUnderSampler
-from .utils import get_categorical_feature_names
-from .utils import get_multi_value_categorical_feature_names
-from .utils import get_numerical_feature_names
-from .utils import get_time_feature_names
 
 
 class PipelineMaker(object):

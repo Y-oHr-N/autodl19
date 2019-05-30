@@ -12,7 +12,7 @@ import pandas as pd
 from sklearn.model_selection import TimeSeriesSplit
 
 from automllib.automl import AutoMLClassifier
-from automllib.constants import MAIN_TABLE_NAME
+from automllib.table_join import MAIN_TABLE_NAME
 
 
 class Model(object):

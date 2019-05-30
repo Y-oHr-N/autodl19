@@ -18,7 +18,7 @@ except ImportError:
 
 from sklearn.metrics import roc_auc_score
 
-from automllib.constants import TYPE_MAP
+from automllib.table_join import TYPE_MAP
 from automllib.utils import Timer
 from model import Model
 

@@ -8,19 +8,68 @@ from typing import Dict
 from typing import List
 from typing import Union
 
+import numpy as np
 import pandas as pd
+
+from scipy.sparse import spmatrix
+from scipy.stats import kurtosis
 
 from .base import BaseTransformer
 from .base import ONE_DIM_ARRAYLIKE_TYPE
 from .base import TWO_DIM_ARRAYLIKE_TYPE
-from .constants import AGGREGATE_FUNCTIONS_MAP as AFS_MAP
-from .constants import CATEGORICAL_TYPE as C_TYPE
-from .constants import MAIN_TABLE_NAME
-from .constants import NUMERICAL_PREFIX
-from .constants import NUMERICAL_TYPE as N_TYPE
-from .utils import get_categorical_feature_names
-from .utils import get_numerical_feature_names
-from .utils import Timeit
+
+MAIN_TABLE_NAME = 'main'
+
+CATEGORICAL_PREFIX = 'c_'
+CATEGORICAL_TYPE = 'cat'
+
+MULTI_VALUE_CATEGORICAL_DELIMITER = ','
+MULTI_VALUE_CATEGORICAL_PREFIX = 'm_'
+MULTI_VALUE_CATEGORICAL_TYPE = 'multi-cat'
+
+NUMERICAL_PREFIX = 'n_'
+NUMERICAL_TYPE = 'num'
+
+TIME_PREFIX = 't_'
+TIME_TYPE = 'time'
+
+TYPE_MAP = {
+    CATEGORICAL_TYPE: str,
+    MULTI_VALUE_CATEGORICAL_TYPE: str,
+    NUMERICAL_TYPE: float,
+    TIME_TYPE: str
+}
+
+
+def get_feature_names_by_prefix(
+    X: TWO_DIM_ARRAYLIKE_TYPE,
+    prefix: str
+) -> ONE_DIM_ARRAYLIKE_TYPE:
+    is_startwith = X.columns.str.startswith(prefix)
+    n_features = is_startwith.sum()
+
+    logger.info(f'Number of features starting with {prefix} is {n_features}.')
+
+    return X.columns[is_startwith]
+
+
+def get_categorical_feature_names(X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
+    return get_feature_names_by_prefix(X, CATEGORICAL_PREFIX)
+
+
+def get_multi_value_categorical_feature_names(
+    X: TWO_DIM_ARRAYLIKE_TYPE
+) -> ONE_DIM_ARRAYLIKE_TYPE:
+    return get_feature_names_by_prefix(X, MULTI_VALUE_CATEGORICAL_PREFIX)
+
+
+def get_numerical_feature_names(X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
+    return get_feature_names_by_prefix(X, NUMERICAL_PREFIX)
+
+
+def get_time_feature_names(X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
+    return get_feature_names_by_prefix(X, TIME_PREFIX)
+
 
 logger = logging.getLogger(__name__)
 
@@ -98,17 +147,45 @@ def dfs(u_name, config, tables, graph):
 def aggregate_functions(
     X: TWO_DIM_ARRAYLIKE_TYPE
 ) -> Dict[str, List[Union[str, Callable]]]:
+    AFS_MAP = {
+        CATEGORICAL_TYPE: [
+            'count',
+            'last',
+            pd.Series.nunique
+        ],
+        MULTI_VALUE_CATEGORICAL_TYPE: [
+            'count',
+            'last',
+            pd.Series.nunique
+        ],
+        NUMERICAL_TYPE: [
+            'count',
+            'last',
+            'min',
+            'max',
+            'mean',
+            # 'median',
+            'sum',
+            'std',
+            'skew',
+            kurtosis
+        ],
+        TIME_TYPE: [
+            'count',
+            'last'
+        ]
+    }
     func = {}
 
     c_feature_names = get_categorical_feature_names(X)
-    # m_feature_names = get_multi_value_categorical_feature_names(X)
+    m_feature_names = get_multi_value_categorical_feature_names(X)
     n_feature_names = get_numerical_feature_names(X)
-    # t_feature_names = get_time_feature_names(X)
+    t_feature_names = get_time_feature_names(X)
 
-    func.update({name: AFS_MAP[C_TYPE] for name in c_feature_names})
-    # func.update({name: AFS_MAP[M_TYPE] for name in m_feature_names})
-    func.update({name: AFS_MAP[N_TYPE] for name in n_feature_names})
-    # func.update({name: AFS_MAP[T_TYPE] for name in t_feature_names})
+    func.update({name: AFS_MAP[CATEGORICAL_TYPE] for name in c_feature_names})
+    func.update({name: AFS_MAP[MULTI_VALUE_CATEGORICAL_TYPE] for name in m_feature_names})
+    func.update({name: AFS_MAP[NUMERICAL_TYPE] for name in n_feature_names})
+    func.update({name: AFS_MAP[TIME_TYPE] for name in t_feature_names})
 
     return func
 
