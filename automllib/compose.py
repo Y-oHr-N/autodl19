@@ -9,7 +9,6 @@ import optuna
 from imblearn.pipeline import make_pipeline
 from joblib import Memory
 from sklearn.compose import make_column_transformer
-from sklearn.decomposition import TruncatedSVD
 from sklearn.experimental import enable_iterative_imputer  # noqa
 from sklearn.feature_selection import f_regression
 from sklearn.feature_selection import SelectFpr
@@ -59,7 +58,7 @@ class PipelineMaker(object):
         shuffle: bool = True,
         # Parameters for a multi-value categorical transformer
         lowercase: bool = True,
-        n_components: int = 100,
+        max_features: int = None,
         # Parameters for a numerical transformer
         max_iter: int = 10,
         # Parameters for a model
@@ -79,9 +78,9 @@ class PipelineMaker(object):
         self.learning_rate = learning_rate
         self.lowercase = lowercase
         self.max_depth = max_depth
+        self.max_features = max_features
         self.max_iter = max_iter
         self.memory = memory
-        self.n_components = n_components
         self.n_estimators = n_estimators
         self.n_jobs = n_jobs
         self.n_trials = n_trials
@@ -144,17 +143,12 @@ class PipelineMaker(object):
                 verbose=self.verbose
             ),
             make_union(
-                make_pipeline(
-                    MultiValueCategoricalVectorizer(
-                        dtype=self.dtype,
-                        lowercase=self.lowercase,
-                        n_jobs=self.n_jobs,
-                        verbose=self.verbose
-                    ),
-                    TruncatedSVD(
-                        n_components=self.n_components,
-                        random_state=self.random_state
-                    )
+                MultiValueCategoricalVectorizer(
+                    dtype=self.dtype,
+                    lowercase=self.lowercase,
+                    max_features=self.max_features,
+                    n_jobs=self.n_jobs,
+                    verbose=self.verbose
                 ),
                 # CountEncoder(
                 #     dtype=self.dtype,
