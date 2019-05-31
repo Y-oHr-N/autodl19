@@ -105,7 +105,7 @@ class AutoMLModel(BaseEstimator):
 
         self.joiner_ = maker.make_joiner()
         self.sampler_ = maker.make_sampler()
-        self.engineer_ = maker.make_engineer()
+        self.engineer_ = maker.make_mixed_transformer()
         self.search_cv_ = maker.make_search_cv()
 
         X = X.sort_values(self.info['time_col'], na_position='first')

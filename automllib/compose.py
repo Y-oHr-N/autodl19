@@ -242,7 +242,7 @@ class PipelineMaker(object):
             memory=self.memory
         )
 
-    def make_engineer(self) -> BaseEstimator:
+    def make_mixed_transformer(self) -> BaseEstimator:
         return make_column_transformer(
             (
                 self.make_categorical_transformer(),
