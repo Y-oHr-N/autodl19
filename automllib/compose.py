@@ -7,6 +7,7 @@ import numpy as np
 import optuna
 
 from imblearn.pipeline import make_pipeline
+from joblib import Memory
 from sklearn.compose import make_column_transformer
 from sklearn.decomposition import TruncatedSVD
 from sklearn.experimental import enable_iterative_imputer  # noqa
@@ -48,6 +49,8 @@ class PipelineMaker(object):
         info: Dict[str, Any],
         related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE],
         target_type: str,
+        dtype='float32',
+        memory: Union[str, Memory] = None,
         n_jobs: int = 1,
         random_state: Union[int, np.random.RandomState] = None,
         verbose: int = 0,
@@ -71,11 +74,13 @@ class PipelineMaker(object):
         timeout: float = None
     ) -> None:
         self.cv = cv
+        self.dtype = dtype
         self.info = info
         self.learning_rate = learning_rate
         self.lowercase = lowercase
         self.max_depth = max_depth
         self.max_iter = max_iter
+        self.memory = memory
         self.n_components = n_components
         self.n_estimators = n_estimators
         self.n_jobs = n_jobs
@@ -122,10 +127,11 @@ class PipelineMaker(object):
                 verbose=self.verbose
             ),
             CountEncoder(
-                dtype='float32',
+                dtype=self.dtype,
                 n_jobs=self.n_jobs,
                 verbose=self.verbose
-            )
+            ),
+            memory=self.memory
         )
 
     def make_multi_value_categorical_transformer(self) -> BaseEstimator:
@@ -140,7 +146,7 @@ class PipelineMaker(object):
             make_union(
                 make_pipeline(
                     MultiValueCategoricalVectorizer(
-                        dtype='float32',
+                        dtype=self.dtype,
                         lowercase=self.lowercase,
                         n_jobs=self.n_jobs,
                         verbose=self.verbose
@@ -151,11 +157,12 @@ class PipelineMaker(object):
                     )
                 ),
                 # CountEncoder(
-                #     dtype='float32',
+                #     dtype=self.dtype,
                 #     n_jobs=self.n_jobs,
                 #     verbose=self.verbose
                 # )
-            )
+            ),
+            memory=self.memory
         )
 
     def make_numerical_transformer(self) -> BaseEstimator:
@@ -169,7 +176,7 @@ class PipelineMaker(object):
             make_union(
                 make_pipeline(
                     Clip(
-                        dtype='float32',
+                        dtype=self.dtype,
                         n_jobs=self.n_jobs,
                         verbose=self.verbose
                     ),
@@ -197,18 +204,19 @@ class PipelineMaker(object):
                 #         verbose=self.verbose
                 #     ),
                 #     CountEncoder(
-                #         dtype='float32',
+                #         dtype=self.dtype,
                 #         n_jobs=self.n_jobs,
                 #         verbose=self.verbose
                 #     )
                 # ),
                 MissingIndicator(error_on_new=False),
                 # RowStatistics(
-                #     dtype='float32',
+                #     dtype=self.dtype,
                 #     n_jobs=self.n_jobs,
                 #     verbose=self.verbose
                 # )
-            )
+            ),
+            memory=self.memory
         )
 
     def make_time_transformer(self) -> BaseEstimator:
@@ -226,11 +234,12 @@ class PipelineMaker(object):
                 #     verbose=self.verbose
                 # ),
                 SubtractedFeatures(
-                    dtype='float32',
+                    dtype=self.dtype,
                     n_jobs=self.n_jobs,
                     verbose=self.verbose
                 )
-            )
+            ),
+            memory=self.memory
         )
 
     def make_engineer(self) -> BaseEstimator:
@@ -282,7 +291,8 @@ class PipelineMaker(object):
 
         return make_pipeline(
             # selector,
-            model
+            model,
+            memory=self.memory
         )
 
     def make_search_cv(self, timeout: float = None) -> BaseEstimator:

@@ -4,6 +4,7 @@ from typing import Union
 
 import numpy as np
 
+from joblib import Memory
 from sklearn.base import ClassifierMixin
 from sklearn.base import RegressorMixin
 from sklearn.model_selection import BaseCrossValidator
@@ -37,6 +38,7 @@ class AutoMLPredictor(BaseEstimator):
         lowercase: bool = True,
         max_depth: int = 5,
         max_iter: int = 10,
+        memory: Union[str, Memory] = None,
         n_components: int = 100,
         n_estimators: int = 100,
         n_jobs: int = 1,
@@ -57,6 +59,7 @@ class AutoMLPredictor(BaseEstimator):
         self.lowercase = lowercase
         self.max_depth = max_depth
         self.max_iter = max_iter
+        self.memory = memory
         self.n_components = n_components
         self.n_estimators = n_estimators
         self.n_jobs = n_jobs
@@ -87,6 +90,7 @@ class AutoMLPredictor(BaseEstimator):
             lowercase=self.lowercase,
             max_depth=self.max_depth,
             max_iter=self.max_iter,
+            memory=self.memory,
             n_components=self.n_components,
             n_estimators=self.n_estimators,
             n_jobs=self.n_jobs,
