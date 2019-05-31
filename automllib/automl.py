@@ -17,7 +17,7 @@ from .base import TWO_DIM_ARRAYLIKE_TYPE
 from .compose import PipelineMaker
 
 
-class AutoMLPredictor(BaseEstimator):
+class AutoMLModel(BaseEstimator):
     _attributes = ['engineer_', 'joiner_', 'sampler_', 'search_cv_']
 
     @property
@@ -79,7 +79,7 @@ class AutoMLPredictor(BaseEstimator):
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE,
         timeout: float = None
-    ) -> 'AutoMLPredictor':
+    ) -> 'AutoMLModel':
         target_type = type_of_target(y)
         maker = PipelineMaker(
             self.info,
@@ -146,6 +146,9 @@ class AutoMLPredictor(BaseEstimator):
 
         return self
 
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'no_validation': True}
+
     def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
         self._check_is_fitted()
 
@@ -154,8 +157,6 @@ class AutoMLPredictor(BaseEstimator):
 
         return self.search_cv_.predict(X)
 
-
-class AutoMLClassifier(AutoMLPredictor, ClassifierMixin):
     def predict_proba(
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE
@@ -167,10 +168,10 @@ class AutoMLClassifier(AutoMLPredictor, ClassifierMixin):
 
         return self.search_cv_.predict_proba(X)
 
-    def _more_tags(self) -> Dict[str, Any]:
-        return {'no_validation': True}
+    def score(self, X, y):
+        self._check_is_fitted()
 
+        X = self.joiner_.transform(X)
+        X = self.engineer_.transform(X)
 
-class AutoMLRegressor(AutoMLPredictor, RegressorMixin):
-    def _more_tags(self) -> Dict[str, Any]:
-        return {'no_validation': True}
+        return self.search_cv_.score(X)

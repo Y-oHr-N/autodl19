@@ -11,7 +11,7 @@ import pandas as pd
 
 from sklearn.model_selection import TimeSeriesSplit
 
-from automllib.automl import AutoMLClassifier
+from automllib.automl import AutoMLModel
 from automllib.table_join import MAIN_TABLE_NAME
 
 
@@ -31,7 +31,7 @@ class Model(object):
         related_tables = Xs.copy()
         X = related_tables.pop(MAIN_TABLE_NAME)
 
-        self.model_ = AutoMLClassifier(
+        self.model_ = AutoMLModel(
             self.info,
             related_tables,
             cv=TimeSeriesSplit(3),
