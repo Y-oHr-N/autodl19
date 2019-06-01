@@ -137,6 +137,14 @@ class AutoMLModel(BaseEstimator):
 
         self.search_cv_.fit(X, y, **fit_params)
 
+        self.logger_.info(f'The CV score is {self.best_score_:.3f}.')
+
+        if self.validation_fraction > 0.0:
+            self.logger_.info(
+                f'The validation score is '
+                f'{self.search_cv_.score(X_valid, y_valid):.3f}.'
+            )
+
         return self
 
     def _more_tags(self) -> Dict[str, Any]:
