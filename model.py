@@ -35,14 +35,7 @@ class Model(object):
             self.info,
             related_tables,
             cv=TimeSeriesSplit(3),
-            lowercase=False,
-            max_depth=7,
-            n_estimators=300,
-            n_jobs=-1,
-            random_state=0,
-            shuffle=False,
-            validation_fraction=0.2,
-            verbose=1
+            shuffle=False
         )
 
         self.model_.fit(X, y, timeout=timeout)

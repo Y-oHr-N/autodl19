@@ -1,5 +1,6 @@
 from typing import Any
 from typing import Dict
+from typing import Type
 from typing import Union
 
 import lightgbm as lgb
@@ -10,8 +11,6 @@ from imblearn.pipeline import make_pipeline
 from joblib import Memory
 from sklearn.compose import make_column_transformer
 from sklearn.experimental import enable_iterative_imputer  # noqa
-from sklearn.feature_selection import f_regression
-from sklearn.feature_selection import SelectFpr
 from sklearn.impute import IterativeImputer
 from sklearn.impute import MissingIndicator
 from sklearn.linear_model import LinearRegression
@@ -31,7 +30,7 @@ from .impute import SimpleImputer
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
-# from .preprocessing import RowStatistics
+from .preprocessing import RowStatistics
 from .preprocessing import StandardScaler
 from .preprocessing import SubtractedFeatures
 from .table_join import get_categorical_feature_names
@@ -48,28 +47,28 @@ class KDDCup19Maker(object):
         info: Dict[str, Any],
         related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE],
         target_type: str,
-        dtype='float32',
+        dtype: Union[str, Type] = 'float32',
         memory: Union[str, Memory] = None,
-        n_jobs: int = 1,
-        random_state: Union[int, np.random.RandomState] = None,
+        n_jobs: int = -1,
+        random_state: Union[int, np.random.RandomState] = 0,
         verbose: int = 0,
+        # Parameters for a multi-value categorical transformer
+        lowercase: bool = False,
+        max_features: int = 100,
+        # Parameters for a numerical transformer
+        max_iter: int = 10,
         # Parameters for a under sampler
         sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
         shuffle: bool = True,
-        # Parameters for a multi-value categorical transformer
-        lowercase: bool = True,
-        max_features: int = None,
-        # Parameters for a numerical transformer
-        max_iter: int = 10,
         # Parameters for a model
         learning_rate: float = 0.01,
-        max_depth: int = 5,
+        max_depth: int = 7,
         n_estimators: int = 100,
         # Parameters for hyperpermeter search
         cv: Union[int, BaseCrossValidator] = 5,
         n_trials: int = 10,
         refit: bool = True,
-        subsample: Union[int, float] = 1.0,
+        subsample: Union[int, float] = 100_000,
         timeout: float = None
     ) -> None:
         self.cv = cv
@@ -100,19 +99,6 @@ class KDDCup19Maker(object):
             self.related_tables,
             verbose=self.verbose
         )
-
-    def make_sampler(self) -> BaseEstimator:
-        if self.target_type in ['binary', 'multiclass', 'multiclass-output']:
-            return RandomUnderSampler(
-                random_state=self.random_state,
-                sampling_strategy=self.sampling_strategy,
-                shuffle=self.shuffle,
-                verbose=self.verbose
-            )
-        elif self.target_type in ['continuous', 'continuous-output']:
-            return None
-        else:
-            raise ValueError(f'Unknown target_type: {self.target_type}.')
 
     def make_categorical_transformer(self) -> BaseEstimator:
         return make_pipeline(
@@ -256,6 +242,19 @@ class KDDCup19Maker(object):
             # )
         )
 
+    def make_sampler(self) -> BaseEstimator:
+        if self.target_type in ['binary', 'multiclass', 'multiclass-output']:
+            return RandomUnderSampler(
+                random_state=self.random_state,
+                sampling_strategy=self.sampling_strategy,
+                shuffle=self.shuffle,
+                verbose=self.verbose
+            )
+        elif self.target_type in ['continuous', 'continuous-output']:
+            return None
+        else:
+            raise ValueError(f'Unknown target_type: {self.target_type}.')
+
     def make_model(self) -> BaseEstimator:
         params = {
             'learning_rate': self.learning_rate,
@@ -268,45 +267,36 @@ class KDDCup19Maker(object):
 
         if self.target_type in ['binary', 'multiclass', 'multiclass-output']:
             if self.target_type == 'binary':
-                # params['is_unbalance'] = True
+                params['is_unbalance'] = True
                 params['metric'] = 'auc'
-            # else:
-                # params['class_weight'] = 'balanced'
+            else:
+                params['class_weight'] = 'balanced'
 
-            selector = SelectFpr()
-            model = lgb.LGBMClassifier(**params)
+            return lgb.LGBMClassifier(**params)
 
         elif self.target_type in ['continuous', 'continuous-output']:
-            selector = SelectFpr(score_func=f_regression)
-            model = lgb.LGBMRegressor(**params)
+            return lgb.LGBMRegressor(**params)
 
         else:
             raise ValueError(f'Unknown target_type: {self.target_type}.')
 
-        return make_pipeline(
-            # selector,
-            model,
-            memory=self.memory
-        )
-
     def make_search_cv(self, timeout: float = None) -> BaseEstimator:
         model = self.make_model()
-        model_name = model._final_estimator.__class__.__name__.lower()
         param_distributions = {
-            f'{model_name}__colsample_bytree':
+            'colsample_bytree':
                 optuna.distributions.UniformDistribution(0.5, 1.0),
-            f'{model_name}__min_child_samples':
+            'min_child_samples':
                 optuna.distributions.IntUniformDistribution(1, 100),
-            f'{model_name}__num_leaves':
+            'num_leaves':
                 optuna.distributions.IntUniformDistribution(
                     2,
                     2 ** self.max_depth - 1
                 ),
-            f'{model_name}__reg_alpha':
+            'reg_alpha':
                 optuna.distributions.LogUniformDistribution(1e-06, 10.0),
-            f'{model_name}__reg_lambda':
+            'reg_lambda':
                 optuna.distributions.LogUniformDistribution(1e-06, 10.0),
-            f'{model_name}__subsample':
+            'subsample':
                 optuna.distributions.UniformDistribution(0.5, 1.0)
         }
 

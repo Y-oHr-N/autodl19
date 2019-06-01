@@ -5,8 +5,6 @@ from typing import Union
 import numpy as np
 
 from joblib import Memory
-from sklearn.base import ClassifierMixin
-from sklearn.base import RegressorMixin
 from sklearn.model_selection import BaseCrossValidator
 from sklearn.model_selection import train_test_split
 from sklearn.utils.multiclass import type_of_target
@@ -36,19 +34,19 @@ class AutoMLModel(BaseEstimator):
         early_stopping_rounds: int = 10,
         learning_rate: float = 0.01,
         lowercase: bool = True,
-        max_depth: int = 5,
+        max_depth: int = 7,
         max_features: int = 100,
         max_iter: int = 10,
         memory: Union[str, Memory] = None,
         n_estimators: int = 100,
-        n_jobs: int = 1,
+        n_jobs: int = -1,
         n_trials: int = 10,
-        random_state: Union[int, np.random.RandomState] = None,
+        random_state: Union[int, np.random.RandomState] = 0,
         sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
         shuffle: bool = True,
-        subsample: Union[int, float] = 1.0,
-        validation_fraction: Union[int, float] = 0.25,
-        verbose: int = 0
+        subsample: Union[int, float] = 100_000,
+        validation_fraction: Union[int, float] = 0.1,
+        verbose: int = 1
     ) -> None:
         super().__init__(verbose=verbose)
 
@@ -58,9 +56,9 @@ class AutoMLModel(BaseEstimator):
         self.learning_rate = learning_rate
         self.lowercase = lowercase
         self.max_depth = max_depth
+        self.max_features = max_features
         self.max_iter = max_iter
         self.memory = memory
-        self.max_features = max_features
         self.n_estimators = n_estimators
         self.n_jobs = n_jobs
         self.n_trials = n_trials
@@ -133,14 +131,9 @@ class AutoMLModel(BaseEstimator):
         if self.validation_fraction > 0.0:
             X_valid = self.engineer_.transform(X_valid)
 
-            model_name = self.search_cv_ \
-                .estimator._final_estimator \
-                .__class__.__name__.lower()
-
-            fit_params[f'{model_name}__early_stopping_rounds'] = \
-                self.early_stopping_rounds
-            fit_params[f'{model_name}__eval_set'] = [(X_valid, y_valid)]
-            fit_params[f'{model_name}__verbose'] = False
+            fit_params['early_stopping_rounds'] = self.early_stopping_rounds
+            fit_params['eval_set'] = [(X_valid, y_valid)]
+            fit_params['verbose'] = False
 
         self.search_cv_.fit(X, y, **fit_params)
 
