@@ -14,7 +14,7 @@ from sklearn.utils.multiclass import type_of_target
 from .base import BaseEstimator
 from .base import ONE_DIM_ARRAYLIKE_TYPE
 from .base import TWO_DIM_ARRAYLIKE_TYPE
-from .compose import PipelineMaker
+from .compose import KDDCup19Maker
 
 
 class AutoMLModel(BaseEstimator):
@@ -81,7 +81,7 @@ class AutoMLModel(BaseEstimator):
         timeout: float = None
     ) -> 'AutoMLModel':
         target_type = type_of_target(y)
-        maker = PipelineMaker(
+        maker = KDDCup19Maker(
             self.info,
             self.related_tables,
             target_type,

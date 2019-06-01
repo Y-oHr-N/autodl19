@@ -42,7 +42,7 @@ from .table_join import TableJoiner
 from .under_sampling import RandomUnderSampler
 
 
-class PipelineMaker(object):
+class KDDCup19Maker(object):
     def __init__(
         self,
         info: Dict[str, Any],
