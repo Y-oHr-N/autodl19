@@ -13,7 +13,6 @@ from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
 class RandomUnderSampler(BaseSampler):
-    _attributes = ['classes_', 'sample_indices_', 'sampling_strategy_']
     _sampling_type = 'under-sampling'
 
     def __init__(

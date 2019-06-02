@@ -12,8 +12,6 @@ from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
 class SimpleImputer(BasePreprocessor):
-    _attributes = ['statistics_']
-
     def __init__(
         self,
         copy: bool = True,

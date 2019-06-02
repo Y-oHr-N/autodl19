@@ -15,8 +15,6 @@ class TimeVectorizer(BasePreprocessor):
 
 
 class MultiValueCategoricalVectorizer(BasePreprocessor):
-    _attributes = ['vectorizers_']
-
     def __init__(
         self,
         dtype: Union[str, Type] = None,
