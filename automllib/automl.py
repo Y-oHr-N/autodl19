@@ -76,6 +76,9 @@ class AutoMLModel(BaseEstimator):
         y: ONE_DIM_ARRAYLIKE_TYPE,
         timeout: float = None
     ) -> 'AutoMLModel':
+        X = X.sort_values(self.info['time_col'], na_position='first')
+        y = y.loc[X.index]
+        fit_params = {}
         target_type = type_of_target(y)
         maker = KDDCup19Maker(
             self.info,
@@ -100,13 +103,9 @@ class AutoMLModel(BaseEstimator):
         )
 
         self.joiner_ = maker.make_joiner()
-        self.sampler_ = maker.make_sampler()
         self.engineer_ = maker.make_mixed_transformer()
+        self.sampler_ = maker.make_sampler()
         self.search_cv_ = maker.make_search_cv()
-
-        X = X.sort_values(self.info['time_col'], na_position='first')
-        y = y.loc[X.index]
-        fit_params = {}
 
         X = self.joiner_.fit_transform(X)
 
@@ -119,19 +118,18 @@ class AutoMLModel(BaseEstimator):
                 test_size=self.validation_fraction
             )
 
-        if self.sampler_ is not None:
-            X, y = self.sampler_.fit_resample(X, y)
-
         X = self.engineer_.fit_transform(X)
 
         assert X.dtype == 'float32'
 
         if self.validation_fraction > 0.0:
             X_valid = self.engineer_.transform(X_valid)
-
             fit_params['early_stopping_rounds'] = self.early_stopping_rounds
             fit_params['eval_set'] = [(X_valid, y_valid)]
             fit_params['verbose'] = False
+
+        if self.sampler_ is not None:
+            X, y = self.sampler_.fit_resample(X, y)
 
         self.search_cv_.fit(X, y, **fit_params)
 
