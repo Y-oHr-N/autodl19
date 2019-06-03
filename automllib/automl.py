@@ -36,7 +36,7 @@ class AutoMLModel(BaseEstimator):
         max_iter: int = 10,
         memory: Union[str, Memory] = None,
         n_estimators: int = 100,
-        n_features: int = 64,
+        n_features: int = 32,
         n_jobs: int = -1,
         n_trials: int = 10,
         random_state: Union[int, np.random.RandomState] = 0,
