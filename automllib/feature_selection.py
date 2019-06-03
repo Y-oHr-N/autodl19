@@ -5,6 +5,8 @@ from typing import Union
 import numpy as np
 import pandas as pd
 from sklearn.utils import check_random_state
+from sklearn.utils import safe_mask
+
 from scipy.stats import ks_2samp
 
 from .base import BaseSelector
@@ -149,22 +151,21 @@ class DropDriftFeatures(BaseSelector):
 
         random_state = check_random_state(self.random_state)
 
-        n_samples, n_dims = X.shape
-
+        n_dims = X.shape[1]
         self.support = np.full(n_dims, False)
-        sampled_X = np.zeros((self.n_test_samples, n_dims))
-        sampled_X_valid = np.zeros((self.n_test_samples, n_dims))
+        mask1 = np.full((X.shape[0], n_dims), False)
+        mask2 = np.full((X_valid.shape[0], n_dims), False)
 
         for test_idx in range(self.n_test):
-            for dim_idx in range(n_dims):
-                sampled_X[:, dim_idx] = random_state.choice(X[:, dim_idx],
-                                                            size=self.n_test_samples)
-                sampled_X_valid[:, dim_idx] = random_state.choice(X_valid[:, dim_idx],
-                                                                  size=self.n_test_samples)
+            sample_indices1 = random_state.choice(np.arange(X.shape[0]), size=self.n_test_samples)
+            sample_indices2 = random_state.choice(np.arange(X_valid.shape[0]), size=self.n_test_samples)
+
+            mask1[sample_indices1, :] = True
+            mask2[sample_indices2, :] = True
 
             p_values = np.array([ks_2samp(col1, col2)[1]
                                  for col1, col2
-                                 in zip(sampled_X.T, sampled_X_valid.T)]
+                                 in zip(X[safe_mask(X, mask1)].T, X_valid[safe_mask(X_valid, mask2)].T)]
                                 )
             self.support += (p_values > self.threshold)
 
@@ -172,3 +173,6 @@ class DropDriftFeatures(BaseSelector):
 
     def _get_support(self) -> ONE_DIM_ARRAYLIKE_TYPE:
         return self.support
+
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'X_types': ['2darray', 'sparse']}
