@@ -116,8 +116,6 @@ class NAProportionThreshold(BaseSelector):
 
 
 class DropDriftFeatures(BaseSelector):
-    _attributes = ['support']
-
     def __init__(
         self,
         threshold: float = 0.1,
