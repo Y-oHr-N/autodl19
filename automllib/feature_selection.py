@@ -152,8 +152,7 @@ class DropDriftFeatures(BaseSelector):
         random_state = check_random_state(self.random_state)
 
         n_samples, n_dims = X.shape
-        # Init.
-        p_values = np.zeros((self.n_test, n_dims))
+
         self.support = np.full(n_dims, False)
         sampled_X = np.zeros((self.n_test_samples, n_dims))
         sampled_X_valid = np.zeros((self.n_test_samples, n_dims))
