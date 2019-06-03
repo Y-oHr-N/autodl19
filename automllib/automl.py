@@ -13,6 +13,7 @@ from .base import BaseEstimator
 from .base import ONE_DIM_ARRAYLIKE_TYPE
 from .base import TWO_DIM_ARRAYLIKE_TYPE
 from .compose import KDDCup19Maker
+from .feature_selection import DropDriftFeatures
 
 
 class AutoMLModel(BaseEstimator):
@@ -106,6 +107,7 @@ class AutoMLModel(BaseEstimator):
         self.engineer_ = maker.make_mixed_transformer()
         self.sampler_ = maker.make_sampler()
         self.search_cv_ = maker.make_search_cv()
+        self.drift_dropper = DropDriftFeatures()
 
         X = self.joiner_.fit_transform(X)
 
@@ -124,6 +126,10 @@ class AutoMLModel(BaseEstimator):
 
         if self.validation_fraction > 0.0:
             X_valid = self.engineer_.transform(X_valid)
+
+            X = self.drift_dropper.fit_transform(X, X_valid=X_valid)
+            X_valid = self.drift_dropper.transform(X_valid)
+
             fit_params['early_stopping_rounds'] = self.early_stopping_rounds
             fit_params['eval_set'] = [(X_valid, y_valid)]
             fit_params['verbose'] = False
@@ -151,6 +157,8 @@ class AutoMLModel(BaseEstimator):
 
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
+        if self.validation_fraction > 0.0:
+            X = self.drift_dropper.transform(X)
 
         return self.search_cv_.predict(X)
 
@@ -162,6 +170,8 @@ class AutoMLModel(BaseEstimator):
 
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
+        if self.validation_fraction > 0.0:
+            X = self.drift_dropper.transform(X)
 
         return self.search_cv_.predict_proba(X)
 
@@ -170,5 +180,8 @@ class AutoMLModel(BaseEstimator):
 
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
+        if self.validation_fraction > 0.0:
+            X = self.drift_dropper.transform(X)
+
 
         return self.search_cv_.score(X)
