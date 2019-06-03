@@ -3,7 +3,7 @@ from typing import Union
 
 from scipy.sparse import hstack
 from sklearn.base import clone
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import HashingVectorizer
 
 from .base import BasePreprocessor
 from .base import ONE_DIM_ARRAYLIKE_TYPE
@@ -19,14 +19,14 @@ class MultiValueCategoricalVectorizer(BasePreprocessor):
         self,
         dtype: Union[str, Type] = None,
         lowercase: bool = True,
-        max_features: int = None,
+        n_features: int = 1_048_576,
         n_jobs: int = 1,
         verbose: int = 0
     ) -> None:
         super().__init__(dtype=dtype, n_jobs=n_jobs, verbose=verbose)
 
         self.lowercase = lowercase
-        self.max_features = max_features
+        self.n_features = n_features
 
     def _check_params(self) -> None:
         pass
@@ -41,10 +41,10 @@ class MultiValueCategoricalVectorizer(BasePreprocessor):
         if dtype is None:
             dtype = 'float64'
 
-        v = CountVectorizer(
+        v = HashingVectorizer(
             dtype=self.dtype,
             lowercase=self.lowercase,
-            max_features=self.max_features
+            n_features=self.n_features
         )
 
         self.vectorizers_ = [clone(v).fit(column) for column in X.T]

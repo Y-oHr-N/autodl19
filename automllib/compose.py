@@ -54,7 +54,7 @@ class KDDCup19Maker(object):
         verbose: int = 0,
         # Parameters for a multi-value categorical transformer
         lowercase: bool = False,
-        max_features: int = 100,
+        n_features: int = 64,
         # Parameters for a numerical transformer
         max_iter: int = 10,
         # Parameters for a under sampler
@@ -77,10 +77,10 @@ class KDDCup19Maker(object):
         self.learning_rate = learning_rate
         self.lowercase = lowercase
         self.max_depth = max_depth
-        self.max_features = max_features
         self.max_iter = max_iter
         self.memory = memory
         self.n_estimators = n_estimators
+        self.n_features = n_features
         self.n_jobs = n_jobs
         self.n_trials = n_trials
         self.random_state = random_state
@@ -132,7 +132,7 @@ class KDDCup19Maker(object):
                 MultiValueCategoricalVectorizer(
                     dtype=self.dtype,
                     lowercase=self.lowercase,
-                    max_features=self.max_features,
+                    n_features=self.n_features,
                     n_jobs=self.n_jobs,
                     verbose=self.verbose
                 ),

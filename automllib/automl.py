@@ -33,10 +33,10 @@ class AutoMLModel(BaseEstimator):
         learning_rate: float = 0.01,
         lowercase: bool = True,
         max_depth: int = 7,
-        max_features: int = 100,
         max_iter: int = 10,
         memory: Union[str, Memory] = None,
         n_estimators: int = 100,
+        n_features: int = 64,
         n_jobs: int = -1,
         n_trials: int = 10,
         random_state: Union[int, np.random.RandomState] = 0,
@@ -54,10 +54,10 @@ class AutoMLModel(BaseEstimator):
         self.learning_rate = learning_rate
         self.lowercase = lowercase
         self.max_depth = max_depth
-        self.max_features = max_features
         self.max_iter = max_iter
         self.memory = memory
         self.n_estimators = n_estimators
+        self.n_features = n_features
         self.n_jobs = n_jobs
         self.n_trials = n_trials
         self.random_state = random_state
@@ -88,10 +88,10 @@ class AutoMLModel(BaseEstimator):
             learning_rate=self.learning_rate,
             lowercase=self.lowercase,
             max_depth=self.max_depth,
-            max_features=self.max_features,
             max_iter=self.max_iter,
             memory=self.memory,
             n_estimators=self.n_estimators,
+            n_features=self.n_features,
             n_jobs=self.n_jobs,
             n_trials=self.n_trials,
             random_state=self.random_state,
