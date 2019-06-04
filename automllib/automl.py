@@ -37,13 +37,14 @@ class AutoMLModel(BaseEstimator):
         max_iter: int = 10,
         memory: Union[str, Memory] = None,
         n_estimators: int = 100,
-        n_features: int = 64,
+        n_features: int = 32,
         n_jobs: int = -1,
         n_trials: int = 10,
         random_state: Union[int, np.random.RandomState] = 0,
         sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
         shuffle: bool = True,
         subsample: Union[int, float] = 100_000,
+        timeout: float = None,
         validation_fraction: Union[int, float] = 0.1,
         verbose: int = 1
     ) -> None:
@@ -66,6 +67,7 @@ class AutoMLModel(BaseEstimator):
         self.sampling_strategy = sampling_strategy
         self.shuffle = shuffle
         self.subsample = subsample
+        self.timeout = timeout
         self.validation_fraction = validation_fraction
 
     def _check_params(self) -> None:
@@ -81,6 +83,10 @@ class AutoMLModel(BaseEstimator):
         y = y.loc[X.index]
         fit_params = {}
         target_type = type_of_target(y)
+
+        if timeout is None:
+            timeout = self.timeout
+
         maker = KDDCup19Maker(
             self.info,
             self.related_tables,
@@ -99,7 +105,7 @@ class AutoMLModel(BaseEstimator):
             sampling_strategy=self.sampling_strategy,
             shuffle=self.shuffle,
             subsample=self.subsample,
-            # timeout=None,
+            timeout=timeout,
             verbose=self.verbose
         )
 

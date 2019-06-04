@@ -54,7 +54,7 @@ class KDDCup19Maker(object):
         verbose: int = 0,
         # Parameters for a multi-value categorical transformer
         lowercase: bool = False,
-        n_features: int = 64,
+        n_features: int = 32,
         # Parameters for a numerical transformer
         max_iter: int = 10,
         # Parameters for a under sampler
