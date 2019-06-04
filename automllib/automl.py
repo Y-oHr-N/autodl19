@@ -116,7 +116,10 @@ class AutoMLModel(BaseEstimator):
         self.engineer_ = maker.make_mixed_transformer()
         self.sampler_ = maker.make_sampler()
         self.search_cv_ = maker.make_search_cv()
-        self.drift_dropper_ = DropDriftFeatures()
+        self.drift_dropper_ = DropDriftFeatures(
+            random_state=self.random_state,
+            verbose=self.verbose
+        )
 
         X = self.joiner_.fit_transform(X)
 

@@ -1,5 +1,3 @@
-import pytest
-
 from sklearn.utils.estimator_checks import check_estimator
 
 from automllib.feature_selection import DropCollinearFeatures
@@ -10,7 +8,6 @@ from automllib.feature_selection import NAProportionThreshold
 def test_drop_colinear_features():
     check_estimator(DropCollinearFeatures)
 
-@pytest.mark.skip
 def test_drop_drift_features():
     check_estimator(DropDriftFeatures)
 
