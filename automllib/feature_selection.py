@@ -93,7 +93,7 @@ class FrequencyThreshold(BaseSelector):
             & (self.frequency_ < max_frequency)
 
     def _more_tags(self) -> Dict[str, Any]:
-        return {'allow_nan': True}
+        return {'allow_nan': True, 'X_types': ['2darray', 'str']}
 
 
 class NAProportionThreshold(BaseSelector):
@@ -121,7 +121,7 @@ class NAProportionThreshold(BaseSelector):
         return self.count_ >= (1.0 - self.threshold) * self.n_samples_
 
     def _more_tags(self) -> Dict[str, Any]:
-        return {'allow_nan': True}
+        return {'allow_nan': True, 'X_types': ['2darray', 'str']}
 
 
 class DropDriftFeatures(BaseSelector):
