@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from sklearn.utils import check_random_state
 from sklearn.utils import safe_mask
+from scipy.sparse import issparse
 
 from scipy.stats import ks_2samp
 
@@ -158,10 +159,16 @@ class DropDriftFeatures(BaseSelector):
             sample_indices1 = random_state.choice(np.arange(X.shape[0]), size=self.n_test_samples)
             sample_indices2 = random_state.choice(np.arange(X_valid.shape[0]), size=self.n_test_samples)
 
-            p_values = np.array([ks_2samp(col1, col2)[1]
-                                 for col1, col2
-                                 in zip(X[sample_indices1, :].toarray().T, X_valid[sample_indices2, :].toarray().T)]
-                                )
+            if issparse(X):
+                p_values = np.array([ks_2samp(np.squeeze(col1.toarray()), np.squeeze(col2.toarray()))[1]
+                                     for col1, col2
+                                     in zip(X[sample_indices1, :].T, X_valid[sample_indices2, :].T)]
+                                    )
+            else:
+                p_values = np.array([ks_2samp(col1, col2)[1]
+                                     for col1, col2
+                                     in zip(X[sample_indices1, :].T, X_valid[sample_indices2, :].T)]
+                                    )
             self.support += (p_values > self.threshold)
 
         return self
