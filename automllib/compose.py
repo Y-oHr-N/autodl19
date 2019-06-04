@@ -26,7 +26,7 @@ from .feature_extraction import MultiValueCategoricalVectorizer
 from .feature_selection import DropCollinearFeatures
 from .feature_selection import FrequencyThreshold
 from .feature_selection import NAProportionThreshold
-from .impute import SimpleImputer
+from .impute import ModifiedSimpleImputer
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
@@ -105,7 +105,7 @@ class KDDCup19Maker(object):
             NAProportionThreshold(verbose=self.verbose),
             FrequencyThreshold(verbose=self.verbose),
             # DropDuplicates(verbose=self.verbose),
-            SimpleImputer(
+            ModifiedSimpleImputer(
                 fill_value='missing',
                 n_jobs=self.n_jobs,
                 strategy='constant',
@@ -122,7 +122,7 @@ class KDDCup19Maker(object):
     def make_multi_value_categorical_transformer(self) -> BaseEstimator:
         return make_pipeline(
             NAProportionThreshold(verbose=self.verbose),
-            SimpleImputer(
+            ModifiedSimpleImputer(
                 fill_value='missing',
                 n_jobs=self.n_jobs,
                 strategy='constant',
@@ -177,7 +177,7 @@ class KDDCup19Maker(object):
                     )
                 ),
                 # make_pipeline(
-                #     SimpleImputer(
+                #     ModifiedSimpleImputer(
                 #         fill_value=np.finfo('float32').max,
                 #         n_jobs=self.n_jobs,
                 #         strategy='constant',
@@ -202,7 +202,7 @@ class KDDCup19Maker(object):
     def make_time_transformer(self) -> BaseEstimator:
         return make_pipeline(
             NAProportionThreshold(verbose=self.verbose),
-            SimpleImputer(
+            ModifiedSimpleImputer(
                 n_jobs=self.n_jobs,
                 strategy='min',
                 verbose=self.verbose

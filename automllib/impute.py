@@ -11,7 +11,7 @@ from .base import ONE_DIM_ARRAYLIKE_TYPE
 from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
-class SimpleImputer(BasePreprocessor):
+class ModifiedSimpleImputer(BasePreprocessor):
     _attributes = ['statistics_']
 
     def __init__(
