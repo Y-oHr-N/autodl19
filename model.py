@@ -1,11 +1,11 @@
 import os
 
-# os.system('pip3 install -q colorlog')
-# os.system('pip3 install -q imbalanced-learn')
-# os.system('pip3 install -q lightgbm')
-# os.system('pip3 install -q optuna')
-# os.system('pip3 install -q pandas==0.24.2')
-# os.system('pip3 install -q scikit-learn>=0.21.0')
+os.system('pip3 install -q colorlog')
+os.system('pip3 install -q imbalanced-learn')
+os.system('pip3 install -q lightgbm')
+os.system('pip3 install -q optuna')
+os.system('pip3 install -q pandas==0.24.2')
+os.system('pip3 install -q scikit-learn>=0.21.0')
 
 import pandas as pd
 
