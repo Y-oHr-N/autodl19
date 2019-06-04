@@ -141,7 +141,7 @@ class RowStatistics(BasePreprocessor):
         return np.sum(is_nan, axis=1, dtype=dtype).reshape(-1, 1)
 
 
-class StandardScaler(BasePreprocessor):
+class ModifiedStandardScaler(BasePreprocessor):
     _attributes = ['mean_', 'std_', 'scale_']
 
     def __init__(

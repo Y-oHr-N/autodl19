@@ -31,7 +31,7 @@ from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
 # from .preprocessing import RowStatistics
-from .preprocessing import StandardScaler
+from .preprocessing import ModifiedStandardScaler
 from .preprocessing import SubtractedFeatures
 from .table_join import get_categorical_feature_names
 from .table_join import get_multi_value_categorical_feature_names
@@ -160,7 +160,7 @@ class KDDCup19Maker(object):
                         n_jobs=self.n_jobs,
                         verbose=self.verbose
                     ),
-                    StandardScaler(n_jobs=self.n_jobs, verbose=self.verbose),
+                    ModifiedStandardScaler(n_jobs=self.n_jobs, verbose=self.verbose),
                     IterativeImputer(
                         estimator=LinearRegression(n_jobs=self.n_jobs),
                         max_iter=self.max_iter
