@@ -26,7 +26,6 @@ from sklearn.utils import check_X_y
 from sklearn.utils import gen_even_slices
 from sklearn.utils import safe_indexing
 from sklearn.utils import safe_mask
-from sklearn.utils.validation import _num_samples
 from sklearn.utils.validation import check_is_fitted
 
 from .utils import Timeit
@@ -62,7 +61,8 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE = None,
-        dtype: Union[str, Type, List[Type]] = None
+        dtype: Union[str, Type, List[Type]] = None,
+        n_features: int = None
     ) -> Tuple[TWO_DIM_ARRAYLIKE_TYPE, ONE_DIM_ARRAYLIKE_TYPE]:
         tags = self._get_tags()
 
@@ -90,6 +90,12 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
                 dtype=dtype,
                 force_all_finite=force_all_finite
             )
+
+        if n_features is not None:
+            _, n_input_features = X.shape
+
+            if n_input_features != n_features:
+                raise ValueError(f'Invalid data: shape={X.shape}')
 
         return X, y
 
@@ -141,6 +147,8 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
         if not tags['no_validation']:
             X, y = self._check_X_y(X, y)
 
+        _, self.n_features_ = X.shape
+
         return func(X, y, *args, **kwargs)
 
     def to_pickle(
@@ -182,11 +190,11 @@ class BaseSampler(BaseEstimator):
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE,
     ) -> Tuple[TWO_DIM_ARRAYLIKE_TYPE, ONE_DIM_ARRAYLIKE_TYPE]:
-        n_input_samples = _num_samples(X)
-        n_output_samples = _num_samples(self.sample_indices_)
+        logger = self._get_logger()
+        n_input_samples, _ = X.shape
+        n_output_samples, = self.sample_indices_.shape
         X = safe_indexing(X, self.sample_indices_)
         y = safe_indexing(y, self.sample_indices_)
-        logger = self._get_logger()
 
         logger.info(
             f'{self.__class__.__name__} selects {n_output_samples} samples '
@@ -267,8 +275,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         func = timeit(self._transform)
 
         if not tags['no_validation']:
-            X, _ = self._check_X_y(X)
-
+            X, _ = self._check_X_y(X, n_features=self.n_features_)
 
         X = func(X)
 
@@ -320,11 +327,11 @@ class BaseSelector(BaseTransformer):
         pass
 
     def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
+        logger = self._get_logger()
+        _, n_input_features = X.shape
         support = self._get_support()
         n_output_features = np.sum(support)
         support = safe_mask(X, support)
-        _, n_input_features = X.shape
-        logger = self._get_logger()
 
         logger.info(
             f'{self.__class__.__name__} selects {n_output_features} '
