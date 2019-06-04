@@ -36,7 +36,7 @@ from .preprocessing import SubtractedFeatures
 from .table_join import get_categorical_feature_names
 from .table_join import get_multi_value_categorical_feature_names
 from .table_join import get_numerical_feature_names
-# from .table_join import get_time_feature_names
+from .table_join import get_time_feature_names
 from .table_join import TableJoiner
 from .under_sampling import RandomUnderSampler
 
@@ -236,10 +236,10 @@ class KDDCup19Maker(object):
                 self.make_numerical_transformer(),
                 get_numerical_feature_names
             ),
-            # (
-            #     self.make_time_transformer(),
-            #     get_time_feature_names
-            # )
+            (
+                self.make_time_transformer(),
+                get_time_feature_names
+            )
         )
 
     def make_sampler(self) -> BaseEstimator:
