@@ -191,6 +191,8 @@ def aggregate_functions(
 
 
 class TableJoiner(BaseTransformer):
+    _attributes = ['config_', 'graph_']
+
     def __init__(
         self,
         info: Dict[str, Any],

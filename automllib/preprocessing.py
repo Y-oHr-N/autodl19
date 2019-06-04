@@ -15,6 +15,8 @@ from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
 class Clip(BasePreprocessor):
+    _attributes = ['data_max_', 'data_min_']
+
     def __init__(
         self,
         dtype: Union[str, Type] = None,
@@ -55,6 +57,8 @@ class Clip(BasePreprocessor):
 
 
 class CountEncoder(BasePreprocessor):
+    _attributes = ['counters_']
+
     def __init__(
         self,
         dtype: Union[str, Type] = None,
@@ -97,6 +101,8 @@ class CountEncoder(BasePreprocessor):
 
 
 class RowStatistics(BasePreprocessor):
+    _attributes = []
+
     def __init__(
         self,
         dtype: Union[str, Type] = None,
@@ -136,6 +142,8 @@ class RowStatistics(BasePreprocessor):
 
 
 class StandardScaler(BasePreprocessor):
+    _attributes = ['mean_', 'std_', 'scale_']
+
     def __init__(
         self,
         dtype: Union[str, Type] = None,
@@ -170,6 +178,8 @@ class StandardScaler(BasePreprocessor):
 
 
 class SubtractedFeatures(BasePreprocessor):
+    _attributes = []
+
     def __init__(
         self,
         dtype: Union[str, Type] = None,
