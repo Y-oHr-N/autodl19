@@ -139,7 +139,7 @@ class AutoMLModel(BaseEstimator):
         if self.validation_fraction > 0.0:
             X_valid = self.engineer_.transform(X_valid)
 
-            X = self.drift_dropper_.fit_transform(X, X_valid=X_valid)
+            X = self.drift_dropper_.fit_transform(X, X_test=X_valid)
             X_valid = self.drift_dropper_.transform(X_valid)
 
             fit_params['early_stopping_rounds'] = self.early_stopping_rounds

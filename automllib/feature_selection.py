@@ -4,11 +4,11 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
-from sklearn.utils import check_random_state
-from sklearn.utils import safe_mask
-from scipy.sparse import issparse
 
+from scipy.sparse import issparse
 from scipy.stats import ks_2samp
+from sklearn.utils import check_random_state
+from sklearn.utils import safe_indexing
 
 from .base import BaseSelector
 from .base import ONE_DIM_ARRAYLIKE_TYPE
@@ -53,22 +53,20 @@ class DropDuplicates(BaseSelector):
 
 
 class DropDriftFeatures(BaseSelector):
-    _attributes = ['support_']
+    _attributes = ['pvalues_']
 
     def __init__(
         self,
-        n_test: int = 5,
-        n_test_samples: int = 100,
+        alpha: float = 0.05,
         random_state: Union[int, np.random.RandomState] = None,
-        threshold: float = 0.05,
+        size: int = 100,
         verbose: int = 0
     ) -> None:
         super().__init__(verbose=verbose)
 
-        self.n_test_samples = n_test_samples
-        self.n_test = n_test
+        self.alpha = alpha
         self.random_state = random_state
-        self.threshold = threshold
+        self.size = size
 
     def _check_params(self) -> None:
         pass
@@ -77,43 +75,43 @@ class DropDriftFeatures(BaseSelector):
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE = None,
-        **kwargs: Any
+        X_test: TWO_DIM_ARRAYLIKE_TYPE = None
     ) -> 'DropDriftFeatures':
-
-        if not ('X_valid' in kwargs.keys()):
-            self.support_ = None
+        if X_test is None:
+            self.pvalues_ = None
 
             return self
 
-        X_valid = kwargs['X_valid']
+        X_test, _ = self._check_X_y(X_test)
         random_state = check_random_state(self.random_state)
+        n_samples, _ = X.shape
+        n_test_samples, _ = X_test.shape
+        train = random_state.choice(n_samples, size=self.size)
+        test = random_state.choice(n_test_samples, size=self.size)
+        X = safe_indexing(X, train)
+        X_test = safe_indexing(X_test, test)
 
-        self.support_ = np.full(self.n_features_, False)
+        self.pvalues_ = np.empty(self.n_features_)
 
-        for test_idx in range(self.n_test):
-            sample_indices1 = random_state.choice(np.arange(X.shape[0]), size=self.n_test_samples)
-            sample_indices2 = random_state.choice(np.arange(X_valid.shape[0]), size=self.n_test_samples)
+        for j in range(self.n_features_):
+            column = X[:, j]
+            column_test = X_test[:, j]
 
-            if issparse(X):
-                p_values = np.array([ks_2samp(np.squeeze(col1.toarray()), np.squeeze(col2.toarray()))[1]
-                                     for col1, col2
-                                     in zip(X[sample_indices1, :].T, X_valid[sample_indices2, :].T)]
-                                    )
-            else:
-                p_values = np.array([ks_2samp(col1, col2)[1]
-                                     for col1, col2
-                                     in zip(X[sample_indices1, :].T, X_valid[sample_indices2, :].T)]
-                                    )
+            if issparse(column):
+                column = np.ravel(column.toarray())
 
-            self.support_ += (p_values > self.threshold)
+            if issparse(column_test):
+                column_test = np.ravel(column_test.toarray())
+
+            self.pvalues_[j] = ks_2samp(column, column_test).pvalue
 
         return self
 
     def _get_support(self) -> ONE_DIM_ARRAYLIKE_TYPE:
-        if self.support_ is None:
+        if self.pvalues_ is None:
             return np.ones(self.n_features_, dtype=bool)
 
-        return self.support_
+        return self.pvalues_ >= self.alpha
 
     def _more_tags(self) -> Dict[str, Any]:
         return {'non_deterministic': True, 'X_types': ['2darray', 'sparse']}
