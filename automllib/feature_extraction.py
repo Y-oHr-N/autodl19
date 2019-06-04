@@ -1,3 +1,5 @@
+from typing import Any
+from typing import Dict
 from typing import Type
 from typing import Union
 
@@ -52,6 +54,9 @@ class MultiValueCategoricalVectorizer(BasePreprocessor):
         self.vectorizers_ = [clone(v).fit(column) for column in X.T]
 
         return self
+
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'X_types': ['2darray', 'str']}
 
     def _parallel_transform(
         self,

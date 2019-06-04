@@ -67,7 +67,7 @@ class ModifiedSimpleImputer(BasePreprocessor):
         return self
 
     def _more_tags(self) -> Dict[str, Any]:
-        return {'allow_nan': True}
+        return {'allow_nan': True, 'X_types': ['2darray', 'str']}
 
     def _parallel_transform(
         self,

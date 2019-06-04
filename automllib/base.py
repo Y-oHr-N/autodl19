@@ -61,12 +61,15 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE = None,
-        dtype: Union[str, Type, List[Type]] = None,
         n_features: int = None
     ) -> Tuple[TWO_DIM_ARRAYLIKE_TYPE, ONE_DIM_ARRAYLIKE_TYPE]:
         tags = self._get_tags()
-
         accept_sparse = 'sparse' in tags['X_types']
+
+        if 'str' in tags['X_types'] or 'categorical' in tags['X_types']:
+            dtype = None
+        else:
+            dtype = 'numeric'
 
         if tags['allow_nan']:
             force_all_finite = 'allow-nan'
