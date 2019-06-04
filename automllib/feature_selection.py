@@ -158,14 +158,9 @@ class DropDriftFeatures(BaseSelector):
             sample_indices1 = random_state.choice(np.arange(X.shape[0]), size=self.n_test_samples)
             sample_indices2 = random_state.choice(np.arange(X_valid.shape[0]), size=self.n_test_samples)
 
-            mask1 = np.full((X.shape[0],), False)
-            mask2 = np.full((X_valid.shape[0],), False)
-            mask1[sample_indices1] = True
-            mask2[sample_indices2] = True
-
             p_values = np.array([ks_2samp(col1, col2)[1]
                                  for col1, col2
-                                 in zip(X[mask1, :].toarray().T, X_valid[mask2, :].toarray().T)]
+                                 in zip(X[sample_indices1, :].toarray().T, X_valid[sample_indices2, :].toarray().T)]
                                 )
             self.support += (p_values > self.threshold)
 
