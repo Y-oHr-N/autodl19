@@ -81,6 +81,7 @@ class AutoMLModel(BaseEstimator):
         y: ONE_DIM_ARRAYLIKE_TYPE,
         timeout: float = None
     ) -> 'AutoMLModel':
+        logger = self._get_logger()
         X = X.sort_values(self.info['time_col'], na_position='first')
         y = y.loc[X.index]
         fit_params = {}
@@ -147,10 +148,10 @@ class AutoMLModel(BaseEstimator):
 
         self.search_cv_.fit(X, y, **fit_params)
 
-        self.logger_.info(f'The CV score is {self.best_score_:.3f}.')
+        logger.info(f'The CV score is {self.best_score_:.3f}.')
 
         if self.validation_fraction > 0.0:
-            self.logger_.info(
+            logger.info(
                 f'The validation score is '
                 f'{self.search_cv_.score(X_valid, y_valid):.3f}.'
             )

@@ -134,14 +134,12 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
         self._check_params()
 
         tags = self._get_tags()
+        logger = self._get_logger()
+        timeit = Timeit(logger=logger)
+        func = timeit(self._fit)
 
         if not tags['no_validation']:
             X, y = self._check_X_y(X, y)
-
-        self.logger_ = self._get_logger()
-        self.timeit_ = Timeit(self.logger_)
-
-        func = self.timeit_(self._fit)
 
         return func(X, y, *args, **kwargs)
 
@@ -188,8 +186,9 @@ class BaseSampler(BaseEstimator):
         n_output_samples = _num_samples(self.sample_indices_)
         X = safe_indexing(X, self.sample_indices_)
         y = safe_indexing(y, self.sample_indices_)
+        logger = self._get_logger()
 
-        self.logger_.info(
+        logger.info(
             f'{self.__class__.__name__} selects {n_output_samples} samples '
             f'and drops {n_input_samples - n_output_samples} samples.'
         )
@@ -224,7 +223,9 @@ class BaseSampler(BaseEstimator):
 
         self.fit(X, y, *args, **kwargs)
 
-        func = self.timeit_(self._resample)
+        logger = self._get_logger()
+        timeit = Timeit(logger)
+        func = timeit(self._resample)
 
         return func(X, y)
 
@@ -261,11 +262,13 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self._check_is_fitted()
 
         tags = self._get_tags()
+        logger = self._get_logger()
+        timeit = Timeit(logger)
+        func = timeit(self._transform)
 
         if not tags['no_validation']:
             X, _ = self._check_X_y(X)
 
-        func = self.timeit_(self._transform)
 
         X = func(X)
 
@@ -321,8 +324,9 @@ class BaseSelector(BaseTransformer):
         n_output_features = np.sum(support)
         support = safe_mask(X, support)
         _, n_input_features = X.shape
+        logger = self._get_logger()
 
-        self.logger_.info(
+        logger.info(
             f'{self.__class__.__name__} selects {n_output_features} '
             f'features and drops {n_input_features - n_output_features} '
             f'features.'
