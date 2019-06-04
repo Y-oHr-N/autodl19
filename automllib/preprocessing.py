@@ -163,7 +163,7 @@ class ModifiedStandardScaler(BasePreprocessor):
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE = None
-    ) -> 'StandardScaler':
+    ) -> 'ModifiedStandardScaler':
         self.mean_ = np.nanmean(X, axis=0, dtype=self.dtype)
         self.std_ = np.nanstd(X, axis=0, dtype=self.dtype)
         self.scale_ = self.std_.copy()

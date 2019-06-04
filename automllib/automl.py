@@ -195,5 +195,4 @@ class AutoMLModel(BaseEstimator):
         if self.validation_fraction > 0.0:
             X = self.drift_dropper_.transform(X)
 
-
         return self.search_cv_.score(X)

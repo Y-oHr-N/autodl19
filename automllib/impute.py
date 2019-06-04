@@ -36,7 +36,7 @@ class ModifiedSimpleImputer(BasePreprocessor):
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE = None
-    ) -> 'SimpleImputer':
+    ) -> 'ModifiedSimpleImputer':
         dtype = self.dtype
 
         if X.dtype.kind not in ('f', 'i', 'u'):
