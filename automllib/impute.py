@@ -38,16 +38,24 @@ class ModifiedSimpleImputer(BasePreprocessor):
         y: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'ModifiedSimpleImputer':
         dtype = self.dtype
+        fill_value = self.fill_value
 
         if X.dtype.kind not in ('f', 'i', 'u'):
-            dtype = X.dtype
+            if self.strategy in ['mean', 'min']:
+                dtype = 'float64'
+            else:
+                dtype = X.dtype
 
-        _, n_features = X.shape
+        if self.fill_value is None:
+            if X.dtype.kind in ('f', 'i', 'u'):
+                fill_value = 0
+            else:
+                fill_value = 'missing_value'
 
         if self.strategy == 'constant':
             self.statistics_ = np.full(
-                n_features,
-                self.fill_value,
+                self.n_features_,
+                fill_value,
                 dtype=dtype
             )
 
@@ -55,7 +63,7 @@ class ModifiedSimpleImputer(BasePreprocessor):
             self.statistics_ = np.nanmean(X, axis=0, dtype=dtype)
 
         elif self.strategy == 'min':
-            self.statistics_ = np.empty(n_features, dtype=dtype)
+            self.statistics_ = np.empty(self.n_features_, dtype=dtype)
 
             for j, column in enumerate(X.T):
                 is_nan = pd.isnull(column)

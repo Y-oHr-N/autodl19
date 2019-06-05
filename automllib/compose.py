@@ -106,7 +106,6 @@ class KDDCup19Maker(object):
             FrequencyThreshold(verbose=self.verbose),
             # DropDuplicates(verbose=self.verbose),
             ModifiedSimpleImputer(
-                fill_value='missing',
                 n_jobs=self.n_jobs,
                 strategy='constant',
                 verbose=self.verbose
@@ -123,7 +122,6 @@ class KDDCup19Maker(object):
         return make_pipeline(
             NAProportionThreshold(verbose=self.verbose),
             ModifiedSimpleImputer(
-                fill_value='missing',
                 n_jobs=self.n_jobs,
                 strategy='constant',
                 verbose=self.verbose
