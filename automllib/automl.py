@@ -34,7 +34,7 @@ class AutoMLModel(BaseEstimator):
         cv: Union[int, BaseCrossValidator] = 5,
         early_stopping_rounds: int = 10,
         learning_rate: float = 0.01,
-        lowercase: bool = True,
+        lowercase: bool = False,
         max_depth: int = 7,
         max_iter: int = 10,
         memory: Union[str, Memory] = None,
@@ -132,6 +132,9 @@ class AutoMLModel(BaseEstimator):
                 test_size=self.validation_fraction
             )
 
+        if self.sampler_ is not None:
+            X, y = self.sampler_.fit_resample(X, y)
+
         X = self.engineer_.fit_transform(X)
 
         assert X.dtype == 'float32'
@@ -145,9 +148,6 @@ class AutoMLModel(BaseEstimator):
             fit_params['early_stopping_rounds'] = self.early_stopping_rounds
             fit_params['eval_set'] = [(X_valid, y_valid)]
             fit_params['verbose'] = False
-
-        if self.sampler_ is not None:
-            X, y = self.sampler_.fit_resample(X, y)
 
         self.search_cv_.fit(X, y, **fit_params)
 
