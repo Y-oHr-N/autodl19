@@ -30,6 +30,7 @@ from .impute import ModifiedSimpleImputer
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
+from .preprocessing import Len
 from .preprocessing import RowStatistics
 from .preprocessing import ModifiedStandardScaler
 from .preprocessing import SubtractedFeatures
@@ -135,6 +136,11 @@ class KDDCup19Maker(object):
                     verbose=self.verbose
                 ),
                 CountEncoder(
+                    dtype=self.dtype,
+                    n_jobs=self.n_jobs,
+                    verbose=self.verbose
+                ),
+                Len(
                     dtype=self.dtype,
                     n_jobs=self.n_jobs,
                     verbose=self.verbose
