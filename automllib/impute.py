@@ -12,6 +12,23 @@ from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
 class ModifiedSimpleImputer(BasePreprocessor):
+    """Imputation transformer for completing missing values.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from automllib.impute import ModifiedSimpleImputer
+    >>> imp = ModifiedSimpleImputer()
+    >>> X = [[7, 2, 3], [4, np.nan, 6], [10, 5, 9]]
+    >>> X_test = [[np.nan, 2, 3], [4, np.nan, 6], [10, np.nan, 9]]
+    >>> imp.fit(X)
+    ModifiedSimpleImputer(...)
+    >>> imp.transform(X_test)
+    array([[ 7. ,  2. ,  3. ],
+           [ 4. ,  3.5,  6. ],
+           [10. ,  3.5,  9. ]])
+    """
+
     _attributes = ['statistics_']
 
     def __init__(

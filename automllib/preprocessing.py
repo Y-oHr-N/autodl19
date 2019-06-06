@@ -15,6 +15,19 @@ from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
 class Clip(BasePreprocessor):
+    """Clip (limit) the values in an array.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from automllib.preprocessing import Clip
+    >>> pre = Clip()
+    >>> X = [[10, np.nan, 4], [0, 2, 1]]
+    >>> pre.fit_transform(X)
+    array([[9.99 ,   nan, 3.997],
+           [0.01 , 2.   , 1.003]])
+    """
+
     _attributes = ['data_max_', 'data_min_']
 
     def __init__(
@@ -57,6 +70,21 @@ class Clip(BasePreprocessor):
 
 
 class CountEncoder(BasePreprocessor):
+    """
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from automllib.preprocessing import CountEncoder
+    >>> pre = CountEncoder()
+    >>> X = [[1, 1, 'Cat'], [2, 2, np.nan], [1, 1, np.nan], [1, 1, np.nan]]
+    >>> pre.fit_transform(X)
+    array([[3., 3., 1.],
+           [1., 1., 3.],
+           [3., 3., 3.],
+           [3., 3., 3.]])
+    """
+
     _attributes = ['counters_']
 
     def __init__(
@@ -101,6 +129,21 @@ class CountEncoder(BasePreprocessor):
 
 
 class RowStatistics(BasePreprocessor):
+    """
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from automllib.preprocessing import RowStatistics
+    >>> pre = RowStatistics()
+    >>> X = [[0, np.nan], [0, 0], [1, np.nan], [1, 1]]
+    >>> pre.fit_transform(X)
+    array([[1.],
+           [0.],
+           [1.],
+           [0.]])
+    """
+
     _attributes = []
 
     def __init__(
@@ -146,6 +189,21 @@ class RowStatistics(BasePreprocessor):
 
 
 class ModifiedStandardScaler(BasePreprocessor):
+    """Standardize features by removing the mean and scaling to unit variance.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from automllib.preprocessing import ModifiedStandardScaler
+    >>> pre = ModifiedStandardScaler()
+    >>> X = [[0, np.nan], [0, 0], [1, np.nan], [1, 1]]
+    >>> pre.fit_transform(X)
+    array([[-1., nan],
+           [-1., -1.],
+           [ 1., nan],
+           [ 1.,  1.]])
+    """
+
     _attributes = ['mean_', 'std_', 'scale_']
 
     def __init__(
@@ -182,6 +240,21 @@ class ModifiedStandardScaler(BasePreprocessor):
 
 
 class SubtractedFeatures(BasePreprocessor):
+    """
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from automllib.preprocessing import SubtractedFeatures
+    >>> pre = SubtractedFeatures()
+    >>> X = [[1, 1, 100], [2, 2, 10], [1, 1, 1], [1, 1, np.nan]]
+    >>> pre.fit_transform(X)
+    array([[  0., -99., -99.],
+           [  0.,  -8.,  -8.],
+           [  0.,   0.,   0.],
+           [  0.,  nan,  nan]])
+    """
+
     _attributes = []
 
     def __init__(

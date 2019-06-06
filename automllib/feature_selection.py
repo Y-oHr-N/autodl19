@@ -16,6 +16,19 @@ from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
 class DropCollinearFeatures(BaseSelector):
+    """Drop collinear features.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from automllib.feature_selection import DropCollinearFeatures
+    >>> sel = DropCollinearFeatures()
+    >>> X = [[1, 1, 100], [2, 2, 10], [1, 1, 1], [1, 1, np.nan]]
+    >>> Xt = sel.fit_transform(X)
+    >>> Xt.shape
+    (4, 2)
+    """
+
     _attributes = ['corr_']
 
     def __init__(self, threshold: float = 0.95, verbose: int = 0) -> None:
@@ -53,6 +66,20 @@ class DropDuplicates(BaseSelector):
 
 
 class DropDriftFeatures(BaseSelector):
+    """Drop dfift features.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from automllib.feature_selection import DropDriftFeatures
+    >>> sel = DropDriftFeatures()
+    >>> X = [[1, 1, 100], [2, 2, 10], [1, 1, 1], [1, 1, 1]]
+    >>> X_test = [[1, 1000, 100], [2, 300, 10], [1, 100, 1], [1, 100, 1]]
+    >>> Xt = sel.fit_transform(X, X_test=X_test)
+    >>> Xt.shape
+    (4, 2)
+    """
+
     _attributes = ['pvalues_']
 
     def __init__(
@@ -118,6 +145,21 @@ class DropDriftFeatures(BaseSelector):
 
 
 class FrequencyThreshold(BaseSelector):
+    """
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from automllib.feature_selection import FrequencyThreshold
+    >>> sel = FrequencyThreshold()
+    >>> X = [[1, 1, 'Cat'], [2, 2, 'Cat'], [1, 3, 'Cat'], [1, 4, np.nan]]
+    >>> Xt = sel.fit_transform(X)
+    >>> Xt.shape
+    (4, 1)
+    """
+
+    # TODO(Kon): Fix _check_X_y
+
     _attributes = ['frequency_', 'n_samples_']
 
     def __init__(
@@ -162,6 +204,21 @@ class FrequencyThreshold(BaseSelector):
 
 
 class NAProportionThreshold(BaseSelector):
+    """
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from automllib.feature_selection import NAProportionThreshold
+    >>> sel = NAProportionThreshold()
+    >>> X = [[1, 1, 'Cat'], [2, 2, np.nan], [1, 1, np.nan], [1, 1, np.nan]]
+    >>> Xt = sel.fit_transform(X)
+    >>> Xt.shape
+    (4, 2)
+    """
+
+    # TODO(Kon): Fix _check_X_y
+
     _attributes = ['count_', 'n_samples_']
 
     def __init__(self, threshold: float = 0.6, verbose: int = 0) -> None:
