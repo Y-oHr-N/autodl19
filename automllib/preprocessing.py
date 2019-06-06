@@ -20,8 +20,8 @@ class Clip(BasePreprocessor):
     def __init__(
         self,
         dtype: Union[str, Type] = None,
-        high: float = 99.9,
-        low: float = 0.1,
+        high: float = 99.0,
+        low: float = 1.0,
         n_jobs: int = 1,
         verbose: int = 0
     ) -> None:
