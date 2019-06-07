@@ -33,8 +33,8 @@ class Clip(BasePreprocessor):
     def __init__(
         self,
         dtype: Union[str, Type] = None,
-        high: float = 99.9,
-        low: float = 0.1,
+        high: float = 99.0,
+        low: float = 1.0,
         n_jobs: int = 1,
         verbose: int = 0
     ) -> None:
@@ -124,6 +124,45 @@ class CountEncoder(BasePreprocessor):
 
         for j, column in enumerate(X.T):
             Xt[:, j] = vectorized(self.counters_[j], column)
+
+        return Xt
+
+
+class Len(BasePreprocessor):
+    _attributes = []
+
+    def __init__(
+        self,
+        dtype: Union[str, Type] = None,
+        n_jobs: int = 1,
+        verbose: int = 0
+    ) -> None:
+        super().__init__(dtype=dtype, n_jobs=n_jobs, verbose=verbose)
+
+    def _check_params(self) -> None:
+        pass
+
+    def _fit(
+        self,
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE = None
+    ) -> 'Len':
+        return self
+
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'X_types': ['2darray', 'str']}
+
+    def _parallel_transform(
+        self,
+        X: TWO_DIM_ARRAYLIKE_TYPE
+    ) -> TWO_DIM_ARRAYLIKE_TYPE:
+        dtype = self.dtype
+        n_samples, n_features = X.shape
+        Xt = np.empty((n_samples, n_features), dtype=dtype)
+        vectorized = np.vectorize(len)
+
+        for j, column in enumerate(X.T):
+            Xt[:, j] = vectorized(column)
 
         return Xt
 

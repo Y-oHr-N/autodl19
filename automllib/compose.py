@@ -30,6 +30,7 @@ from .impute import ModifiedSimpleImputer
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
+from .preprocessing import Len
 from .preprocessing import RowStatistics
 from .preprocessing import ModifiedStandardScaler
 from .preprocessing import SubtractedFeatures
@@ -138,6 +139,11 @@ class KDDCup19Maker(object):
                     dtype=self.dtype,
                     n_jobs=self.n_jobs,
                     verbose=self.verbose
+                ),
+                Len(
+                    dtype=self.dtype,
+                    n_jobs=self.n_jobs,
+                    verbose=self.verbose
                 )
             ),
             memory=self.memory
@@ -158,41 +164,41 @@ class KDDCup19Maker(object):
                         n_jobs=self.n_jobs,
                         verbose=self.verbose
                     ),
-                    ModifiedStandardScaler(n_jobs=self.n_jobs, verbose=self.verbose),
-                    IterativeImputer(
-                        estimator=LinearRegression(n_jobs=self.n_jobs),
-                        max_iter=self.max_iter
-                    ),
-                    make_union(
-                        PolynomialFeatures(
-                            include_bias=False,
-                            interaction_only=True
-                        ),
-                        # SubtractedFeatures(
-                        #     n_jobs=self.n_jobs,
-                        #     verbose=self.verbose
-                        # )
-                    )
-                ),
-                make_pipeline(
-                    # ModifiedSimpleImputer(
-                    #     fill_value=np.finfo('float32').max,
-                    #     n_jobs=self.n_jobs,
-                    #     strategy='constant',
-                    #     verbose=self.verbose
+                    # ModifiedStandardScaler(n_jobs=self.n_jobs, verbose=self.verbose),
+                    # IterativeImputer(
+                    #     estimator=LinearRegression(n_jobs=self.n_jobs),
+                    #     max_iter=self.max_iter
                     # ),
-                    CountEncoder(
-                        dtype=self.dtype,
-                        n_jobs=self.n_jobs,
-                        verbose=self.verbose
-                    )
+                    # make_union(
+                    #     PolynomialFeatures(
+                    #         include_bias=False,
+                    #         interaction_only=True
+                    #     ),
+                    #     SubtractedFeatures(
+                    #         n_jobs=self.n_jobs,
+                    #         verbose=self.verbose
+                    #     )
+                    # )
                 ),
-                MissingIndicator(error_on_new=False),
-                RowStatistics(
-                    dtype=self.dtype,
-                    n_jobs=self.n_jobs,
-                    verbose=self.verbose
-                )
+                # make_pipeline(
+                #     ModifiedSimpleImputer(
+                #         fill_value=np.finfo('float32').max,
+                #         n_jobs=self.n_jobs,
+                #         strategy='constant',
+                #         verbose=self.verbose
+                #     ),
+                #     CountEncoder(
+                #         dtype=self.dtype,
+                #         n_jobs=self.n_jobs,
+                #         verbose=self.verbose
+                #     )
+                # ),
+                # MissingIndicator(error_on_new=False),
+                # RowStatistics(
+                #     dtype=self.dtype,
+                #     n_jobs=self.n_jobs,
+                #     verbose=self.verbose
+                # )
             ),
             memory=self.memory
         )

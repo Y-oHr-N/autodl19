@@ -132,9 +132,6 @@ class AutoMLModel(BaseEstimator):
                 test_size=self.validation_fraction
             )
 
-        if self.sampler_ is not None:
-            X, y = self.sampler_.fit_resample(X, y)
-
         X = self.engineer_.fit_transform(X)
 
         assert X.dtype == 'float32'
@@ -142,12 +139,15 @@ class AutoMLModel(BaseEstimator):
         if self.validation_fraction > 0.0:
             X_valid = self.engineer_.transform(X_valid)
 
-            X = self.drift_dropper_.fit_transform(X, X_test=X_valid)
-            X_valid = self.drift_dropper_.transform(X_valid)
+            # X = self.drift_dropper_.fit_transform(X, X_test=X_valid)
+            # X_valid = self.drift_dropper_.transform(X_valid)
 
             fit_params['early_stopping_rounds'] = self.early_stopping_rounds
             fit_params['eval_set'] = [(X_valid, y_valid)]
             fit_params['verbose'] = False
+
+        if self.sampler_ is not None:
+            X, y = self.sampler_.fit_resample(X, y)
 
         self.search_cv_.fit(X, y, **fit_params)
 
@@ -169,8 +169,9 @@ class AutoMLModel(BaseEstimator):
 
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
-        if self.validation_fraction > 0.0:
-            X = self.drift_dropper_.transform(X)
+
+        # if self.validation_fraction > 0.0:
+        #     X = self.drift_dropper_.transform(X)
 
         return self.search_cv_.predict(X)
 
@@ -182,8 +183,9 @@ class AutoMLModel(BaseEstimator):
 
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
-        if self.validation_fraction > 0.0:
-            X = self.drift_dropper_.transform(X)
+
+        # if self.validation_fraction > 0.0:
+        #     X = self.drift_dropper_.transform(X)
 
         return self.search_cv_.predict_proba(X)
 
@@ -192,7 +194,8 @@ class AutoMLModel(BaseEstimator):
 
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
-        if self.validation_fraction > 0.0:
-            X = self.drift_dropper_.transform(X)
+
+        # if self.validation_fraction > 0.0:
+        #     X = self.drift_dropper_.transform(X)
 
         return self.search_cv_.score(X)
