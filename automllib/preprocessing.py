@@ -128,7 +128,7 @@ class CountEncoder(BasePreprocessor):
         return Xt
 
 
-class Len(BasePreprocessor):
+class TextStatistics(BasePreprocessor):
     _attributes = []
 
     def __init__(
@@ -146,7 +146,7 @@ class Len(BasePreprocessor):
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE = None
-    ) -> 'Len':
+    ) -> 'TextStatistics':
         return self
 
     def _more_tags(self) -> Dict[str, Any]:

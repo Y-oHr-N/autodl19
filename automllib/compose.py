@@ -30,7 +30,7 @@ from .impute import ModifiedSimpleImputer
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
-from .preprocessing import Len
+from .preprocessing import TextStatistics
 from .preprocessing import RowStatistics
 from .preprocessing import ModifiedStandardScaler
 from .preprocessing import SubtractedFeatures
@@ -140,7 +140,7 @@ class KDDCup19Maker(object):
                     n_jobs=self.n_jobs,
                     verbose=self.verbose
                 ),
-                Len(
+                TextStatistics(
                     dtype=self.dtype,
                     n_jobs=self.n_jobs,
                     verbose=self.verbose
