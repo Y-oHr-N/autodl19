@@ -103,14 +103,9 @@ class KDDCup19Maker(object):
 
     def make_categorical_transformer(self) -> BaseEstimator:
         return make_pipeline(
-            NAProportionThreshold(verbose=self.verbose),
+            # NAProportionThreshold(verbose=self.verbose),
             FrequencyThreshold(verbose=self.verbose),
             # DropDuplicates(verbose=self.verbose),
-            # ModifiedSimpleImputer(
-            #     n_jobs=self.n_jobs,
-            #     strategy='constant',
-            #     verbose=self.verbose
-            # ),
             CountEncoder(
                 dtype=self.dtype,
                 n_jobs=self.n_jobs,
@@ -121,20 +116,21 @@ class KDDCup19Maker(object):
 
     def make_multi_value_categorical_transformer(self) -> BaseEstimator:
         return make_pipeline(
-            NAProportionThreshold(verbose=self.verbose),
+            # NAProportionThreshold(verbose=self.verbose),
             ModifiedSimpleImputer(
+                fill_value='',
                 n_jobs=self.n_jobs,
                 strategy='constant',
                 verbose=self.verbose
             ),
             make_union(
-                MultiValueCategoricalVectorizer(
-                    dtype=self.dtype,
-                    lowercase=self.lowercase,
-                    n_features=self.n_features,
-                    n_jobs=self.n_jobs,
-                    verbose=self.verbose
-                ),
+                # MultiValueCategoricalVectorizer(
+                #     dtype=self.dtype,
+                #     lowercase=self.lowercase,
+                #     n_features=self.n_features,
+                #     n_jobs=self.n_jobs,
+                #     verbose=self.verbose
+                # ),
                 CountEncoder(
                     dtype=self.dtype,
                     n_jobs=self.n_jobs,
@@ -151,99 +147,98 @@ class KDDCup19Maker(object):
 
     def make_numerical_transformer(self) -> BaseEstimator:
         return make_pipeline(
-            NAProportionThreshold(verbose=self.verbose),
+            # NAProportionThreshold(verbose=self.verbose),
             FrequencyThreshold(
                 max_frequency=np.iinfo('int64').max,
                 verbose=self.verbose
             ),
             DropCollinearFeatures(verbose=self.verbose),
-            make_union(
-                make_pipeline(
+            # make_union(
+            #     make_pipeline(
                     Clip(
                         dtype=self.dtype,
                         n_jobs=self.n_jobs,
                         verbose=self.verbose
                     ),
-                    # ModifiedStandardScaler(n_jobs=self.n_jobs, verbose=self.verbose),
-                    # IterativeImputer(
-                    #     estimator=LinearRegression(n_jobs=self.n_jobs),
-                    #     max_iter=self.max_iter
-                    # ),
-                    # make_union(
-                    #     PolynomialFeatures(
-                    #         include_bias=False,
-                    #         interaction_only=True
-                    #     ),
-                    #     SubtractedFeatures(
-                    #         n_jobs=self.n_jobs,
-                    #         verbose=self.verbose
-                    #     )
-                    # )
-                ),
-                # make_pipeline(
-                #     ModifiedSimpleImputer(
-                #         fill_value=np.finfo('float32').max,
-                #         n_jobs=self.n_jobs,
-                #         strategy='constant',
-                #         verbose=self.verbose
-                #     ),
-                #     CountEncoder(
-                #         dtype=self.dtype,
-                #         n_jobs=self.n_jobs,
-                #         verbose=self.verbose
-                #     )
-                # ),
-                # MissingIndicator(error_on_new=False),
-                # RowStatistics(
-                #     dtype=self.dtype,
-                #     n_jobs=self.n_jobs,
-                #     verbose=self.verbose
-                # )
-            ),
+            #         ModifiedStandardScaler(
+            #             n_jobs=self.n_jobs,
+            #             verbose=self.verbose
+            #         ),
+            #         IterativeImputer(
+            #             estimator=LinearRegression(n_jobs=self.n_jobs),
+            #             max_iter=self.max_iter
+            #         ),
+            #         make_union(
+            #             PolynomialFeatures(
+            #                 include_bias=False,
+            #                 interaction_only=True
+            #             ),
+            #             SubtractedFeatures(
+            #                 n_jobs=self.n_jobs,
+            #                 verbose=self.verbose
+            #             ),
+            #         )
+            #     ),
+            #     CountEncoder(
+            #         dtype=self.dtype,
+            #         n_jobs=self.n_jobs,
+            #         verbose=self.verbose
+            #     ),
+            #     MissingIndicator(error_on_new=False),
+            #     RowStatistics(
+            #         dtype=self.dtype,
+            #         n_jobs=self.n_jobs,
+            #         verbose=self.verbose
+            #     ),
+            # ),
             memory=self.memory
         )
 
     def make_time_transformer(self) -> BaseEstimator:
         return make_pipeline(
-            NAProportionThreshold(verbose=self.verbose),
-            ModifiedSimpleImputer(
-                n_jobs=self.n_jobs,
-                strategy='min',
-                verbose=self.verbose
-            ),
-            make_union(
-                # TimeVectorizer(
-                #     dtype='float32',
-                #     n_jobs=self.n_jobs,
-                #     verbose=self.verbose
-                # ),
+            # NAProportionThreshold(verbose=self.verbose),
+            # ModifiedSimpleImputer(
+            #     n_jobs=self.n_jobs,
+            #     strategy='min',
+            #     verbose=self.verbose
+            # ),
+            # make_union(
+            #     TimeVectorizer(
+            #         dtype=self.dtype,
+            #         n_jobs=self.n_jobs,
+            #         verbose=self.verbose
+            #     ),
                 SubtractedFeatures(
                     dtype=self.dtype,
                     n_jobs=self.n_jobs,
                     verbose=self.verbose
-                )
-            ),
+                ),
+            # ),
             memory=self.memory
         )
 
     def make_mixed_transformer(self) -> BaseEstimator:
-        return make_column_transformer(
-            (
-                self.make_categorical_transformer(),
-                get_categorical_feature_names
+        return make_pipeline(
+            make_column_transformer(
+                (
+                    self.make_categorical_transformer(),
+                    get_categorical_feature_names
+                ),
+                (
+                    self.make_multi_value_categorical_transformer(),
+                    get_multi_value_categorical_feature_names
+                ),
+                (
+                    self.make_numerical_transformer(),
+                    get_numerical_feature_names
+                ),
+                (
+                    self.make_time_transformer(),
+                    get_time_feature_names
+                )
             ),
-            (
-                self.make_multi_value_categorical_transformer(),
-                get_multi_value_categorical_feature_names
-            ),
-            (
-                self.make_numerical_transformer(),
-                get_numerical_feature_names
-            ),
-            (
-                self.make_time_transformer(),
-                get_time_feature_names
-            )
+            DropCollinearFeatures(verbose=self.verbose),
+            memory=self.memory
         )
 
     def make_sampler(self) -> BaseEstimator:
