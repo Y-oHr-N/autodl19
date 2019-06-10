@@ -10,21 +10,21 @@ import optuna
 from imblearn.pipeline import make_pipeline
 from joblib import Memory
 from sklearn.compose import make_column_transformer
-from sklearn.experimental import enable_iterative_imputer  # noqa
-from sklearn.impute import IterativeImputer
-from sklearn.impute import MissingIndicator
-from sklearn.linear_model import LinearRegression
+# from sklearn.experimental import enable_iterative_imputer  # noqa
+# from sklearn.impute import IterativeImputer
+# from sklearn.impute import MissingIndicator
+# from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import BaseCrossValidator
 from sklearn.pipeline import make_union
-from sklearn.preprocessing import PolynomialFeatures
+# from sklearn.preprocessing import PolynomialFeatures
 
 from .base import BaseEstimator
 from .base import TWO_DIM_ARRAYLIKE_TYPE
-from .feature_extraction import MultiValueCategoricalVectorizer
+# from .feature_extraction import MultiValueCategoricalVectorizer
 # form .feature_extraction import TimeVectorizer
-# from .feature_selection import DropDuplicates
 from .feature_selection import DropCollinearFeatures
 from .feature_selection import DropDriftFeatures
+# from .feature_selection import DropDuplicates
 from .feature_selection import FrequencyThreshold
 from .feature_selection import NAProportionThreshold
 from .impute import ModifiedSimpleImputer
@@ -156,7 +156,7 @@ class KDDCup19Maker(object):
                 max_frequency=np.iinfo('int64').max,
                 verbose=self.verbose
             ),
-            DropCollinearFeatures(verbose=self.verbose),
+            # DropCollinearFeatures(verbose=self.verbose),
             # make_union(
             #     make_pipeline(
                     Clip(
