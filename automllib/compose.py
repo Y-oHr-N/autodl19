@@ -24,6 +24,7 @@ from .feature_extraction import MultiValueCategoricalVectorizer
 # form .feature_extraction import TimeVectorizer
 # from .feature_selection import DropDuplicates
 from .feature_selection import DropCollinearFeatures
+from .feature_selection import DropDriftFeatures
 from .feature_selection import FrequencyThreshold
 from .feature_selection import NAProportionThreshold
 from .impute import ModifiedSimpleImputer
@@ -61,6 +62,8 @@ class KDDCup19Maker(object):
         # Parameters for a under sampler
         sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
         shuffle: bool = True,
+        # Parameters for a feature selector
+        alpha: float = 0.005,
         # Parameters for a model
         learning_rate: float = 0.01,
         max_depth: int = 7,
@@ -72,6 +75,7 @@ class KDDCup19Maker(object):
         subsample: Union[int, float] = 100_000,
         timeout: float = None
     ) -> None:
+        self.alpha = alpha
         self.cv = cv
         self.dtype = dtype
         self.info = info
@@ -239,6 +243,13 @@ class KDDCup19Maker(object):
             ),
             DropCollinearFeatures(verbose=self.verbose),
             memory=self.memory
+        )
+
+    def make_selector(self) -> BaseEstimator:
+        return DropDriftFeatures(
+            alpha=self.alpha,
+            random_state=self.random_state,
+            verbose=self.verbose
         )
 
     def make_sampler(self) -> BaseEstimator:

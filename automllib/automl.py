@@ -13,7 +13,6 @@ from .base import BaseEstimator
 from .base import ONE_DIM_ARRAYLIKE_TYPE
 from .base import TWO_DIM_ARRAYLIKE_TYPE
 from .compose import KDDCup19Maker
-from .feature_selection import DropDriftFeatures
 
 
 class AutoMLModel(BaseEstimator):
@@ -31,6 +30,7 @@ class AutoMLModel(BaseEstimator):
         self,
         info: Dict[str, Any],
         related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE],
+        alpha: float = 0.005,
         cv: Union[int, BaseCrossValidator] = 5,
         early_stopping_rounds: int = 10,
         learning_rate: float = 0.01,
@@ -52,6 +52,7 @@ class AutoMLModel(BaseEstimator):
     ) -> None:
         super().__init__(verbose=verbose)
 
+        self.alpha = alpha
         self.cv = cv
         self.early_stopping_rounds = early_stopping_rounds
         self.info = info
@@ -94,6 +95,7 @@ class AutoMLModel(BaseEstimator):
             self.info,
             self.related_tables,
             target_type,
+            alpha=self.alpha,
             cv=self.cv,
             learning_rate=self.learning_rate,
             lowercase=self.lowercase,
@@ -114,12 +116,9 @@ class AutoMLModel(BaseEstimator):
 
         self.joiner_ = maker.make_joiner()
         self.engineer_ = maker.make_mixed_transformer()
+        self.drift_dropper_ = maker.make_sampler()
         self.sampler_ = maker.make_sampler()
         self.search_cv_ = maker.make_search_cv()
-        self.drift_dropper_ = DropDriftFeatures(
-            random_state=self.random_state,
-            verbose=self.verbose
-        )
 
         X = self.joiner_.fit_transform(X)
 
