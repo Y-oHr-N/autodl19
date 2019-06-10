@@ -24,8 +24,8 @@ class Clip(BasePreprocessor):
     >>> pre = Clip()
     >>> X = [[10, np.nan, 4], [0, 2, 1]]
     >>> pre.fit_transform(X)
-    array([[9.99 ,   nan, 3.997],
-           [0.01 , 2.   , 1.003]])
+    array([[9.9 ,  nan, 3.97],
+           [0.1 , 2.  , 1.03]])
     """
 
     _attributes = ['data_max_', 'data_min_']
@@ -129,6 +129,21 @@ class CountEncoder(BasePreprocessor):
 
 
 class TextStatistics(BasePreprocessor):
+    """
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from automllib.preprocessing import TextStatistics
+    >>> pre = TextStatistics()
+    >>> X = [['Cat'], ['Cow'], ['Mouse'], ['Lion']]
+    >>> pre.fit_transform(X)
+    array([[3.],
+           [3.],
+           [5.],
+           [4.]])
+    """
+
     _attributes = []
 
     def __init__(
