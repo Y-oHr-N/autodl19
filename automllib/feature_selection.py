@@ -73,7 +73,7 @@ class DropDriftFeatures(BaseSelector):
     >>> import numpy as np
     >>> from automllib.feature_selection import DropDriftFeatures
     >>> sel = DropDriftFeatures()
-    >>> X = [[1, 1, 100], [2, 2, 10], [1, 1, 1], [1, 1, 1]]
+    >>> X = [[1, 1, 100], [2, 2, 10], [1, 1, 1], [np.nan, 1, 1]]
     >>> X_test = [[1, 1000, 100], [2, 300, 10], [1, 100, 1], [1, 100, 1]]
     >>> Xt = sel.fit_transform(X, X_test=X_test)
     >>> Xt.shape
@@ -111,18 +111,20 @@ class DropDriftFeatures(BaseSelector):
 
         X_test, _ = self._check_X_y(X_test)
         random_state = check_random_state(self.random_state)
-        n_samples, _ = X.shape
-        n_test_samples, _ = X_test.shape
-        train = random_state.choice(n_samples, size=self.size)
-        test = random_state.choice(n_test_samples, size=self.size)
-        X = safe_indexing(X, train)
-        X_test = safe_indexing(X_test, test)
 
         self.pvalues_ = np.empty(self.n_features_)
 
         for j in range(self.n_features_):
             column = X[:, j]
             column_test = X_test[:, j]
+            is_nan = pd.isnull(column)
+            is_nan_test = pd.isnull(column_test)
+            train = np.where(~is_nan)[0]
+            train = random_state.choice(train, size=self.size)
+            test = np.where(~is_nan_test)[0]
+            test = random_state.choice(test, size=self.size)
+            column = safe_indexing(column, train)
+            column_test = safe_indexing(column_test, test)
 
             if issparse(column):
                 column = np.ravel(column.toarray())
@@ -141,7 +143,11 @@ class DropDriftFeatures(BaseSelector):
         return self.pvalues_ >= self.alpha
 
     def _more_tags(self) -> Dict[str, Any]:
-        return {'non_deterministic': True, 'X_types': ['2darray', 'sparse']}
+        return {
+            'allow_nan': True,
+            'non_deterministic': True,
+            'X_types': ['2darray', 'sparse']
+        }
 
 
 class FrequencyThreshold(BaseSelector):
