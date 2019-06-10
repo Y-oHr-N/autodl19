@@ -128,23 +128,23 @@ class CountEncoder(BasePreprocessor):
         return Xt
 
 
-class TextStatistics(BasePreprocessor):
-    """
+class ModifiedStandardScaler(BasePreprocessor):
+    """Standardize features by removing the mean and scaling to unit variance.
 
     Examples
     --------
     >>> import numpy as np
-    >>> from automllib.preprocessing import TextStatistics
-    >>> pre = TextStatistics()
-    >>> X = [['Cat'], ['Cow'], ['Mouse'], ['Lion']]
+    >>> from automllib.preprocessing import ModifiedStandardScaler
+    >>> pre = ModifiedStandardScaler()
+    >>> X = [[0, np.nan], [0, 0], [1, np.nan], [1, 1]]
     >>> pre.fit_transform(X)
-    array([[3.],
-           [3.],
-           [5.],
-           [4.]])
+    array([[-1., nan],
+           [-1., -1.],
+           [ 1., nan],
+           [ 1.,  1.]])
     """
 
-    _attributes = []
+    _attributes = ['mean_', 'std_', 'scale_']
 
     def __init__(
         self,
@@ -161,25 +161,22 @@ class TextStatistics(BasePreprocessor):
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE = None
-    ) -> 'TextStatistics':
+    ) -> 'ModifiedStandardScaler':
+        self.mean_ = np.nanmean(X, axis=0, dtype=self.dtype)
+        self.std_ = np.nanstd(X, axis=0, dtype=self.dtype)
+        self.scale_ = self.std_.copy()
+        self.scale_[self.scale_ == 0.0] = 1.0
+
         return self
 
     def _more_tags(self) -> Dict[str, Any]:
-        return {'X_types': ['2darray', 'str']}
+        return {'allow_nan': True}
 
     def _parallel_transform(
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE
     ) -> TWO_DIM_ARRAYLIKE_TYPE:
-        dtype = self.dtype
-        n_samples, n_features = X.shape
-        Xt = np.empty((n_samples, n_features), dtype=dtype)
-        vectorized = np.vectorize(len)
-
-        for j, column in enumerate(X.T):
-            Xt[:, j] = vectorized(column)
-
-        return Xt
+        return (X - self.mean_) / self.scale_
 
 
 class RowStatistics(BasePreprocessor):
@@ -242,57 +239,6 @@ class RowStatistics(BasePreprocessor):
         return np.sum(is_nan, axis=1, dtype=dtype).reshape(-1, 1)
 
 
-class ModifiedStandardScaler(BasePreprocessor):
-    """Standardize features by removing the mean and scaling to unit variance.
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from automllib.preprocessing import ModifiedStandardScaler
-    >>> pre = ModifiedStandardScaler()
-    >>> X = [[0, np.nan], [0, 0], [1, np.nan], [1, 1]]
-    >>> pre.fit_transform(X)
-    array([[-1., nan],
-           [-1., -1.],
-           [ 1., nan],
-           [ 1.,  1.]])
-    """
-
-    _attributes = ['mean_', 'std_', 'scale_']
-
-    def __init__(
-        self,
-        dtype: Union[str, Type] = None,
-        n_jobs: int = 1,
-        verbose: int = 0
-    ) -> None:
-        super().__init__(dtype=dtype, n_jobs=n_jobs, verbose=verbose)
-
-    def _check_params(self) -> None:
-        pass
-
-    def _fit(
-        self,
-        X: TWO_DIM_ARRAYLIKE_TYPE,
-        y: ONE_DIM_ARRAYLIKE_TYPE = None
-    ) -> 'ModifiedStandardScaler':
-        self.mean_ = np.nanmean(X, axis=0, dtype=self.dtype)
-        self.std_ = np.nanstd(X, axis=0, dtype=self.dtype)
-        self.scale_ = self.std_.copy()
-        self.scale_[self.scale_ == 0.0] = 1.0
-
-        return self
-
-    def _more_tags(self) -> Dict[str, Any]:
-        return {'allow_nan': True}
-
-    def _parallel_transform(
-        self,
-        X: TWO_DIM_ARRAYLIKE_TYPE
-    ) -> TWO_DIM_ARRAYLIKE_TYPE:
-        return (X - self.mean_) / self.scale_
-
-
 class SubtractedFeatures(BasePreprocessor):
     """
 
@@ -349,5 +295,59 @@ class SubtractedFeatures(BasePreprocessor):
 
         for j, (k, l) in enumerate(iterable):
             Xt[:, j] = X[:, k] - X[:, l]
+
+        return Xt
+
+
+class TextStatistics(BasePreprocessor):
+    """
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from automllib.preprocessing import TextStatistics
+    >>> pre = TextStatistics()
+    >>> X = [['Cat'], ['Cow'], ['Mouse'], ['Lion']]
+    >>> pre.fit_transform(X)
+    array([[3.],
+           [3.],
+           [5.],
+           [4.]])
+    """
+
+    _attributes = []
+
+    def __init__(
+        self,
+        dtype: Union[str, Type] = None,
+        n_jobs: int = 1,
+        verbose: int = 0
+    ) -> None:
+        super().__init__(dtype=dtype, n_jobs=n_jobs, verbose=verbose)
+
+    def _check_params(self) -> None:
+        pass
+
+    def _fit(
+        self,
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE = None
+    ) -> 'TextStatistics':
+        return self
+
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'X_types': ['2darray', 'str']}
+
+    def _parallel_transform(
+        self,
+        X: TWO_DIM_ARRAYLIKE_TYPE
+    ) -> TWO_DIM_ARRAYLIKE_TYPE:
+        dtype = self.dtype
+        n_samples, n_features = X.shape
+        Xt = np.empty((n_samples, n_features), dtype=dtype)
+        vectorized = np.vectorize(len)
+
+        for j, column in enumerate(X.T):
+            Xt[:, j] = vectorized(column)
 
         return Xt
