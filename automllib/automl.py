@@ -85,6 +85,8 @@ class AutoMLModel(BaseEstimator):
         logger = self._get_logger()
         X = X.sort_values(self.info['time_col'], na_position='first')
         y = y.loc[X.index]
+        X_valid = None
+        y_valid = None
         fit_params = {}
         target_type = type_of_target(y)
 
@@ -138,9 +140,10 @@ class AutoMLModel(BaseEstimator):
         if self.validation_fraction > 0.0:
             X_valid = self.engineer_.transform(X_valid)
 
-            # X = self.drift_dropper_.fit_transform(X, X_test=X_valid)
-            # X_valid = self.drift_dropper_.transform(X_valid)
+        X = self.drift_dropper_.fit_transform(X, X_test=X_testq)
 
+        if self.validation_fraction > 0.0:
+            X_valid = self.drift_dropper_.transform(X_valid)
             fit_params['early_stopping_rounds'] = self.early_stopping_rounds
             fit_params['eval_set'] = [(X_valid, y_valid)]
             fit_params['verbose'] = False
@@ -168,9 +171,7 @@ class AutoMLModel(BaseEstimator):
 
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
-
-        # if self.validation_fraction > 0.0:
-        #     X = self.drift_dropper_.transform(X)
+        X = self.drift_dropper_.transform(X)
 
         return self.search_cv_.predict(X)
 
@@ -182,9 +183,7 @@ class AutoMLModel(BaseEstimator):
 
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
-
-        # if self.validation_fraction > 0.0:
-        #     X = self.drift_dropper_.transform(X)
+        X = self.drift_dropper_.transform(X)
 
         return self.search_cv_.predict_proba(X)
 
@@ -193,8 +192,6 @@ class AutoMLModel(BaseEstimator):
 
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
-
-        # if self.validation_fraction > 0.0:
-        #     X = self.drift_dropper_.transform(X)
+        X = self.drift_dropper_.transform(X)
 
         return self.search_cv_.score(X)
