@@ -118,7 +118,7 @@ class AutoMLModel(BaseEstimator):
 
         self.joiner_ = maker.make_joiner()
         self.engineer_ = maker.make_mixed_transformer()
-        self.drift_dropper_ = maker.make_sampler()
+        self.drift_dropper_ = maker.make_selector()
         self.sampler_ = maker.make_sampler()
         self.search_cv_ = maker.make_search_cv()
 
@@ -140,7 +140,7 @@ class AutoMLModel(BaseEstimator):
         if self.validation_fraction > 0.0:
             X_valid = self.engineer_.transform(X_valid)
 
-        X = self.drift_dropper_.fit_transform(X, X_test=X_testq)
+        X = self.drift_dropper_.fit_transform(X, X_test=X_valid)
 
         if self.validation_fraction > 0.0:
             X_valid = self.drift_dropper_.transform(X_valid)
