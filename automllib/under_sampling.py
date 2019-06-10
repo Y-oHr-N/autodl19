@@ -13,6 +13,19 @@ from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
 class RandomUnderSampler(BaseSampler):
+    """
+
+    Examples
+    --------
+    >>> from sklearn.datasets import load_breast_cancer
+    >>> from automllib.under_sampling import RandomUnderSampler
+    >>> X, y = load_breast_cancer(return_X_y=True)
+    >>> res = RandomUnderSampler()
+    >>> X_res, y_res = res.fit_resample(X, y)
+    >>> X_res.shape
+    (424, 30)
+    """
+
     _attributes = ['classes_', 'sample_indices_', 'sampling_strategy_']
     _sampling_type = 'under-sampling'
 
