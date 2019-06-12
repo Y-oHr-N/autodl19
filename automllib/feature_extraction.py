@@ -34,24 +34,33 @@ class TimeVectorizer(BasePreprocessor):
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'TimeVectorizer':
+        secondsinminute = 60.0
+        secondsinhour = 60.0 * secondsinminute
+        secondsinday = 24.0 * secondsinhour
+        secondsinweekday = 7.0 * secondsinday
+        secondsinyear = 365.0 * secondsinday
+        secondsinmonth = secondsinyear / 12.0
+
         self.properties_ = []
 
         for column in X.T:
-            column = pd.Series(column)
-            duration = column.max() - column.min()
+            is_nan = pd.isnull(column)
+            duration = (
+                np.max(column[~is_nan]) - np.min(column[~is_nan])
+            ) / np.timedelta64(1, 's')
             properties = []
 
-            if duration.components.minutes > 1:
+            if duration > secondsinminute:
                 properties.append('second')
-            if duration.components.hours > 1:
+            if duration > secondsinhour:
                 properties.append('minute')
-            if duration.components.days > 1:
+            if duration > secondsinday:
                 properties.append('hour')
-            if duration.components.days > 7:
+            if duration > secondsinweekday:
                 properties.append('weekday')
-            if duration.components.days > 31:
+            if duration > secondsinmonth:
                 properties.append('day')
-            if duration.components.days > 366:
+            if duration > secondsinyear:
                 properties.extend(['month', 'quarter'])
 
             self.properties_.append(properties)
@@ -76,8 +85,10 @@ class TimeVectorizer(BasePreprocessor):
             Xt = np.empty((n_samples, 2 * n_properties), dtype=dtype)
 
             for k, attr in enumerate(self.properties_[j]):
-                if attr in ['hour', 'minute', 'second']:
+                if attr in ['minute', 'second']:
                     period = 60.0
+                if attr == 'hour':
+                    period = 24.0
                 elif attr == 'weekday':
                     period = 7.0
                 elif attr == 'day':
