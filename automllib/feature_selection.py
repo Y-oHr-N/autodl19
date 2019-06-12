@@ -66,7 +66,7 @@ class DropDuplicates(BaseSelector):
 
 
 class DropDriftFeatures(BaseSelector):
-    """Drop dfift features.
+    """Drop drift features.
 
     Examples
     --------
