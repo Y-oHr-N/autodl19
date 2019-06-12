@@ -33,7 +33,7 @@ class Model(object):
         self.model_ = AutoMLModel(
             self.info,
             related_tables,
-            cv=TimeSeriesSplit(3),
+            cv=TimeSeriesSplit(5),
             shuffle=False
         )
 

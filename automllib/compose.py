@@ -69,9 +69,9 @@ class KDDCup19Maker(object):
         n_estimators: int = 100,
         # Parameters for hyperpermeter search
         cv: Union[int, BaseCrossValidator] = 5,
-        n_trials: int = 10,
+        n_trials: int = 100,
         refit: bool = True,
-        subsample: Union[int, float] = 100_000,
+        subsample: Union[int, float] = 1.0,
         timeout: float = None
     ) -> None:
         self.alpha = alpha
@@ -127,25 +127,30 @@ class KDDCup19Maker(object):
                 verbose=self.verbose
             ),
             make_union(
-                # MultiValueCategoricalVectorizer(
-                #     dtype=self.dtype,
-                #     lowercase=self.lowercase,
-                #     n_features=self.n_features,
-                #     n_jobs=self.n_jobs,
-                #     verbose=self.verbose
-                # ),
-                CountEncoder(
-                    dtype=self.dtype,
-                    n_jobs=self.n_jobs,
-                    verbose=self.verbose
+            #     MultiValueCategoricalVectorizer(
+            #         dtype=self.dtype,
+            #         lowercase=self.lowercase,
+            #         n_features=self.n_features,
+            #         n_jobs=self.n_jobs,
+            #         verbose=self.verbose
+            #     ),
+                make_pipeline(
+                    CountEncoder(
+                        dtype=self.dtype,
+                        n_jobs=self.n_jobs,
+                        verbose=self.verbose
+                    ),
+                    DropCollinearFeatures(verbose=self.verbose)
                 ),
-                TextStatistics(
-                    dtype=self.dtype,
-                    n_jobs=self.n_jobs,
-                    verbose=self.verbose
+                make_pipeline(
+                    TextStatistics(
+                        dtype=self.dtype,
+                        n_jobs=self.n_jobs,
+                        verbose=self.verbose
+                    ),
+                    DropCollinearFeatures(verbose=self.verbose)
                 )
             ),
-            DropCollinearFeatures(verbose=self.verbose),
             memory=self.memory
         )
 
@@ -156,14 +161,14 @@ class KDDCup19Maker(object):
                 max_frequency=np.iinfo('int64').max,
                 verbose=self.verbose
             ),
-            DropCollinearFeatures(verbose=self.verbose),
             # make_union(
-            #     make_pipeline(
+                make_pipeline(
                     Clip(
                         dtype=self.dtype,
                         n_jobs=self.n_jobs,
                         verbose=self.verbose
                     ),
+                    DropCollinearFeatures(verbose=self.verbose),
             #         ModifiedStandardScaler(
             #             n_jobs=self.n_jobs,
             #             verbose=self.verbose
@@ -180,20 +185,23 @@ class KDDCup19Maker(object):
             #             SubtractedFeatures(
             #                 n_jobs=self.n_jobs,
             #                 verbose=self.verbose
-            #             ),
+            #             )
             #         )
-            #     ),
-            #     CountEncoder(
-            #         dtype=self.dtype,
-            #         n_jobs=self.n_jobs,
-            #         verbose=self.verbose
-            #     ),
+                ),
+            #     make_pipeline(
+            #         CountEncoder(
+            #             dtype=self.dtype,
+            #             n_jobs=self.n_jobs,
+            #             verbose=self.verbose
+            #         ),
+            #         DropCollinearFeatures(verbose=self.verbose)
+            #     )
             #     MissingIndicator(error_on_new=False),
             #     RowStatistics(
             #         dtype=self.dtype,
             #         n_jobs=self.n_jobs,
             #         verbose=self.verbose
-            #     ),
+            #     )
             # ),
             memory=self.memory
         )
@@ -201,49 +209,50 @@ class KDDCup19Maker(object):
     def make_time_transformer(self) -> BaseEstimator:
         return make_pipeline(
             # NAProportionThreshold(verbose=self.verbose),
-            # ModifiedSimpleImputer(
-            #     n_jobs=self.n_jobs,
-            #     strategy='min',
-            #     verbose=self.verbose
-            # ),
             make_union(
-                TimeVectorizer(
-                    dtype=self.dtype,
-                    n_jobs=self.n_jobs,
-                    verbose=self.verbose
+                make_pipeline(
+                    TimeVectorizer(
+                        dtype=self.dtype,
+                        n_jobs=self.n_jobs,
+                        verbose=self.verbose
+                    ),
+                    DropCollinearFeatures(verbose=self.verbose)
                 ),
-                SubtractedFeatures(
-                    dtype=self.dtype,
-                    n_jobs=self.n_jobs,
-                    verbose=self.verbose
-                ),
+                make_pipeline(
+            #         ModifiedSimpleImputer(
+            #             n_jobs=self.n_jobs,
+            #             strategy='min',
+            #             verbose=self.verbose
+            #         ),
+                    SubtractedFeatures(
+                        dtype=self.dtype,
+                        n_jobs=self.n_jobs,
+                        verbose=self.verbose
+                    ),
+                    DropCollinearFeatures(verbose=self.verbose)
+                )
             ),
-            DropCollinearFeatures(verbose=self.verbose),
             memory=self.memory
         )
 
     def make_mixed_transformer(self) -> BaseEstimator:
-        return make_pipeline(
-            make_column_transformer(
-                (
-                    self.make_categorical_transformer(),
-                    get_categorical_feature_names
-                ),
-                (
-                    self.make_multi_value_categorical_transformer(),
-                    get_multi_value_categorical_feature_names
-                ),
-                (
-                    self.make_numerical_transformer(),
-                    get_numerical_feature_names
-                ),
-                (
-                    self.make_time_transformer(),
-                    get_time_feature_names
-                )
+        return make_column_transformer(
+            (
+                self.make_categorical_transformer(),
+                get_categorical_feature_names
             ),
-            # DropCollinearFeatures(verbose=self.verbose),
-            memory=self.memory
+            (
+                self.make_multi_value_categorical_transformer(),
+                get_multi_value_categorical_feature_names
+            ),
+            (
+                self.make_numerical_transformer(),
+                get_numerical_feature_names
+            ),
+            (
+                self.make_time_transformer(),
+                get_time_feature_names
+            )
         )
 
     def make_selector(self) -> BaseEstimator:
@@ -269,7 +278,7 @@ class KDDCup19Maker(object):
     def make_model(self) -> BaseEstimator:
         params = {
             'learning_rate': self.learning_rate,
-            'max_depth': self.max_depth,
+            # 'max_depth': self.max_depth,
             'n_estimators': self.n_estimators,
             'n_jobs': 1,
             'random_state': self.random_state,
