@@ -21,10 +21,9 @@ from sklearn.pipeline import make_union
 from .base import BaseEstimator
 from .base import TWO_DIM_ARRAYLIKE_TYPE
 # from .feature_extraction import MultiValueCategoricalVectorizer
-# form .feature_extraction import TimeVectorizer
+from .feature_extraction import TimeVectorizer
 from .feature_selection import DropCollinearFeatures
 from .feature_selection import DropDriftFeatures
-# from .feature_selection import DropDuplicates
 from .feature_selection import FrequencyThreshold
 from .feature_selection import NAProportionThreshold
 from .impute import ModifiedSimpleImputer
@@ -109,12 +108,12 @@ class KDDCup19Maker(object):
         return make_pipeline(
             # NAProportionThreshold(verbose=self.verbose),
             FrequencyThreshold(verbose=self.verbose),
-            # DropDuplicates(verbose=self.verbose),
             CountEncoder(
                 dtype=self.dtype,
                 n_jobs=self.n_jobs,
                 verbose=self.verbose
             ),
+            DropCollinearFeatures(verbose=self.verbose),
             memory=self.memory
         )
 
@@ -146,6 +145,7 @@ class KDDCup19Maker(object):
                     verbose=self.verbose
                 )
             ),
+            DropCollinearFeatures(verbose=self.verbose),
             memory=self.memory
         )
 
@@ -156,7 +156,7 @@ class KDDCup19Maker(object):
                 max_frequency=np.iinfo('int64').max,
                 verbose=self.verbose
             ),
-            # DropCollinearFeatures(verbose=self.verbose),
+            DropCollinearFeatures(verbose=self.verbose),
             # make_union(
             #     make_pipeline(
                     Clip(
@@ -206,18 +206,19 @@ class KDDCup19Maker(object):
             #     strategy='min',
             #     verbose=self.verbose
             # ),
-            # make_union(
-            #     TimeVectorizer(
-            #         dtype=self.dtype,
-            #         n_jobs=self.n_jobs,
-            #         verbose=self.verbose
-            #     ),
+            make_union(
+                TimeVectorizer(
+                    dtype=self.dtype,
+                    n_jobs=self.n_jobs,
+                    verbose=self.verbose
+                ),
                 SubtractedFeatures(
                     dtype=self.dtype,
                     n_jobs=self.n_jobs,
                     verbose=self.verbose
                 ),
-            # ),
+            ),
+            DropCollinearFeatures(verbose=self.verbose),
             memory=self.memory
         )
 
@@ -241,7 +242,7 @@ class KDDCup19Maker(object):
                     get_time_feature_names
                 )
             ),
-            DropCollinearFeatures(verbose=self.verbose),
+            # DropCollinearFeatures(verbose=self.verbose),
             memory=self.memory
         )
 

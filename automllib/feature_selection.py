@@ -61,10 +61,6 @@ class DropCollinearFeatures(BaseSelector):
         return {'allow_nan': True}
 
 
-class DropDuplicates(BaseSelector):
-    pass
-
-
 class DropDriftFeatures(BaseSelector):
     """Drop drift features.
 
