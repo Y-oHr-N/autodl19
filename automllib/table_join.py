@@ -18,8 +18,6 @@ from .base import BaseTransformer
 from .base import ONE_DIM_ARRAYLIKE_TYPE
 from .base import TWO_DIM_ARRAYLIKE_TYPE
 
-MAIN_TABLE_NAME = 'main'
-
 CATEGORICAL_PREFIX = 'c_'
 CATEGORICAL_TYPE = 'cat'
 
@@ -197,12 +195,14 @@ class TableJoiner(BaseTransformer):
         self,
         info: Dict[str, Any],
         related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE],
+        main_table_name: str = 'main',
         verbose: int = 0
     ) -> None:
         super().__init__(verbose=verbose)
 
         self.info = info
         self.related_tables = related_tables
+        self.main_table_name = main_table_name
 
     def _check_params(self) -> None:
         pass
@@ -237,9 +237,9 @@ class TableJoiner(BaseTransformer):
             self.config_['tables'][tname] = {}
             self.config_['tables'][tname]['type'] = ttype
 
-        self.config_['tables'][MAIN_TABLE_NAME]['depth'] = 0
+        self.config_['tables'][self.main_table_name]['depth'] = 0
 
-        queue = deque([MAIN_TABLE_NAME])
+        queue = deque([self.main_table_name])
 
         while queue:
             u_name = queue.popleft()
@@ -257,10 +257,10 @@ class TableJoiner(BaseTransformer):
 
     def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
         Xs = self.related_tables.copy()
-        Xs[MAIN_TABLE_NAME] = X
+        Xs[self.main_table_name] = X
 
         return dfs(
-            MAIN_TABLE_NAME,
+            self.main_table_name,
             self.config_,
             Xs,
             self.graph_

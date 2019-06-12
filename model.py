@@ -12,7 +12,6 @@ import pandas as pd
 from sklearn.model_selection import TimeSeriesSplit
 
 from automllib.automl import AutoMLModel
-from automllib.table_join import MAIN_TABLE_NAME
 
 
 class Model(object):
@@ -29,7 +28,7 @@ class Model(object):
 
     def fit(self, Xs, y, timeout):
         related_tables = Xs.copy()
-        X = related_tables.pop(MAIN_TABLE_NAME)
+        X = related_tables.pop('main')
 
         self.model_ = AutoMLModel(
             self.info,
