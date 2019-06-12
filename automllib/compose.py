@@ -295,9 +295,15 @@ class KDDCup19Maker(object):
         model = self.make_model()
         param_distributions = {
             'colsample_bytree':
-                optuna.distributions.UniformDistribution(0.5, 1.0),
+                optuna.distributions.DiscreteUniformDistribution(
+                    0.1,
+                    1.0,
+                    0.1
+                ),
             'min_child_samples':
                 optuna.distributions.IntUniformDistribution(1, 100),
+            'min_child_weight':
+                optuna.distributions.LogUniformDistribution(1e-03, 10.0),
             'num_leaves':
                 optuna.distributions.IntUniformDistribution(
                     2,
@@ -308,7 +314,7 @@ class KDDCup19Maker(object):
             'reg_lambda':
                 optuna.distributions.LogUniformDistribution(1e-06, 10.0),
             'subsample':
-                optuna.distributions.UniformDistribution(0.5, 1.0)
+                optuna.distributions.DiscreteUniformDistribution(0.1, 1.0, 0.1)
         }
 
         if self.target_type == 'binary':
