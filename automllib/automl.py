@@ -123,6 +123,9 @@ class AutoMLModel(BaseEstimator):
         self.search_cv_ = maker.make_search_cv()
 
         X = self.joiner_.fit_transform(X)
+        X = self.engineer_.fit_transform(X)
+
+        assert X.dtype == 'float32'
 
         if self.validation_fraction > 0.0:
             X, X_valid, y, y_valid = train_test_split(
@@ -132,13 +135,6 @@ class AutoMLModel(BaseEstimator):
                 shuffle=self.shuffle,
                 test_size=self.validation_fraction
             )
-
-        X = self.engineer_.fit_transform(X)
-
-        assert X.dtype == 'float32'
-
-        if self.validation_fraction > 0.0:
-            X_valid = self.engineer_.transform(X_valid)
 
         X = self.drift_dropper_.fit_transform(X, X_test=X_valid)
 
@@ -164,7 +160,7 @@ class AutoMLModel(BaseEstimator):
         return self
 
     def _more_tags(self) -> Dict[str, Any]:
-        return {'no_validation': True}
+        return {'non_deterministic': True, 'no_validation': True}
 
     def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
         self._check_is_fitted()
@@ -187,7 +183,11 @@ class AutoMLModel(BaseEstimator):
 
         return self.search_cv_.predict_proba(X)
 
-    def score(self, X, y):
+    def score(
+        self,
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE
+    ) -> float:
         self._check_is_fitted()
 
         X = self.joiner_.transform(X)
