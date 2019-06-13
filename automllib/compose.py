@@ -229,7 +229,7 @@ class KDDCup19Maker(object):
                         n_jobs=self.n_jobs,
                         verbose=self.verbose
                     ),
-                    DropCollinearFeatures(verbose=self.verbose)
+            #         DropCollinearFeatures(verbose=self.verbose)
                 )
             ),
             memory=self.memory
