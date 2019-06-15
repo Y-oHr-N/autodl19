@@ -69,7 +69,7 @@ class KDDCup19Maker(object):
         n_estimators: int = 100,
         # Parameters for hyperpermeter search
         cv: Union[int, BaseCrossValidator] = 5,
-        n_trials: int = 100,
+        n_trials: int = 10,
         refit: bool = True,
         subsample: Union[int, float] = 1.0,
         timeout: float = None
