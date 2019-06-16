@@ -16,8 +16,6 @@ from .compose import KDDCup19Maker
 
 
 class AutoMLModel(BaseEstimator):
-    _attributes = ['engineer_', 'joiner_', 'sampler_', 'search_cv_']
-
     @property
     def best_params_(self) -> Dict[str, Any]:
         return self.search_cv_.best_params_

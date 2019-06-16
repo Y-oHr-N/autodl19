@@ -35,11 +35,6 @@ TWO_DIM_ARRAYLIKE_TYPE = Union[np.ndarray, spmatrix, pd.DataFrame]
 
 
 class BaseEstimator(SKLearnBaseEstimator, ABC):
-    @property
-    @abstractmethod
-    def _attributes(self) -> Union[str, List[str]]:
-        pass
-
     @abstractmethod
     def __init__(self, verbose: int = 0) -> None:
         self.verbose = verbose
@@ -103,7 +98,7 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
         return X, y
 
     def _check_is_fitted(self) -> None:
-        check_is_fitted(self, self._attributes)
+        check_is_fitted(self, 'n_features_')
 
     def _get_logger(self) -> logging.Logger:
         logger = logging.getLogger(__name__)

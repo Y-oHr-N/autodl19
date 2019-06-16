@@ -29,8 +29,6 @@ class ModifiedSimpleImputer(BasePreprocessor):
            [10. ,  3.5,  9. ]])
     """
 
-    _attributes = ['statistics_']
-
     def __init__(
         self,
         copy: bool = True,

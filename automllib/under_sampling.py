@@ -26,7 +26,6 @@ class RandomUnderSampler(BaseSampler):
     (424, 30)
     """
 
-    _attributes = ['classes_', 'sample_indices_', 'sampling_strategy_']
     _sampling_type = 'under-sampling'
 
     def __init__(

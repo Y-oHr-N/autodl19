@@ -29,8 +29,6 @@ class DropCollinearFeatures(BaseSelector):
     (4, 2)
     """
 
-    _attributes = ['corr_']
-
     def __init__(self, threshold: float = 0.95, verbose: int = 0) -> None:
         super().__init__(verbose=verbose)
 
@@ -75,8 +73,6 @@ class DropDriftFeatures(BaseSelector):
     >>> Xt.shape
     (4, 2)
     """
-
-    _attributes = ['pvalues_']
 
     def __init__(
         self,
@@ -162,8 +158,6 @@ class FrequencyThreshold(BaseSelector):
 
     # TODO(Kon): Fix _check_X_y
 
-    _attributes = ['frequency_', 'n_samples_']
-
     def __init__(
         self,
         max_frequency: Union[int, float] = 1.0,
@@ -220,8 +214,6 @@ class NAProportionThreshold(BaseSelector):
     """
 
     # TODO(Kon): Fix _check_X_y
-
-    _attributes = ['count_', 'n_samples_']
 
     def __init__(self, threshold: float = 0.6, verbose: int = 0) -> None:
         super().__init__(verbose=verbose)

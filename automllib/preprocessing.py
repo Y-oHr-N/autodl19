@@ -28,8 +28,6 @@ class Clip(BasePreprocessor):
            [0.1 , 2.  , 1.03]])
     """
 
-    _attributes = ['data_max_', 'data_min_']
-
     def __init__(
         self,
         dtype: Union[str, Type] = None,
@@ -84,8 +82,6 @@ class CountEncoder(BasePreprocessor):
            [3., 3., 3.],
            [3., 3., 3.]])
     """
-
-    _attributes = ['counters_']
 
     def __init__(
         self,
@@ -144,8 +140,6 @@ class ModifiedStandardScaler(BasePreprocessor):
            [ 1.,  1.]])
     """
 
-    _attributes = ['mean_', 'std_', 'scale_']
-
     def __init__(
         self,
         dtype: Union[str, Type] = None,
@@ -194,8 +188,6 @@ class RowStatistics(BasePreprocessor):
            [1.],
            [0.]])
     """
-
-    _attributes = []
 
     def __init__(
         self,
@@ -255,8 +247,6 @@ class SubtractedFeatures(BasePreprocessor):
            [  0.,  nan,  nan]])
     """
 
-    _attributes = []
-
     def __init__(
         self,
         dtype: Union[str, Type] = None,
@@ -314,8 +304,6 @@ class TextStatistics(BasePreprocessor):
            [5.],
            [4.]])
     """
-
-    _attributes = []
 
     def __init__(
         self,

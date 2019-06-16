@@ -16,8 +16,6 @@ from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
 class TimeVectorizer(BasePreprocessor):
-    _attributes = ['properties_']
-
     def __init__(
         self,
         dtype: Union[str, Type] = None,
@@ -109,8 +107,6 @@ class TimeVectorizer(BasePreprocessor):
 
 
 class MultiValueCategoricalVectorizer(BasePreprocessor):
-    _attributes = ['vectorizers_']
-
     def __init__(
         self,
         dtype: Union[str, Type] = None,
