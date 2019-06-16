@@ -76,7 +76,6 @@ class AutoMLModel(BaseEstimator):
         shuffle: bool = True,
         subsample: Union[int, float] = 1.0,
         timeout: float = None,
-        validation_fraction: Union[int, float] = 0.1,
         verbose: int = 1
     ) -> None:
         super().__init__(verbose=verbose)
@@ -101,7 +100,6 @@ class AutoMLModel(BaseEstimator):
         self.shuffle = shuffle
         self.subsample = subsample
         self.timeout = timeout
-        self.validation_fraction = validation_fraction
 
     def _check_params(self) -> None:
         pass
@@ -115,17 +113,13 @@ class AutoMLModel(BaseEstimator):
         logger = self._get_logger()
         X = X.sort_values(self.info['time_col'], na_position='first')
         y = y.loc[X.index]
-        X_valid = None
-        y_valid = None
-        fit_params = {}
-        self.target_type = type_of_target(y)
 
         if timeout is None:
             timeout = self.timeout
 
+        self.target_type = type_of_target(y)
         self.joiner_ = self.make_joiner()
         self.engineer_ = self.make_mixed_transformer()
-        self.drift_dropper_ = self.make_selector()
         self.sampler_ = self.make_sampler()
         self.search_cv_ = self.make_search_cv()
 
@@ -134,35 +128,12 @@ class AutoMLModel(BaseEstimator):
 
         assert X.dtype == 'float32'
 
-        if self.validation_fraction > 0.0:
-            X, X_valid, y, y_valid = train_test_split(
-                X,
-                y,
-                random_state=self.random_state,
-                shuffle=self.shuffle,
-                test_size=self.validation_fraction
-            )
-
-        X = self.drift_dropper_.fit_transform(X, X_test=X_valid)
-
-        if self.validation_fraction > 0.0:
-            X_valid = self.drift_dropper_.transform(X_valid)
-            fit_params['early_stopping_rounds'] = self.early_stopping_rounds
-            fit_params['eval_set'] = [(X_valid, y_valid)]
-            fit_params['verbose'] = False
-
         if self.sampler_ is not None:
             X, y = self.sampler_.fit_resample(X, y)
 
-        self.search_cv_.fit(X, y, **fit_params)
+        self.search_cv_.fit(X, y)
 
         logger.info(f'The CV score is {self.best_score_:.3f}.')
-
-        if self.validation_fraction > 0.0:
-            logger.info(
-                f'The validation score is '
-                f'{self.search_cv_.score(X_valid, y_valid):.3f}.'
-            )
 
         return self
 
@@ -424,7 +395,6 @@ class AutoMLModel(BaseEstimator):
 
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
-        X = self.drift_dropper_.transform(X)
 
         return self.search_cv_.predict(X)
 
@@ -436,7 +406,6 @@ class AutoMLModel(BaseEstimator):
 
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
-        X = self.drift_dropper_.transform(X)
 
         return self.search_cv_.predict_proba(X)
 
@@ -449,6 +418,5 @@ class AutoMLModel(BaseEstimator):
 
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
-        X = self.drift_dropper_.transform(X)
 
         return self.search_cv_.score(X)
