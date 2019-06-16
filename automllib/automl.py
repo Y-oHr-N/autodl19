@@ -23,6 +23,8 @@ from sklearn.utils.multiclass import type_of_target
 from .base import BaseEstimator
 from .base import ONE_DIM_ARRAYLIKE_TYPE
 from .base import TWO_DIM_ARRAYLIKE_TYPE
+from .ensemble import LGBMClassifierCV
+from .ensemble import LGBMRegressorCV
 # from .feature_extraction import MultiValueCategoricalVectorizer
 from .feature_extraction import TimeVectorizer
 from .feature_selection import DropCollinearFeatures
@@ -48,11 +50,11 @@ from .under_sampling import RandomUnderSampler
 class AutoMLModel(BaseEstimator):
     @property
     def best_params_(self) -> Dict[str, Any]:
-        return self.search_cv_.best_params_
+        return self.model_.best_params_
 
     @property
     def best_score_(self) -> float:
-        return self.search_cv_.best_score_
+        return self.model_.best_score_
 
     def __init__(
         self,
@@ -61,16 +63,15 @@ class AutoMLModel(BaseEstimator):
         alpha: float = 0.005,
         cv: Union[int, BaseCrossValidator] = 5,
         dtype: Union[str, Type] = 'float32',
-        early_stopping_rounds: int = 10,
         learning_rate: float = 0.01,
         lowercase: bool = False,
-        max_depth: int = 7,
         max_iter: int = 10,
         memory: Union[str, Memory] = None,
         n_estimators: int = 100,
         n_features: int = 32,
+        n_iter_no_change: int = 10,
         n_jobs: int = -1,
-        n_trials: int = 10,
+        n_trials: int = 100,
         random_state: Union[int, np.random.RandomState] = 0,
         sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
         shuffle: bool = True,
@@ -83,15 +84,14 @@ class AutoMLModel(BaseEstimator):
         self.alpha = alpha
         self.cv = cv
         self.dtype = dtype
-        self.early_stopping_rounds = early_stopping_rounds
         self.info = info
         self.learning_rate = learning_rate
         self.lowercase = lowercase
-        self.max_depth = max_depth
         self.max_iter = max_iter
         self.memory = memory
         self.n_estimators = n_estimators
         self.n_features = n_features
+        self.n_iter_no_change = n_iter_no_change
         self.n_jobs = n_jobs
         self.n_trials = n_trials
         self.random_state = random_state
@@ -114,14 +114,11 @@ class AutoMLModel(BaseEstimator):
         X = X.sort_values(self.info['time_col'], na_position='first')
         y = y.loc[X.index]
 
-        if timeout is None:
-            timeout = self.timeout
-
         self.target_type = type_of_target(y)
         self.joiner_ = self.make_joiner()
         self.engineer_ = self.make_mixed_transformer()
         self.sampler_ = self.make_sampler()
-        self.search_cv_ = self.make_search_cv()
+        self.model_ = self.make_model()
 
         X = self.joiner_.fit_transform(X)
         X = self.engineer_.fit_transform(X)
@@ -131,9 +128,10 @@ class AutoMLModel(BaseEstimator):
         if self.sampler_ is not None:
             X, y = self.sampler_.fit_resample(X, y)
 
-        self.search_cv_.fit(X, y)
+        self.model_.fit(X, y)
 
         logger.info(f'The CV score is {self.best_score_:.3f}.')
+        logger.info(f'The best iteration is {self.model_.best_iteration_}.')
 
         return self
 
@@ -317,75 +315,25 @@ class AutoMLModel(BaseEstimator):
 
     def make_model(self) -> BaseEstimator:
         params = {
+            'cv': self.cv,
             'learning_rate': self.learning_rate,
-            # 'max_depth': self.max_depth,
             'n_estimators': self.n_estimators,
-            'n_jobs': 1,
+            'n_iter_no_change': self.n_iter_no_change,
+            'n_jobs': self.n_jobs,
+            'n_trials': self.n_trials,
             'random_state': self.random_state,
-            'subsample_freq': 1
+            'timeout': self.timeout,
+            'verbose': self.verbose
         }
 
         if self.target_type in ['binary', 'multiclass', 'multiclass-output']:
-            if self.target_type == 'binary':
-                params['is_unbalance'] = True
-                params['metric'] = 'auc'
-            else:
-                params['class_weight'] = 'balanced'
-
-            return lgb.LGBMClassifier(**params)
+            return LGBMClassifierCV(**params)
 
         elif self.target_type in ['continuous', 'continuous-output']:
-            return lgb.LGBMRegressor(**params)
+            return LGBMRegressorCV(**params)
 
         else:
             raise ValueError(f'Unknown target_type: {self.target_type}.')
-
-    def make_search_cv(self, timeout: float = None) -> BaseEstimator:
-        model = self.make_model()
-        param_distributions = {
-            'colsample_bytree':
-                optuna.distributions.DiscreteUniformDistribution(
-                    0.1,
-                    1.0,
-                    0.1
-                ),
-            'min_child_samples':
-                optuna.distributions.IntUniformDistribution(1, 100),
-            'min_child_weight':
-                optuna.distributions.LogUniformDistribution(1e-03, 10.0),
-            'num_leaves':
-                optuna.distributions.IntUniformDistribution(
-                    2,
-                    2 ** self.max_depth - 1
-                ),
-            'reg_alpha':
-                optuna.distributions.LogUniformDistribution(1e-06, 10.0),
-            'reg_lambda':
-                optuna.distributions.LogUniformDistribution(1e-06, 10.0),
-            'subsample':
-                optuna.distributions.DiscreteUniformDistribution(0.1, 1.0, 0.1)
-        }
-
-        if self.target_type == 'binary':
-            scoring = 'roc_auc'
-        else:
-            scoring = None
-
-        if timeout is None:
-            timeout = self.timeout
-
-        return OptunaSearchCV(
-            model,
-            param_distributions,
-            cv=self.cv,
-            n_jobs=self.n_jobs,
-            n_trials=self.n_trials,
-            random_state=self.random_state,
-            scoring=scoring,
-            subsample=self.subsample,
-            timeout=timeout,
-            verbose=self.verbose
-        )
 
     def _more_tags(self) -> Dict[str, Any]:
         return {'non_deterministic': True, 'no_validation': True}
@@ -396,7 +344,7 @@ class AutoMLModel(BaseEstimator):
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
 
-        return self.search_cv_.predict(X)
+        return self.model_.predict(X)
 
     def predict_proba(
         self,
@@ -407,7 +355,7 @@ class AutoMLModel(BaseEstimator):
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
 
-        return self.search_cv_.predict_proba(X)
+        return self.model_.predict_proba(X)
 
     def score(
         self,
@@ -419,4 +367,4 @@ class AutoMLModel(BaseEstimator):
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
 
-        return self.search_cv_.score(X)
+        return self.model_.score(X)
