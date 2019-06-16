@@ -5,6 +5,7 @@ import colorlog
 from . import automl  # noqa
 from . import base  # noqa
 from . import compose  # noqa
+from . import ensemble  # noqa
 from . import feature_extraction  # noqa
 from . import feature_selection  # noqa
 from . import impute  # noqa
