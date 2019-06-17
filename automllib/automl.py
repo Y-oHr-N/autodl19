@@ -115,18 +115,12 @@ class AutoMLModel(BaseEstimator):
         y = y.loc[X.index]
 
         self.target_type = type_of_target(y)
-        self.joiner_ = self.make_joiner()
-        self.engineer_ = self.make_mixed_transformer()
-        self.sampler_ = self.make_sampler()
-        self.model_ = self.make_model()
-
-        X = self.joiner_.fit_transform(X)
-        X = self.engineer_.fit_transform(X)
-
-        assert X.dtype == 'float32'
-
-        if self.sampler_ is not None:
-            X, y = self.sampler_.fit_resample(X, y)
+        self.model_ = make_pipeline(
+            self.make_joiner(),
+            self.make_mixed_transformer(),
+            self.make_sampler(),
+            self.make_model()
+        )
 
         self.model_.fit(X, y)
 
@@ -328,10 +322,8 @@ class AutoMLModel(BaseEstimator):
 
         if self.target_type in ['binary', 'multiclass', 'multiclass-output']:
             return LGBMClassifierCV(**params)
-
         elif self.target_type in ['continuous', 'continuous-output']:
             return LGBMRegressorCV(**params)
-
         else:
             raise ValueError(f'Unknown target_type: {self.target_type}.')
 
@@ -341,9 +333,6 @@ class AutoMLModel(BaseEstimator):
     def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
         self._check_is_fitted()
 
-        X = self.joiner_.transform(X)
-        X = self.engineer_.transform(X)
-
         return self.model_.predict(X)
 
     def predict_proba(
@@ -351,9 +340,6 @@ class AutoMLModel(BaseEstimator):
         X: TWO_DIM_ARRAYLIKE_TYPE
     ) -> ONE_DIM_ARRAYLIKE_TYPE:
         self._check_is_fitted()
-
-        X = self.joiner_.transform(X)
-        X = self.engineer_.transform(X)
 
         return self.model_.predict_proba(X)
 
@@ -363,8 +349,5 @@ class AutoMLModel(BaseEstimator):
         y: ONE_DIM_ARRAYLIKE_TYPE
     ) -> float:
         self._check_is_fitted()
-
-        X = self.joiner_.transform(X)
-        X = self.engineer_.transform(X)
 
         return self.model_.score(X)
