@@ -28,7 +28,6 @@ from .ensemble import LGBMRegressorCV
 # from .feature_extraction import MultiValueCategoricalVectorizer
 from .feature_extraction import TimeVectorizer
 from .feature_selection import DropCollinearFeatures
-from .feature_selection import DropDriftFeatures
 from .feature_selection import FrequencyThreshold
 # from .feature_selection import NAProportionThreshold
 from .impute import ModifiedSimpleImputer
@@ -60,7 +59,6 @@ class AutoMLModel(BaseEstimator):
         self,
         info: Dict[str, Any],
         related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE],
-        alpha: float = 0.005,
         cv: Union[int, BaseCrossValidator] = 5,
         dtype: Union[str, Type] = 'float32',
         learning_rate: float = 0.01,
@@ -81,7 +79,6 @@ class AutoMLModel(BaseEstimator):
     ) -> None:
         super().__init__(verbose=verbose)
 
-        self.alpha = alpha
         self.cv = cv
         self.dtype = dtype
         self.info = info
@@ -285,13 +282,6 @@ class AutoMLModel(BaseEstimator):
                 self.make_time_transformer(),
                 get_time_feature_names
             )
-        )
-
-    def make_selector(self) -> BaseEstimator:
-        return DropDriftFeatures(
-            alpha=self.alpha,
-            random_state=self.random_state,
-            verbose=self.verbose
         )
 
     def make_sampler(self) -> BaseEstimator:
