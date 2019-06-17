@@ -49,11 +49,11 @@ from .under_sampling import RandomUnderSampler
 class AutoMLModel(BaseEstimator):
     @property
     def best_params_(self) -> Dict[str, Any]:
-        return self.model_.best_params_
+        return self.model_._final_estimator.best_params_
 
     @property
     def best_score_(self) -> float:
-        return self.model_.best_score_
+        return self.model_._final_estimator.best_score_
 
     def __init__(
         self,
@@ -122,7 +122,7 @@ class AutoMLModel(BaseEstimator):
         self.model_.fit(X, y)
 
         logger.info(f'The CV score is {self.best_score_:.3f}.')
-        logger.info(f'The best iteration is {self.model_.best_iteration_}.')
+        logger.info(f'The best iteration is {self.model_._final_estimator.best_iteration_}.')
 
         return self
 
