@@ -103,6 +103,7 @@ class Objective(object):
 
 class LGBMModelCV(BaseEstimator):
     # TODO(Kon): Add class_weight
+
     @property
     def best_index_(self) -> int:
         df = self.trials_dataframe()
@@ -303,7 +304,7 @@ class LGBMClassifierCV(LGBMModelCV, ClassifierMixin):
     --------
     >>> from sklearn.datasets import load_iris
     >>> from automllib.ensemble import LGBMClassifierCV
-    >>> clf = LGBMClassifierCV(random_state=0)
+    >>> clf = LGBMClassifierCV(n_iter_no_change=10, random_state=0)
     >>> X, y = load_iris(return_X_y=True)
     >>> clf.fit(X, y)
     LGBMClassifierCV(...)
@@ -345,7 +346,7 @@ class LGBMRegressorCV(LGBMModelCV, RegressorMixin):
     --------
     >>> from sklearn.datasets import load_boston
     >>> from automllib.ensemble import LGBMRegressorCV
-    >>> reg = LGBMRegressorCV(random_state=1209)
+    >>> reg = LGBMRegressorCV(n_iter_no_change=10, random_state=0)
     >>> X, y = load_boston(return_X_y=True)
     >>> reg.fit(X, y)
     LGBMRegressorCV(...)
