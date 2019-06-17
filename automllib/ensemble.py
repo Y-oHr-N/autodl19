@@ -102,7 +102,9 @@ class Objective(object):
 
 
 class LGBMModelCV(BaseEstimator):
-    # TODO(Kon): Add class_weight
+    # TODO(Kon): Add `class_weight` into __init__
+    # TODO(Kon): Add `groups` into fit
+    # TODO(Kon): Search best `min_split_gain`
 
     @property
     def best_index_(self) -> int:
@@ -237,6 +239,7 @@ class LGBMModelCV(BaseEstimator):
             else:
                 direction = 'maximize'
                 metric = 'auc'
+                params['is_unbalance'] = True
                 params['objective'] = 'binary'
 
         else:
