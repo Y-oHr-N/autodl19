@@ -29,7 +29,7 @@ from .ensemble import LGBMRegressorCV
 from .feature_extraction import TimeVectorizer
 from .feature_selection import DropCollinearFeatures
 from .feature_selection import FrequencyThreshold
-# from .feature_selection import NAProportionThreshold
+from .feature_selection import NAProportionThreshold
 from .impute import ModifiedSimpleImputer
 from .model_selection import OptunaSearchCV
 from .preprocessing import Clip
@@ -61,7 +61,7 @@ class AutoMLModel(BaseEstimator):
         related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE],
         cv: Union[int, BaseCrossValidator] = 5,
         dtype: Union[str, Type] = 'float32',
-        learning_rate: float = 0.01,
+        learning_rate: float = 0.1,
         lowercase: bool = False,
         max_iter: int = 10,
         memory: Union[str, Memory] = None,
@@ -69,7 +69,7 @@ class AutoMLModel(BaseEstimator):
         n_features: int = 32,
         n_iter_no_change: int = 10,
         n_jobs: int = -1,
-        n_trials: int = 300,
+        n_trials: int = 100,
         random_state: Union[int, np.random.RandomState] = 0,
         sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
         shuffle: bool = True,
@@ -135,7 +135,7 @@ class AutoMLModel(BaseEstimator):
 
     def make_categorical_transformer(self) -> BaseEstimator:
         return make_pipeline(
-            # NAProportionThreshold(verbose=self.verbose),
+            NAProportionThreshold(verbose=self.verbose),
             FrequencyThreshold(verbose=self.verbose),
             CountEncoder(
                 dtype=self.dtype,
@@ -148,7 +148,7 @@ class AutoMLModel(BaseEstimator):
 
     def make_multi_value_categorical_transformer(self) -> BaseEstimator:
         return make_pipeline(
-            # NAProportionThreshold(verbose=self.verbose),
+            NAProportionThreshold(verbose=self.verbose),
             ModifiedSimpleImputer(
                 fill_value='',
                 n_jobs=self.n_jobs,
@@ -185,7 +185,7 @@ class AutoMLModel(BaseEstimator):
 
     def make_numerical_transformer(self) -> BaseEstimator:
         return make_pipeline(
-            # NAProportionThreshold(verbose=self.verbose),
+            NAProportionThreshold(verbose=self.verbose),
             FrequencyThreshold(
                 max_frequency=np.iinfo('int64').max,
                 verbose=self.verbose
@@ -237,7 +237,7 @@ class AutoMLModel(BaseEstimator):
 
     def make_time_transformer(self) -> BaseEstimator:
         return make_pipeline(
-            # NAProportionThreshold(verbose=self.verbose),
+            NAProportionThreshold(verbose=self.verbose),
             make_union(
                 make_pipeline(
                     TimeVectorizer(
@@ -245,6 +245,7 @@ class AutoMLModel(BaseEstimator):
                         n_jobs=self.n_jobs,
                         verbose=self.verbose
                     ),
+                    FrequencyThreshold(verbose=self.verbose),
                     DropCollinearFeatures(verbose=self.verbose)
                 ),
                 make_pipeline(
