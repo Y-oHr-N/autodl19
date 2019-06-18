@@ -113,7 +113,8 @@ class AutoMLModel(BaseEstimator):
 
         self.target_type = type_of_target(y)
         self.model_ = make_pipeline(
-            self.make_transformer(),
+            self.make_joiner(),
+            self.make_mixed_transformer(),
             self.make_sampler(),
             self.make_model()
         )
@@ -125,6 +126,13 @@ class AutoMLModel(BaseEstimator):
 
         return self
 
+    def make_joiner(self) -> BaseEstimator:
+        return TableJoiner(
+            self.info,
+            self.related_tables,
+            verbose=self.verbose
+        )
+
     def make_categorical_transformer(self) -> BaseEstimator:
         return make_pipeline(
             # NAProportionThreshold(verbose=self.verbose),
@@ -134,7 +142,8 @@ class AutoMLModel(BaseEstimator):
                 n_jobs=self.n_jobs,
                 verbose=self.verbose
             ),
-            DropCollinearFeatures(verbose=self.verbose)
+            DropCollinearFeatures(verbose=self.verbose),
+            memory=self.memory
         )
 
     def make_multi_value_categorical_transformer(self) -> BaseEstimator:
@@ -170,7 +179,8 @@ class AutoMLModel(BaseEstimator):
                     ),
                     DropCollinearFeatures(verbose=self.verbose)
                 )
-            )
+            ),
+            memory=self.memory
         )
 
     def make_numerical_transformer(self) -> BaseEstimator:
@@ -221,7 +231,8 @@ class AutoMLModel(BaseEstimator):
             #         n_jobs=self.n_jobs,
             #         verbose=self.verbose
             #     )
-            # )
+            # ),
+            memory=self.memory
         )
 
     def make_time_transformer(self) -> BaseEstimator:
@@ -249,35 +260,28 @@ class AutoMLModel(BaseEstimator):
                     ),
             #         DropCollinearFeatures(verbose=self.verbose)
                 )
-            )
-        )
-
-    def make_transformer(self) -> BaseEstimator:
-        return make_pipeline(
-            TableJoiner(
-                info=self.info,
-                related_tables=self.related_tables,
-                verbose=self.verbose
-            ),
-            make_column_transformer(
-                (
-                    self.make_categorical_transformer(),
-                    get_categorical_feature_names
-                ),
-                (
-                    self.make_multi_value_categorical_transformer(),
-                    get_multi_value_categorical_feature_names
-                ),
-                (
-                    self.make_numerical_transformer(),
-                    get_numerical_feature_names
-                ),
-                (
-                    self.make_time_transformer(),
-                    get_time_feature_names
-                )
             ),
             memory=self.memory
+        )
+
+    def make_mixed_transformer(self) -> BaseEstimator:
+        return make_column_transformer(
+            (
+                self.make_categorical_transformer(),
+                get_categorical_feature_names
+            ),
+            (
+                self.make_multi_value_categorical_transformer(),
+                get_multi_value_categorical_feature_names
+            ),
+            (
+                self.make_numerical_transformer(),
+                get_numerical_feature_names
+            ),
+            (
+                self.make_time_transformer(),
+                get_time_feature_names
+            )
         )
 
     def make_sampler(self) -> BaseEstimator:
