@@ -56,7 +56,7 @@ class Objective(object):
         params = self.params.copy()
         other_params = {
             'colsample_bytree':
-                trial.suggest_uniform('colsample_bytree', 0.5, 1.0),
+                trial.suggest_uniform('colsample_bytree', 0.1, 1.0),
             'min_child_samples':
                 trial.suggest_int('min_child_samples', 1, 100),
             'min_child_weight':
@@ -68,7 +68,7 @@ class Objective(object):
             'reg_lambda':
                 trial.suggest_loguniform('reg_lambda', 1e-06, 10.0),
             'subsample':
-                trial.suggest_uniform('subsample', 0.5, 1.0)
+                trial.suggest_uniform('subsample', 0.1, 1.0)
         }
         dataset = copy.copy(self.dataset)
         extraction_callback = BestIterationExtractionCallback()
