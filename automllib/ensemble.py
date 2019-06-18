@@ -104,7 +104,9 @@ class Objective(object):
 class LGBMModelCV(BaseEstimator):
     # TODO(Kon): Add `class_weight` into __init__
     # TODO(Kon): Add `groups` into fit
+    # TODO(Kon): Search best `boosting_type`
     # TODO(Kon): Search best `min_split_gain`
+    # TODO(Kon): Output SHAP values
 
     @property
     def best_index_(self) -> int:

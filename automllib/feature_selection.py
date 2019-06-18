@@ -156,8 +156,6 @@ class FrequencyThreshold(BaseSelector):
     (4, 1)
     """
 
-    # TODO(Kon): Fix _check_X_y
-
     def __init__(
         self,
         max_frequency: Union[int, float] = 1.0,
@@ -212,8 +210,6 @@ class NAProportionThreshold(BaseSelector):
     >>> Xt.shape
     (4, 2)
     """
-
-    # TODO(Kon): Fix _check_X_y
 
     def __init__(self, threshold: float = 0.6, verbose: int = 0) -> None:
         super().__init__(verbose=verbose)

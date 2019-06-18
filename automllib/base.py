@@ -35,6 +35,9 @@ TWO_DIM_ARRAYLIKE_TYPE = Union[np.ndarray, spmatrix, pd.DataFrame]
 
 
 class BaseEstimator(SKLearnBaseEstimator, ABC):
+    # TODO(Kon): Fix _check_X_y for FrequencyThreshold/NAProportionThreshold
+    # TODO(kon): Fix _get_logger
+
     @abstractmethod
     def __init__(self, verbose: int = 0) -> None:
         self.verbose = verbose
