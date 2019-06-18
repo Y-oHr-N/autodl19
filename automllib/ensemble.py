@@ -22,13 +22,13 @@ from .base import ONE_DIM_ARRAYLIKE_TYPE
 from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
-class ModelExtractionCallback(object):
+class BestIterationExtractionCallback(object):
     @property
     def best_iteration_(self) -> int:
-        return self.model_.best_iteration
+        return self._iteration + 1
 
     def __call__(self, env: NamedTuple) -> None:
-        self.model_ = env.model
+        self._iteration = env.iteration
 
 
 class Objective(object):
@@ -71,7 +71,7 @@ class Objective(object):
                 trial.suggest_uniform('subsample', 0.5, 1.0)
         }
         dataset = copy.copy(self.dataset)
-        extraction_callback = ModelExtractionCallback()
+        extraction_callback = BestIterationExtractionCallback()
         pruning_callback = optuna.integration.LightGBMPruningCallback(
             trial,
             self.metric
