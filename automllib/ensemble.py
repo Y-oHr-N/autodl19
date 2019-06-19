@@ -1,5 +1,6 @@
 import copy
 
+from abc import abstractmethod
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -22,13 +23,13 @@ from .base import ONE_DIM_ARRAYLIKE_TYPE
 from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
-class BestIterationExtractionCallback(object):
+class EnvExtractionCallback(object):
     @property
     def best_iteration_(self) -> int:
-        return self._iteration + 1
+        return self._env.iteration + 1
 
     def __call__(self, env: NamedTuple) -> None:
-        self._iteration = env.iteration
+        self._env = env
 
 
 class Objective(object):
@@ -71,7 +72,7 @@ class Objective(object):
                 trial.suggest_uniform('subsample', 0.1, 1.0)
         }
         dataset = copy.copy(self.dataset)
-        extraction_callback = BestIterationExtractionCallback()
+        extraction_callback = EnvExtractionCallback()
         pruning_callback = optuna.integration.LightGBMPruningCallback(
             trial,
             self.metric
@@ -101,8 +102,9 @@ class Objective(object):
         return eval_hist[f'{self.metric}-mean'][-1]
 
 
-class LGBMModelCV(BaseEstimator):
+class BaseLGBMModelCV(BaseEstimator):
     # TODO(Kon): Add `class_weight` into __init__
+    # TODO(Kon): Add `sample_weight` into fit
     # TODO(Kon): Add `groups` into fit
     # TODO(Kon): Search best `boosting_type`
     # TODO(Kon): Search best `min_split_gain`
@@ -301,8 +303,12 @@ class LGBMModelCV(BaseEstimator):
     def _more_tags(self) -> Dict[str, Any]:
         return {'non_deterministic': True, 'no_validation': True}
 
+    @abstractmethod
+    def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
+        pass
 
-class LGBMClassifierCV(LGBMModelCV, ClassifierMixin):
+
+class LGBMClassifierCV(BaseLGBMModelCV, ClassifierMixin):
     """
 
     Examples
@@ -317,12 +323,7 @@ class LGBMClassifierCV(LGBMModelCV, ClassifierMixin):
     0.9...
     """
 
-    def predict(
-        self,
-        X: TWO_DIM_ARRAYLIKE_TYPE
-    ) -> ONE_DIM_ARRAYLIKE_TYPE:
-        self._check_is_fitted()
-
+    def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
         probas = self.predict_proba(X)
 
         return self.classes_[np.argmax(probas, axis=1)]
@@ -344,7 +345,7 @@ class LGBMClassifierCV(LGBMModelCV, ClassifierMixin):
             return np.concatenate([1.0 - result, result], axis=1)
 
 
-class LGBMRegressorCV(LGBMModelCV, RegressorMixin):
+class LGBMRegressorCV(BaseLGBMModelCV, RegressorMixin):
     """
 
     Examples
@@ -359,10 +360,7 @@ class LGBMRegressorCV(LGBMModelCV, RegressorMixin):
     0.9...
     """
 
-    def predict(
-        self,
-        X: TWO_DIM_ARRAYLIKE_TYPE
-    ) -> ONE_DIM_ARRAYLIKE_TYPE:
+    def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
         self._check_is_fitted()
 
         return self.booster_.predict(X)
