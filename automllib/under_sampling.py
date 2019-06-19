@@ -12,15 +12,15 @@ from .base import ONE_DIM_ARRAYLIKE_TYPE
 from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
-class RandomUnderSampler(BaseSampler):
+class ModifiedRandomUnderSampler(BaseSampler):
     """
 
     Examples
     --------
     >>> from sklearn.datasets import load_breast_cancer
-    >>> from automllib.under_sampling import RandomUnderSampler
+    >>> from automllib.under_sampling import ModifiedRandomUnderSampler
     >>> X, y = load_breast_cancer(return_X_y=True)
-    >>> res = RandomUnderSampler()
+    >>> res = ModifiedRandomUnderSampler()
     >>> X_res, y_res = res.fit_resample(X, y)
     >>> X_res.shape
     (424, 30)
@@ -51,7 +51,7 @@ class RandomUnderSampler(BaseSampler):
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE,
         **fit_params: Any
-    ) -> 'RandomUnderSampler':
+    ) -> 'ModifiedRandomUnderSampler':
         random_state = check_random_state(self.random_state)
         n_samples, _ = X.shape
         indices = np.arange(n_samples)
