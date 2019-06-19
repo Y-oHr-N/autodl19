@@ -1,5 +1,6 @@
 import copy
 
+from abc import abstractmethod
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -22,13 +23,13 @@ from .base import ONE_DIM_ARRAYLIKE_TYPE
 from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
-class BestIterationExtractionCallback(object):
+class EnvExtractionCallback(object):
     @property
     def best_iteration_(self) -> int:
-        return self._iteration + 1
+        return self._env.iteration + 1
 
     def __call__(self, env: NamedTuple) -> None:
-        self._iteration = env.iteration
+        self._env = env
 
 
 class Objective(object):
@@ -70,8 +71,8 @@ class Objective(object):
             'subsample':
                 trial.suggest_uniform('subsample', 0.1, 1.0)
         }
-        dataset = copy.copy(self.dataset)
-        extraction_callback = BestIterationExtractionCallback()
+        train_set = copy.copy(self.dataset)
+        extraction_callback = EnvExtractionCallback()
         pruning_callback = optuna.integration.LightGBMPruningCallback(
             trial,
             self.metric
@@ -81,7 +82,7 @@ class Objective(object):
 
         eval_hist = lgb.cv(
             params,
-            dataset,
+            train_set,
             callbacks=[extraction_callback, pruning_callback],
             categorical_feature=self.categorical_feature,
             early_stopping_rounds=self.n_iter_no_change,
@@ -101,8 +102,9 @@ class Objective(object):
         return eval_hist[f'{self.metric}-mean'][-1]
 
 
-class LGBMModelCV(BaseEstimator):
+class BaseLGBMModelCV(BaseEstimator):
     # TODO(Kon): Add `class_weight` into __init__
+    # TODO(Kon): Add `sample_weight` into fit
     # TODO(Kon): Add `groups` into fit
     # TODO(Kon): Search best `boosting_type`
     # TODO(Kon): Search best `min_split_gain`
@@ -140,7 +142,14 @@ class LGBMModelCV(BaseEstimator):
     def feature_importances_(self) -> ONE_DIM_ARRAYLIKE_TYPE:
         self._check_is_fitted()
 
-        return self.booster_.feature_importance(self.importance_type)
+        results = []
+
+        for b in self.boosters_:
+            result = b.feature_importance(self.importance_type)
+
+            results.append(result)
+
+        return np.average(results, axis=0)
 
     @property
     def n_trials_(self) -> int:
@@ -180,6 +189,7 @@ class LGBMModelCV(BaseEstimator):
         n_estimators: int = 100,
         n_iter_no_change: int = None,
         n_jobs: int = 1,
+        n_seeds: int = 10,
         n_trials: int = 10,
         random_state: Union[int, np.random.RandomState] = None,
         study: optuna.study.Study = None,
@@ -197,6 +207,7 @@ class LGBMModelCV(BaseEstimator):
         self.n_estimators = n_estimators
         self.n_iter_no_change = n_iter_no_change
         self.n_jobs = n_jobs
+        self.n_seeds = n_seeds
         self.n_trials = n_trials
         self.random_state = random_state
         self.study = study
@@ -211,12 +222,8 @@ class LGBMModelCV(BaseEstimator):
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE
     ) -> 'LGBMModelCV':
-        if isinstance(self.random_state, int):
-            seed = self.random_state
-        else:
-            random_state = check_random_state(self.random_state)
-            seed = random_state.randint(0, np.iinfo('int32').max)
-
+        random_state = check_random_state(self.random_state)
+        seed = random_state.randint(0, np.iinfo('int32').max)
         params = {
             'learning_rate': self.learning_rate,
             'min_split_gain': self.min_split_gain,
@@ -287,22 +294,36 @@ class LGBMModelCV(BaseEstimator):
             num_boost_round = \
                 self.study_.best_trial.user_attrs['best_iteration']
 
-        self.booster_ = lgb.train(
-            params,
-            dataset,
-            categorical_feature=self.categorical_feature,
-            num_boost_round=num_boost_round
-        )
+        self.boosters_ = []
 
-        self.booster_.free_dataset()
+        for i in range(self.n_seeds):
+            if self.n_seeds > 1:
+                seed = random_state.randint(0, np.iinfo('int32').max)
+                params['seed'] = seed
+
+            train_set = copy.copy(dataset)
+            b = lgb.train(
+                params,
+                train_set,
+                categorical_feature=self.categorical_feature,
+                num_boost_round=num_boost_round
+            )
+
+            b.free_dataset()
+
+            self.boosters_.append(b)
 
         return self
 
     def _more_tags(self) -> Dict[str, Any]:
         return {'non_deterministic': True, 'no_validation': True}
 
+    @abstractmethod
+    def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
+        pass
 
-class LGBMClassifierCV(LGBMModelCV, ClassifierMixin):
+
+class LGBMClassifierCV(BaseLGBMModelCV, ClassifierMixin):
     """
 
     Examples
@@ -317,12 +338,7 @@ class LGBMClassifierCV(LGBMModelCV, ClassifierMixin):
     0.9...
     """
 
-    def predict(
-        self,
-        X: TWO_DIM_ARRAYLIKE_TYPE
-    ) -> ONE_DIM_ARRAYLIKE_TYPE:
-        self._check_is_fitted()
-
+    def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
         probas = self.predict_proba(X)
 
         return self.classes_[np.argmax(probas, axis=1)]
@@ -333,7 +349,14 @@ class LGBMClassifierCV(LGBMModelCV, ClassifierMixin):
     ) -> TWO_DIM_ARRAYLIKE_TYPE:
         self._check_is_fitted()
 
-        result = self.booster_.predict(X)
+        results = []
+
+        for b in self.boosters_:
+           result = b.predict(X)
+
+           results.append(result)
+
+        result = np.average(results, axis=0)
 
         if self.n_classes_ > 2:
             return result
@@ -344,7 +367,7 @@ class LGBMClassifierCV(LGBMModelCV, ClassifierMixin):
             return np.concatenate([1.0 - result, result], axis=1)
 
 
-class LGBMRegressorCV(LGBMModelCV, RegressorMixin):
+class LGBMRegressorCV(BaseLGBMModelCV, RegressorMixin):
     """
 
     Examples
@@ -359,10 +382,14 @@ class LGBMRegressorCV(LGBMModelCV, RegressorMixin):
     0.9...
     """
 
-    def predict(
-        self,
-        X: TWO_DIM_ARRAYLIKE_TYPE
-    ) -> ONE_DIM_ARRAYLIKE_TYPE:
+    def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
         self._check_is_fitted()
 
-        return self.booster_.predict(X)
+        results = []
+
+        for b in self.boosters_:
+           result = b.predict(X)
+
+           results.append(result)
+
+        return np.average(results, axis=0)

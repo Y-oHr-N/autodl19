@@ -1,10 +1,14 @@
 from sklearn.utils.estimator_checks import check_estimator
 
+from automllib.preprocessing import ArithmeticalFeatures
 from automllib.preprocessing import Clip
 from automllib.preprocessing import CountEncoder
 from automllib.preprocessing import ModifiedStandardScaler
 from automllib.preprocessing import RowStatistics
-from automllib.preprocessing import SubtractedFeatures
+
+
+def test_arithmetical_features():
+    check_estimator(ArithmeticalFeatures)
 
 
 def test_clip():
@@ -21,7 +25,3 @@ def test_row_statistics():
 
 def test_modified_standard_scaler():
     check_estimator(ModifiedStandardScaler)
-
-
-def test_subtracted_features():
-    check_estimator(SubtractedFeatures)

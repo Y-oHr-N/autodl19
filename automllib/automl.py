@@ -43,7 +43,7 @@ from .table_join import get_multi_value_categorical_feature_names
 from .table_join import get_numerical_feature_names
 from .table_join import get_time_feature_names
 from .table_join import TableJoiner
-from .under_sampling import RandomUnderSampler
+from .under_sampling import ModifiedRandomUnderSampler
 
 
 class AutoMLModel(BaseEstimator):
@@ -287,7 +287,7 @@ class AutoMLModel(BaseEstimator):
 
     def make_sampler(self) -> BaseEstimator:
         if self.target_type in ['binary', 'multiclass', 'multiclass-output']:
-            return RandomUnderSampler(
+            return ModifiedRandomUnderSampler(
                 random_state=self.random_state,
                 sampling_strategy=self.sampling_strategy,
                 shuffle=self.shuffle,
