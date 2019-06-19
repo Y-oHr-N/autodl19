@@ -231,14 +231,14 @@ class RowStatistics(BasePreprocessor):
         return np.sum(is_nan, axis=1, dtype=dtype).reshape(-1, 1)
 
 
-class SubtractedFeatures(BasePreprocessor):
+class ArithmeticalFeatures(BasePreprocessor):
     """
 
     Examples
     --------
     >>> import numpy as np
-    >>> from automllib.preprocessing import SubtractedFeatures
-    >>> pre = SubtractedFeatures()
+    >>> from automllib.preprocessing import ArithmeticalFeatures
+    >>> pre = ArithmeticalFeatures()
     >>> X = [[1, 1, 100], [2, 2, 10], [1, 1, 1], [1, 1, np.nan]]
     >>> pre.fit_transform(X)
     array([[  0., -99., -99.],
@@ -251,18 +251,25 @@ class SubtractedFeatures(BasePreprocessor):
         self,
         dtype: Union[str, Type] = None,
         n_jobs: int = 1,
+        operand: str = 'subtract',
         verbose: int = 0
     ) -> None:
         super().__init__(dtype=dtype, n_jobs=n_jobs, verbose=verbose)
 
+        self.operand = operand
+
     def _check_params(self) -> None:
-        pass
+        if self.operand not in ['add', 'subtract', 'multiply', 'divide']:
+            raise ValueError(f'Unknown operand: {self.operand}')
 
     def _fit(
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE = None
-    ) -> 'SubtractedFeatures':
+    ) -> 'ArithmeticalFeatures':
+        self.n_output_features_ = \
+            self.n_features_ * (self.n_features_ - 1) // 2
+
         return self
 
     def _more_tags(self) -> Dict[str, Any]:
@@ -278,13 +285,13 @@ class SubtractedFeatures(BasePreprocessor):
             if X.dtype.kind in ('f', 'i', 'u'):
                 dtype = X.dtype
 
-        n_samples, n_input_features = X.shape
-        n_output_features = n_input_features * (n_input_features - 1) // 2
-        Xt = np.empty((n_samples, n_output_features), dtype=dtype)
-        iterable = itertools.combinations(range(n_input_features), 2)
+        n_samples, _ = X.shape
+        Xt = np.empty((n_samples, self.n_output_features_), dtype=dtype)
+        iterable = itertools.combinations(range(self.n_features_), 2)
+        func = getattr(np, self.operand)
 
         for j, (k, l) in enumerate(iterable):
-            Xt[:, j] = X[:, k] - X[:, l]
+            Xt[:, j] = func(X[:, k], X[:, l])
 
         return Xt
 

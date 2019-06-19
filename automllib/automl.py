@@ -32,11 +32,11 @@ from .feature_selection import FrequencyThreshold
 from .feature_selection import NAProportionThreshold
 from .impute import ModifiedSimpleImputer
 from .model_selection import OptunaSearchCV
+from .preprocessing import ArithmeticalFeatures
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
 # from .preprocessing import RowStatistics
 # from .preprocessing import ModifiedStandardScaler
-from .preprocessing import SubtractedFeatures
 from .preprocessing import TextStatistics
 from .table_join import get_categorical_feature_names
 from .table_join import get_multi_value_categorical_feature_names
@@ -211,7 +211,7 @@ class AutoMLModel(BaseEstimator):
             #                 include_bias=False,
             #                 interaction_only=True
             #             ),
-            #             SubtractedFeatures(
+            #             ArithmeticalFeatures(
             #                 n_jobs=self.n_jobs,
             #                 verbose=self.verbose
             #             )
@@ -254,7 +254,7 @@ class AutoMLModel(BaseEstimator):
             #             strategy='min',
             #             verbose=self.verbose
             #         ),
-                    SubtractedFeatures(
+                    ArithmeticalFeatures(
                         dtype=self.dtype,
                         n_jobs=self.n_jobs,
                         verbose=self.verbose
