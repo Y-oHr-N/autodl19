@@ -41,6 +41,7 @@ class Objective(object):
         metric: str = 'l2',
         n_estimators: int = 100,
         n_iter_no_change: int = None,
+        sample_weight: ONE_DIM_ARRAYLIKE_TYPE = None,
         seed: int = 0
     ) -> None:
         self.categorical_feature = categorical_feature
@@ -49,6 +50,7 @@ class Objective(object):
         self.n_estimators = n_estimators
         self.n_iter_no_change = n_iter_no_change
         self.params = params
+        self.sample_weight = sample_weight
         self.seed = seed
         self.X = X
         self.y = y
@@ -79,7 +81,12 @@ class Objective(object):
 
         params.update(other_params)
 
-        dataset = lgb.Dataset(self.X, label=self.y, params=params)
+        dataset = lgb.Dataset(
+            self.X,
+            label=self.y,
+            params=params,
+            weight=self.sample_weight
+        )
         eval_hist = lgb.cv(
             params,
             dataset,
@@ -104,7 +111,6 @@ class Objective(object):
 
 class BaseLGBMModelCV(BaseEstimator):
     # TODO(Kon): Add `class_weight` into __init__
-    # TODO(Kon): Add `sample_weight` into fit
     # TODO(Kon): Add `groups` into fit
     # TODO(Kon): Search best `boosting_type`
     # TODO(Kon): Search best `min_split_gain`
@@ -220,7 +226,8 @@ class BaseLGBMModelCV(BaseEstimator):
     def _fit(
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
-        y: ONE_DIM_ARRAYLIKE_TYPE
+        y: ONE_DIM_ARRAYLIKE_TYPE,
+        sample_weight: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'LGBMModelCV':
         random_state = check_random_state(self.random_state)
         seed = random_state.randint(0, np.iinfo('int32').max)
@@ -263,7 +270,8 @@ class BaseLGBMModelCV(BaseEstimator):
             cv=cv,
             metric=metric,
             n_estimators=self.n_estimators,
-            n_iter_no_change=self.n_iter_no_change
+            n_iter_no_change=self.n_iter_no_change,
+            sample_weight=sample_weight
         )
 
         if self.study is None:
@@ -303,7 +311,12 @@ class BaseLGBMModelCV(BaseEstimator):
                 seed = random_state.randint(0, np.iinfo('int32').max)
                 params['seed'] = seed
 
-            dataset = lgb.Dataset(X, label=y, params=params)
+            dataset = lgb.Dataset(
+                X,
+                label=y,
+                params=params,
+                weight=sample_weight
+            )
             b = lgb.train(
                 params,
                 dataset,
