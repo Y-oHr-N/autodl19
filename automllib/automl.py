@@ -17,7 +17,6 @@ from sklearn.compose import make_column_transformer
 from sklearn.model_selection import BaseCrossValidator
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_union
-# from sklearn.preprocessing import PolynomialFeatures
 from sklearn.utils.multiclass import type_of_target
 
 from .base import BaseEstimator
@@ -206,15 +205,10 @@ class AutoMLModel(BaseEstimator):
             #             estimator=LinearRegression(n_jobs=self.n_jobs),
             #             max_iter=self.max_iter
             #         ),
-            #         make_union(
-            #             PolynomialFeatures(
-            #                 include_bias=False,
-            #                 interaction_only=True
-            #             ),
-            #             ArithmeticalFeatures(
-            #                 n_jobs=self.n_jobs,
-            #                 verbose=self.verbose
-            #             )
+            #         ArithmeticalFeatures(
+            #             n_jobs=self.n_jobs,
+            #             operand=['subtract', 'polynomial'],
+            #             verbose=self.verbose
             #         )
                 ),
             #     make_pipeline(
@@ -256,7 +250,9 @@ class AutoMLModel(BaseEstimator):
             #         ),
                     ArithmeticalFeatures(
                         dtype=self.dtype,
+                        include_X=False,
                         n_jobs=self.n_jobs,
+                        operand='subtract',
                         verbose=self.verbose
                     ),
             #         DropCollinearFeatures(verbose=self.verbose)

@@ -3,6 +3,7 @@ import itertools
 
 from typing import Any
 from typing import Dict
+from typing import List
 from typing import Type
 from typing import Union
 
@@ -238,38 +239,36 @@ class ArithmeticalFeatures(BasePreprocessor):
     --------
     >>> import numpy as np
     >>> from automllib.preprocessing import ArithmeticalFeatures
-    >>> pre = ArithmeticalFeatures()
+    >>> pre = ArithmeticalFeatures(operand=['add', 'subtract'])
     >>> X = [[1, 1, 100], [2, 2, 10], [1, 1, 1], [1, 1, np.nan]]
     >>> pre.fit_transform(X)
-    array([[  0., -99., -99.],
-           [  0.,  -8.,  -8.],
-           [  0.,   0.,   0.],
-           [  0.,  nan,  nan]])
+    array([[  1.,   1., 100.,  2., 101., 101.,  0., -99., -99.],
+           [  2.,   2.,  10.,  4.,  12.,  12.,  0.,  -8.,  -8.],
+           [  1.,   1.,   1.,  2.,   2.,   2.,  0.,   0.,   0.],
+           [  1.,   1.,  nan,  2.,  nan,  nan,  0.,  nan,  nan]])
     """
 
     def __init__(
         self,
         dtype: Union[str, Type] = None,
         n_jobs: int = 1,
-        operand: str = 'subtract',
+        include_X: bool = True,
+        operand: Union[str, List[str]] = 'multiply',
         verbose: int = 0
     ) -> None:
         super().__init__(dtype=dtype, n_jobs=n_jobs, verbose=verbose)
 
+        self.include_X = include_X
         self.operand = operand
 
     def _check_params(self) -> None:
-        if self.operand not in ['add', 'subtract', 'multiply', 'divide']:
-            raise ValueError(f'Unknown operand: {self.operand}')
+        pass
 
     def _fit(
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'ArithmeticalFeatures':
-        self.n_output_features_ = \
-            self.n_features_ * (self.n_features_ - 1) // 2
-
         return self
 
     def _more_tags(self) -> Dict[str, Any]:
@@ -286,14 +285,28 @@ class ArithmeticalFeatures(BasePreprocessor):
                 dtype = X.dtype
 
         n_samples, _ = X.shape
-        Xt = np.empty((n_samples, self.n_output_features_), dtype=dtype)
-        iterable = itertools.combinations(range(self.n_features_), 2)
-        func = getattr(np, self.operand)
+        n_combinations = self.n_features_ * (self.n_features_ - 1) // 2
+        Xs = []
 
-        for j, (k, l) in enumerate(iterable):
-            Xt[:, j] = func(X[:, k], X[:, l])
+        if self.include_X:
+            Xs.append(X)
 
-        return Xt
+        if isinstance(self.operand, str):
+            operands = [self.operand]
+        else:
+            operands = self.operand
+
+        for operand in operands: 
+            Xt = np.empty((n_samples, n_combinations), dtype=dtype)
+            iterable = itertools.combinations(range(self.n_features_), 2)
+            func = getattr(np, operand)
+
+            for j, (k, l) in enumerate(iterable):
+                Xt[:, j] = func(X[:, k], X[:, l])
+
+            Xs.append(Xt)
+
+        return np.concatenate(Xs, axis=1)
 
 
 class TextStatistics(BasePreprocessor):
