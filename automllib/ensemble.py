@@ -267,10 +267,12 @@ class BaseLGBMModelCV(BaseEstimator):
         )
 
         if self.study is None:
+            pruner = optuna.pruners.SuccessiveHalvingPruner()
             sampler = optuna.samplers.TPESampler(seed=seed)
 
             self.study_ = optuna.create_study(
                 direction=direction,
+                pruner=pruner,
                 sampler=sampler
             )
 
