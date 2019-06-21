@@ -1,5 +1,3 @@
-import copy
-
 from abc import abstractmethod
 from typing import Any
 from typing import Callable
@@ -35,23 +33,27 @@ class EnvExtractionCallback(object):
 class Objective(object):
     def __init__(
         self,
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE,
         params: Dict[str, Any],
-        dataset: lgb.Dataset,
         categorical_feature: Union[str, List[Union[int, str]]] = 'auto',
         cv: BaseCrossValidator = None,
         metric: str = 'l2',
         n_estimators: int = 100,
         n_iter_no_change: int = None,
+        sample_weight: ONE_DIM_ARRAYLIKE_TYPE = None,
         seed: int = 0
     ) -> None:
         self.categorical_feature = categorical_feature
         self.cv = cv
-        self.dataset = dataset
         self.metric = metric
         self.n_estimators = n_estimators
         self.n_iter_no_change = n_iter_no_change
         self.params = params
+        self.sample_weight = sample_weight
         self.seed = seed
+        self.X = X
+        self.y = y
 
     def __call__(self, trial: optuna.trial.Trial) -> float:
         params = self.params.copy()
@@ -71,7 +73,6 @@ class Objective(object):
             'subsample':
                 trial.suggest_uniform('subsample', 0.1, 1.0)
         }
-        train_set = copy.copy(self.dataset)
         extraction_callback = EnvExtractionCallback()
         pruning_callback = optuna.integration.LightGBMPruningCallback(
             trial,
@@ -80,9 +81,15 @@ class Objective(object):
 
         params.update(other_params)
 
+        dataset = lgb.Dataset(
+            self.X,
+            label=self.y,
+            params=params,
+            weight=self.sample_weight
+        )
         eval_hist = lgb.cv(
             params,
-            train_set,
+            dataset,
             callbacks=[extraction_callback, pruning_callback],
             categorical_feature=self.categorical_feature,
             early_stopping_rounds=self.n_iter_no_change,
@@ -104,7 +111,6 @@ class Objective(object):
 
 class BaseLGBMModelCV(BaseEstimator):
     # TODO(Kon): Add `class_weight` into __init__
-    # TODO(Kon): Add `sample_weight` into fit
     # TODO(Kon): Add `groups` into fit
     # TODO(Kon): Search best `boosting_type`
     # TODO(Kon): Search best `min_split_gain`
@@ -220,7 +226,8 @@ class BaseLGBMModelCV(BaseEstimator):
     def _fit(
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
-        y: ONE_DIM_ARRAYLIKE_TYPE
+        y: ONE_DIM_ARRAYLIKE_TYPE,
+        sample_weight: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'LGBMModelCV':
         random_state = check_random_state(self.random_state)
         seed = random_state.randint(0, np.iinfo('int32').max)
@@ -232,7 +239,6 @@ class BaseLGBMModelCV(BaseEstimator):
             'subsample_for_bin': self.subsample_for_bin,
             'verbose': -1
         }
-        dataset = lgb.Dataset(X, label=y)
         classifier = self._estimator_type == 'classifier'
         cv = check_cv(self.cv, y, classifier)
 
@@ -257,20 +263,24 @@ class BaseLGBMModelCV(BaseEstimator):
             params['objective'] = 'regression'
 
         func = Objective(
+            X,
+            y,
             params,
-            dataset,
             categorical_feature=self.categorical_feature,
             cv=cv,
             metric=metric,
             n_estimators=self.n_estimators,
-            n_iter_no_change=self.n_iter_no_change
+            n_iter_no_change=self.n_iter_no_change,
+            sample_weight=sample_weight
         )
 
         if self.study is None:
+            pruner = optuna.pruners.SuccessiveHalvingPruner()
             sampler = optuna.samplers.TPESampler(seed=seed)
 
             self.study_ = optuna.create_study(
                 direction=direction,
+                pruner=pruner,
                 sampler=sampler
             )
 
@@ -301,10 +311,15 @@ class BaseLGBMModelCV(BaseEstimator):
                 seed = random_state.randint(0, np.iinfo('int32').max)
                 params['seed'] = seed
 
-            train_set = copy.copy(dataset)
+            dataset = lgb.Dataset(
+                X,
+                label=y,
+                params=params,
+                weight=sample_weight
+            )
             b = lgb.train(
                 params,
-                train_set,
+                dataset,
                 categorical_feature=self.categorical_feature,
                 num_boost_round=num_boost_round
             )
