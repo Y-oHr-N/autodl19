@@ -11,7 +11,7 @@ import pandas as pd
 
 from sklearn.model_selection import TimeSeriesSplit
 
-from automllib.automl import AutoMLModel
+from automllib.automl import AutoMLClassifier
 
 
 class Model(object):
@@ -30,14 +30,14 @@ class Model(object):
         related_tables = Xs.copy()
         X = related_tables.pop('main')
 
-        self.model_ = AutoMLModel(
-            self.info,
-            related_tables,
+        self.model_ = AutoMLClassifier(
             cv=TimeSeriesSplit(5),
+            info=self.info,
+            related_tables=related_tables,
             shuffle=False
         )
 
-        self.model_.fit(X, y, timeout=timeout)
+        self.model_.fit(X, y)
 
     def predict(self, X, timeout):
         probas = self.model_.predict_proba(X)
