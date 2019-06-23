@@ -108,6 +108,11 @@ class BaseAutoMLModel(BaseEstimator):
         return make_pipeline(
             NAProportionThreshold(verbose=self.verbose),
             FrequencyThreshold(verbose=self.verbose),
+            ModifiedSimpleImputer(
+                n_jobs=self.n_jobs,
+                strategy='constant',
+                verbose=self.verbose
+            ),
             CountEncoder(
                 dtype=self.dtype,
                 n_jobs=self.n_jobs,

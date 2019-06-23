@@ -115,7 +115,7 @@ class CountEncoder(BasePreprocessor):
         n_samples, n_features = X.shape
         Xt = np.empty((n_samples, n_features), dtype=dtype)
         vectorized = np.vectorize(
-            lambda counter, xj: counter.get(xj, 0.0),
+            lambda counter, xj: float(counter.get(xj, np.nan)),
             excluded='counter'
         )
 
