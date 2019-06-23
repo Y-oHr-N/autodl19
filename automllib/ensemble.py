@@ -228,7 +228,7 @@ class BaseLGBMModelCV(BaseEstimator):
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE,
         sample_weight: ONE_DIM_ARRAYLIKE_TYPE = None
-    ) -> 'LGBMModelCV':
+    ) -> 'BaseLGBMModelCV':
         random_state = check_random_state(self.random_state)
         seed = random_state.randint(0, np.iinfo('int32').max)
         params = {
