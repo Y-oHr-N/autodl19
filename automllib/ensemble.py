@@ -294,8 +294,6 @@ class BaseLGBMModelCV(BaseEstimator):
             timeout=self.timeout
         )
 
-        params['n_jobs'] = self.n_jobs
-
         params.update(self.study_.best_params)
 
         if self.n_iter_no_change is None:
