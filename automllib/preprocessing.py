@@ -242,10 +242,10 @@ class ArithmeticalFeatures(BasePreprocessor):
     >>> pre = ArithmeticalFeatures(operand=['add', 'subtract'])
     >>> X = [[1, 1, 100], [2, 2, 10], [1, 1, 1], [1, 1, np.nan]]
     >>> pre.fit_transform(X)
-    array([[  1.,   1., 100.,  2., 101., 101.,  0., -99., -99.],
-           [  2.,   2.,  10.,  4.,  12.,  12.,  0.,  -8.,  -8.],
-           [  1.,   1.,   1.,  2.,   2.,   2.,  0.,   0.,   0.],
-           [  1.,   1.,  nan,  2.,  nan,  nan,  0.,  nan,  nan]])
+    array([[  1.,   1., 100.,   2., 101., 101.,   0., -99., -99.],
+           [  2.,   2.,  10.,   4.,  12.,  12.,   0.,  -8.,  -8.],
+           [  1.,   1.,   1.,   2.,   2.,   2.,   0.,   0.,   0.],
+           [  1.,   1.,  nan,   2.,  nan,  nan,   0.,  nan,  nan]])
     """
 
     def __init__(
