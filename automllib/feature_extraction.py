@@ -42,24 +42,30 @@ class TimeVectorizer(BasePreprocessor):
         self.properties_ = []
 
         for column in X.T:
-            is_nan = pd.isnull(column)
-            duration = (
-                np.max(column[~is_nan]) - np.min(column[~is_nan])
-            ) / np.timedelta64(1, 's')
+            column = pd.Series(column)
+            duration = (column.max() - column.min()).total_seconds()
             properties = []
 
-            if duration > secondsinminute:
+            if duration > secondsinminute \
+                and len(pd.unique(column.dt.second)) > 1:
                 properties.append('second')
-            if duration > secondsinhour:
+            if duration > secondsinhour \
+                and len(pd.unique(column.dt.minute)) > 1:
                 properties.append('minute')
-            if duration > secondsinday:
+            if duration > secondsinday \
+                and len(pd.unique(column.dt.hour)) > 1:
                 properties.append('hour')
-            if duration > secondsinweekday:
+            if duration > secondsinweekday \
+                and len(pd.unique(column.dt.weekday)) > 1:
                 properties.append('weekday')
-            if duration > secondsinmonth:
+            if duration > secondsinmonth \
+                and len(pd.unique(column.dt.day)) > 1:
                 properties.append('day')
             if duration > secondsinyear:
-                properties.extend(['month', 'quarter'])
+                if len(pd.unique(column.dt.month)) > 1:
+                    properties.append('month')
+                if len(pd.unique(column.dt.quarter)) > 1:
+                    properties.append('quarter')
 
             self.properties_.append(properties)
 
