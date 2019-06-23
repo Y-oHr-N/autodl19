@@ -294,13 +294,19 @@ class BaseLGBMModelCV(BaseEstimator):
             timeout=self.timeout
         )
 
+        logger = self._get_logger()
+        best_iteration = self.study_.best_trial.user_attrs['best_iteration']
+        best_score = self.study_.best_value
+
+        logger.info(f'The best iteration is {best_iteration}.')
+        logger.info(f'The best CV score is {best_score:.3f}.')
+
         params.update(self.study_.best_params)
 
         if self.n_iter_no_change is None:
             num_boost_round = self.n_estimators
         else:
-            num_boost_round = \
-                self.study_.best_trial.user_attrs['best_iteration']
+            num_boost_round = best_iteration
 
         self.boosters_ = []
 

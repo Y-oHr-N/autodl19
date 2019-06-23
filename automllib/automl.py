@@ -106,7 +106,6 @@ class AutoMLModel(BaseEstimator):
         y: ONE_DIM_ARRAYLIKE_TYPE,
         timeout: float = None
     ) -> 'AutoMLModel':
-        logger = self._get_logger()
         X = X.sort_values(self.info['time_col'], na_position='first')
         y = y.loc[X.index]
 
@@ -119,9 +118,6 @@ class AutoMLModel(BaseEstimator):
         )
 
         self.model_.fit(X, y)
-
-        logger.info(f'The CV score is {self.best_score_:.3f}.')
-        logger.info(f'The best iteration is {self.model_._final_estimator.best_iteration_}.')
 
         return self
 
