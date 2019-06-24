@@ -10,7 +10,7 @@ from joblib import Memory
 from sklearn.base import ClassifierMixin
 from sklearn.base import RegressorMixin
 from sklearn.compose import make_column_transformer
-from sklearn.impute import MissingIndicator
+# from sklearn.impute import MissingIndicator
 from sklearn.model_selection import BaseCrossValidator
 from sklearn.pipeline import make_union
 
@@ -121,7 +121,7 @@ class BaseAutoMLModel(BaseEstimator):
                         verbose=self.verbose
                     )
                 ),
-                MissingIndicator(error_on_new=False)
+                # MissingIndicator(error_on_new=False)
             )
         )
 
@@ -149,7 +149,7 @@ class BaseAutoMLModel(BaseEstimator):
                         )
                     )
                 ),
-                MissingIndicator(error_on_new=False)
+                # MissingIndicator(error_on_new=False)
             )
         )
 
@@ -169,7 +169,7 @@ class BaseAutoMLModel(BaseEstimator):
                     operand=[],
                     verbose=self.verbose
                 ),
-                MissingIndicator(error_on_new=False)
+                # MissingIndicator(error_on_new=False)
             )
         )
 
