@@ -296,7 +296,7 @@ class ArithmeticalFeatures(BasePreprocessor):
         else:
             operands = self.operand
 
-        for operand in operands: 
+        for operand in operands:
             Xt = np.empty((n_samples, n_combinations), dtype=dtype)
             iterable = itertools.combinations(range(self.n_features_), 2)
             func = getattr(np, operand)
