@@ -83,6 +83,7 @@ class Objective(object):
 
         dataset = lgb.Dataset(
             self.X,
+            categorical_feature=self.categorical_feature,
             label=self.y,
             params=params,
             weight=self.sample_weight
@@ -91,7 +92,6 @@ class Objective(object):
             params,
             dataset,
             callbacks=[extraction_callback, pruning_callback],
-            categorical_feature=self.categorical_feature,
             early_stopping_rounds=self.n_iter_no_change,
             folds=self.cv,
             metrics=self.metric,
@@ -187,7 +187,6 @@ class BaseLGBMModelCV(BaseEstimator):
 
     def __init__(
         self,
-        categorical_feature: Union[str, List[Union[int, str]]] = 'auto',
         cv: Union[int, BaseCrossValidator] = 5,
         importance_type: str = 'split',
         learning_rate: float = 0.1,
@@ -205,7 +204,6 @@ class BaseLGBMModelCV(BaseEstimator):
     ):
         super().__init__(verbose=verbose)
 
-        self.categorical_feature = categorical_feature
         self.cv = cv
         self.importance_type = importance_type
         self.learning_rate = learning_rate
@@ -227,7 +225,8 @@ class BaseLGBMModelCV(BaseEstimator):
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE,
-        sample_weight: ONE_DIM_ARRAYLIKE_TYPE = None
+        sample_weight: ONE_DIM_ARRAYLIKE_TYPE = None,
+        categorical_feature: Union[str, List[Union[int, str]]] = 'auto'
     ) -> 'BaseLGBMModelCV':
         random_state = check_random_state(self.random_state)
         seed = random_state.randint(0, np.iinfo('int32').max)
@@ -266,7 +265,7 @@ class BaseLGBMModelCV(BaseEstimator):
             X,
             y,
             params,
-            categorical_feature=self.categorical_feature,
+            categorical_feature=categorical_feature,
             cv=cv,
             metric=metric,
             n_estimators=self.n_estimators,
@@ -317,6 +316,7 @@ class BaseLGBMModelCV(BaseEstimator):
 
             dataset = lgb.Dataset(
                 X,
+                categorical_feature=categorical_feature,
                 label=y,
                 params=params,
                 weight=sample_weight
@@ -324,7 +324,6 @@ class BaseLGBMModelCV(BaseEstimator):
             b = lgb.train(
                 params,
                 dataset,
-                categorical_feature=self.categorical_feature,
                 num_boost_round=num_boost_round
             )
 
