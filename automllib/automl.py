@@ -98,7 +98,7 @@ class BaseAutoMLModel(BaseEstimator):
             X = X.sort_values(self.info['time_col'], na_position='first')
             y = y.loc[X.index]
 
-        self.model_ = self._make_pipeline()
+        self.model_ = self.make_model()
 
         self.model_.fit(X, y)
 
@@ -108,38 +108,48 @@ class BaseAutoMLModel(BaseEstimator):
         return make_pipeline(
             NAProportionThreshold(verbose=self.verbose),
             FrequencyThreshold(verbose=self.verbose),
-            ModifiedSimpleImputer(
-                n_jobs=self.n_jobs,
-                strategy='constant',
-                verbose=self.verbose
-            ),
-            CountEncoder(
-                dtype=self.dtype,
-                n_jobs=self.n_jobs,
-                verbose=self.verbose
+            make_union(
+                make_pipeline(
+                    ModifiedSimpleImputer(
+                        n_jobs=self.n_jobs,
+                        strategy='constant',
+                        verbose=self.verbose
+                    ),
+                    CountEncoder(
+                        dtype=self.dtype,
+                        n_jobs=self.n_jobs,
+                        verbose=self.verbose
+                    )
+                ),
+                MissingIndicator(error_on_new=False)
             )
         )
 
     def _make_multi_value_categorical_transformer(self) -> BaseEstimator:
         return make_pipeline(
             NAProportionThreshold(verbose=self.verbose),
-            ModifiedSimpleImputer(
-                fill_value='',
-                n_jobs=self.n_jobs,
-                strategy='constant',
-                verbose=self.verbose
-            ),
             make_union(
-                CountEncoder(
-                    dtype=self.dtype,
-                    n_jobs=self.n_jobs,
-                    verbose=self.verbose
+                make_pipeline(
+                    ModifiedSimpleImputer(
+                        fill_value='',
+                        n_jobs=self.n_jobs,
+                        strategy='constant',
+                        verbose=self.verbose
+                    ),
+                    make_union(
+                        CountEncoder(
+                            dtype=self.dtype,
+                            n_jobs=self.n_jobs,
+                            verbose=self.verbose
+                        ),
+                        TextStatistics(
+                            dtype=self.dtype,
+                            n_jobs=self.n_jobs,
+                            verbose=self.verbose
+                        )
+                    )
                 ),
-                TextStatistics(
-                    dtype=self.dtype,
-                    n_jobs=self.n_jobs,
-                    verbose=self.verbose
-                )
+                MissingIndicator(error_on_new=False)
             )
         )
 
@@ -240,21 +250,21 @@ class BaseAutoMLModel(BaseEstimator):
                 f'Unknown _estimator_type: {self._estimator_type_}.'
             )
 
-    def _make_pipeline(self) -> BaseEstimator:
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'non_deterministic': True, 'no_validation': True}
+
+    def make_model(self) -> BaseEstimator:
         return make_pipeline(
             TableJoiner(
                 info=self.info,
                 related_tables=self.related_tables,
                 verbose=self.verbose
             ),
-            self._make_sampler(),
             self._make_mixed_transformer(),
+            self._make_sampler(),
             self._make_model(),
             memory=self.memory
         )
-
-    def _more_tags(self) -> Dict[str, Any]:
-        return {'non_deterministic': True, 'no_validation': True}
 
     def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
         self._check_is_fitted()
