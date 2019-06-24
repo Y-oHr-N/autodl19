@@ -41,32 +41,50 @@ TYPE_MAP = {
 
 def get_feature_names_by_prefix(
     X: TWO_DIM_ARRAYLIKE_TYPE,
-    prefix: str
+    prefix: str,
+    indices: bool = False
 ) -> ONE_DIM_ARRAYLIKE_TYPE:
     is_startwith = X.columns.str.startswith(prefix)
     n_features = is_startwith.sum()
 
     logger.info(f'Number of features starting with {prefix} is {n_features}.')
 
-    return X.columns[is_startwith]
+    if indices:
+        return np.where(is_startwith)[0]
+    else:
+        return X.columns[is_startwith]
 
 
-def get_categorical_feature_names(X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
-    return get_feature_names_by_prefix(X, CATEGORICAL_PREFIX)
+def get_categorical_feature_names(
+    X: TWO_DIM_ARRAYLIKE_TYPE,
+    indices: bool = False
+) -> ONE_DIM_ARRAYLIKE_TYPE:
+    return get_feature_names_by_prefix(X, CATEGORICAL_PREFIX, indices=indices)
 
 
 def get_multi_value_categorical_feature_names(
-    X: TWO_DIM_ARRAYLIKE_TYPE
+    X: TWO_DIM_ARRAYLIKE_TYPE,
+    indices: bool = False
 ) -> ONE_DIM_ARRAYLIKE_TYPE:
-    return get_feature_names_by_prefix(X, MULTI_VALUE_CATEGORICAL_PREFIX)
+    return get_feature_names_by_prefix(
+        X,
+        MULTI_VALUE_CATEGORICAL_PREFIX,
+        indices=indices
+    )
 
 
-def get_numerical_feature_names(X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
-    return get_feature_names_by_prefix(X, NUMERICAL_PREFIX)
+def get_numerical_feature_names(
+    X: TWO_DIM_ARRAYLIKE_TYPE,
+    indices: bool = False
+) -> ONE_DIM_ARRAYLIKE_TYPE:
+    return get_feature_names_by_prefix(X, NUMERICAL_PREFIX, indices=indices)
 
 
-def get_time_feature_names(X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
-    return get_feature_names_by_prefix(X, TIME_PREFIX)
+def get_time_feature_names(
+    X: TWO_DIM_ARRAYLIKE_TYPE,
+    indices: bool = False
+) -> ONE_DIM_ARRAYLIKE_TYPE:
+    return get_feature_names_by_prefix(X, TIME_PREFIX, indices=indices)
 
 
 logger = logging.getLogger(__name__)
