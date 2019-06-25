@@ -10,6 +10,9 @@ import lightgbm as lgb
 import numpy as np
 import optuna
 
+from joblib import delayed
+from joblib import effective_n_jobs
+from joblib import Parallel
 from sklearn.base import ClassifierMixin
 from sklearn.base import RegressorMixin
 from sklearn.model_selection import BaseCrossValidator
@@ -148,12 +151,12 @@ class BaseLGBMModelCV(BaseEstimator):
     def feature_importances_(self) -> ONE_DIM_ARRAYLIKE_TYPE:
         self._check_is_fitted()
 
-        results = []
-
-        for b in self.boosters_:
-            result = b.feature_importance(self.importance_type)
-
-            results.append(result)
+        n_jobs = effective_n_jobs(self.n_jobs)
+        parallel = Parallel(n_jobs=n_jobs)
+        func = delayed(lgb.Booster.feature_importance)
+        results = parallel(
+            func(b, self.importance_type) for b in self.boosters_
+        )
 
         return np.average(results, axis=0)
 
@@ -367,13 +370,10 @@ class LGBMClassifierCV(BaseLGBMModelCV, ClassifierMixin):
     ) -> TWO_DIM_ARRAYLIKE_TYPE:
         self._check_is_fitted()
 
-        results = []
-
-        for b in self.boosters_:
-           result = b.predict(X)
-
-           results.append(result)
-
+        n_jobs = effective_n_jobs(self.n_jobs)
+        parallel = Parallel(n_jobs=n_jobs)
+        func = delayed(lgb.Booster.predict)
+        results = parallel(func(b, X) for b in self.boosters_)
         result = np.average(results, axis=0)
 
         if self.n_classes_ > 2:
@@ -403,11 +403,9 @@ class LGBMRegressorCV(BaseLGBMModelCV, RegressorMixin):
     def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
         self._check_is_fitted()
 
-        results = []
-
-        for b in self.boosters_:
-           result = b.predict(X)
-
-           results.append(result)
+        n_jobs = effective_n_jobs(self.n_jobs)
+        parallel = Parallel(n_jobs=n_jobs)
+        func = delayed(lgb.Booster.predict)
+        results = parallel(func(b, X) for b in self.boosters_)
 
         return np.average(results, axis=0)
