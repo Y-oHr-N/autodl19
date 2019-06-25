@@ -155,8 +155,6 @@ class Objective(object):
     ):
         # type: (...) -> None
 
-        self.X = X
-        self.y = y
         self.cv = cv
         self.enable_pruning = enable_pruning
         self.error_score = error_score
@@ -167,6 +165,8 @@ class Objective(object):
         self.param_distributions = param_distributions
         self.return_train_score = return_train_score
         self.scoring = scoring
+        self.X = X
+        self.y = y
 
     def __call__(self, trial):
         # type: (trial_module.Trial) -> float

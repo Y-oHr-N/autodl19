@@ -44,6 +44,7 @@ def get_feature_names_by_prefix(
     prefix: str,
     indices: bool = False
 ) -> ONE_DIM_ARRAYLIKE_TYPE:
+    logger = logging.getLogger(__name__)
     is_startwith = X.columns.str.startswith(prefix)
     n_features = is_startwith.sum()
 
@@ -87,9 +88,6 @@ def get_time_feature_names(
     return get_feature_names_by_prefix(X, TIME_PREFIX, indices=indices)
 
 
-logger = logging.getLogger(__name__)
-
-
 def join(u, v, v_name, key, type_):
     if type_.split("_")[2] == 'many':
         columns = v.columns.drop(key)
@@ -111,6 +109,7 @@ def temporal_join(u, v, v_name, key, time_col):
         assert len(key) == 1
         key = key[0]
 
+    logger = logging.getLogger(__name__)
     tmp_u = u[[time_col, key]]
     tmp_u = pd.concat([tmp_u, v], keys=['u', 'v'], sort=False)
     tmp_u = tmp_u.sort_values(time_col)
@@ -129,6 +128,7 @@ def temporal_join(u, v, v_name, key, time_col):
 
 
 def dfs(u_name, config, tables, graph):
+    logger = logging.getLogger(__name__)
     u = tables[u_name]
 
     logger.info(f'Enter {u_name}.')

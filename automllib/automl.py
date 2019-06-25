@@ -94,11 +94,21 @@ class BaseAutoMLModel(BaseEstimator):
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE
     ) -> 'BaseAutoMLModel':
-        if self.info is not None and 'time_col' in self.info:
+        if isinstance(self.info, dict) and 'time_col' in self.info:
             X = X.sort_values(self.info['time_col'], na_position='first')
             y = y.loc[X.index]
 
-        self.model_ = self.make_model()
+        self.model_ = make_pipeline(
+            TableJoiner(
+                info=self.info,
+                related_tables=self.related_tables,
+                verbose=self.verbose
+            ),
+            self._make_mixed_transformer(),
+            self._make_sampler(),
+            self._make_model(),
+            memory=self.memory
+        )
 
         self.model_.fit(X, y)
 
@@ -224,7 +234,7 @@ class BaseAutoMLModel(BaseEstimator):
             return None
         else:
             raise ValueError(
-                f'Unknown _estimator_type: {self._estimator_type_}.'
+                f'Unknown _estimator_type: {self._estimator_type}.'
             )
 
     def _make_model(self) -> BaseEstimator:
@@ -247,24 +257,11 @@ class BaseAutoMLModel(BaseEstimator):
             return LGBMRegressorCV(**params)
         else:
             raise ValueError(
-                f'Unknown _estimator_type: {self._estimator_type_}.'
+                f'Unknown _estimator_type: {self._estimator_type}.'
             )
 
     def _more_tags(self) -> Dict[str, Any]:
         return {'non_deterministic': True, 'no_validation': True}
-
-    def make_model(self) -> BaseEstimator:
-        return make_pipeline(
-            TableJoiner(
-                info=self.info,
-                related_tables=self.related_tables,
-                verbose=self.verbose
-            ),
-            self._make_mixed_transformer(),
-            self._make_sampler(),
-            self._make_model(),
-            memory=self.memory
-        )
 
     def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
         self._check_is_fitted()
