@@ -88,7 +88,7 @@ def get_time_feature_names(
     return get_feature_names_by_prefix(X, TIME_PREFIX, indices=indices)
 
 
-def join(u, v, v_name, key, type_):
+def join(u, v, u_name, v_name, key, type_, config):
     if type_.split("_")[2] == 'many':
         columns = v.columns.drop(key)
         func = aggregate_functions(columns)
@@ -98,17 +98,26 @@ def join(u, v, v_name, key, type_):
         )
     else:
         v = v.set_index(key)
-
+    if type_.split("_")[0] == 'many':
+        if u.columns.str.endswith(f'BY({key[0]})').sum() == 0:
+            raw_columns = list(config['tables'][u_name]['type'].keys())
+            func = aggregate_functions(u[raw_columns].drop(columns=key))
+            intermediate = u.groupby(key).agg(func)
+            intermediate.columns = intermediate.columns.map(
+                lambda a: f"{NUMERICAL_PREFIX}{a[1].upper()}({a[0]})_BY({key[0]})"
+            )
+            intermediate = intermediate.reset_index()
+            u = pd.merge(u, intermediate, how='left', on=key)
     v.columns = v.columns.map(lambda a: f"{a.split('_', 1)[0]}_{v_name}.{a}")
 
     return u.join(v, on=key)
 
 
-def temporal_join(u, v, v_name, key, time_col):
+def temporal_join(u, v, u_name, v_name, key, type_, config):
     if isinstance(key, list):
         assert len(key) == 1
         key = key[0]
-
+    time_col = config['time_col']
     logger = logging.getLogger(__name__)
     tmp_u = u[[time_col, key]]
     tmp_u = pd.concat([tmp_u, v], keys=['u', 'v'], sort=False)
@@ -119,6 +128,16 @@ def temporal_join(u, v, v_name, key, time_col):
         lambda a: f"{a}_NEAREST({v_name})" if not (a == key or a == time_col) else a
     )
     tmp_u = tmp_u.drop(columns=[key, time_col])
+    if type_.split("_")[0] == 'many':
+        if u.columns.str.endswith(f'BY({key[0]})').sum() == 0:
+            raw_columns = list(config['tables'][u_name]['type'].keys())
+            func = aggregate_functions(u[raw_columns].drop(columns=key))
+            intermediate = u.groupby(key).agg(func)
+            intermediate.columns = intermediate.columns.map(
+                lambda a: f"{NUMERICAL_PREFIX}{a[1].upper()}({a[0]})_BY({key[0]})"
+            )
+            intermediate = intermediate.reset_index()
+            u = pd.merge(u, intermediate, how='left', on=key)
 
     if tmp_u.empty:
         logger.info('Return u because temp_u is empty.')
@@ -148,10 +167,10 @@ def dfs(u_name, config, tables, graph):
 
         if config['time_col'] in u and config['time_col'] in v:
             logger.info(f'Temporal Join {u_name} <--{type_}--t {v_name}.')
-            u = temporal_join(u, v, v_name, key, config['time_col'])
+            u = temporal_join(u, v, u_name, v_name, key, type_, config)
         else:
             logger.info(f'Join {u_name} <--{type_}--nt {v_name}.')
-            u = join(u, v, v_name, key, type_)
+            u = join(u, v, u_name, v_name, key, type_, config)
 
         del v
 
@@ -166,29 +185,29 @@ def aggregate_functions(
     AFS_MAP = {
         CATEGORICAL_TYPE: [
             'count',
-            'last',
+            #'last',
             pd.Series.nunique
         ],
         MULTI_VALUE_CATEGORICAL_TYPE: [
             'count',
-            'last',
+            #'last',
             pd.Series.nunique
         ],
         NUMERICAL_TYPE: [
             'count',
-            'last',
-            'min',
-            'max',
+            #'last',
+            #'min',
+            #'max',
             'mean',
             # 'median',
-            'sum',
-            'std',
-            'skew',
-            kurtosis
+            #'sum',
+            #'std',
+            #'skew',
+            #kurtosis
         ],
         TIME_TYPE: [
             'count',
-            'last'
+            #'last'
         ]
     }
     func = {}
