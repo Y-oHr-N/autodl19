@@ -7,6 +7,7 @@ os.system('pip3 install -q optuna')
 os.system('pip3 install -q pandas==0.24.2')
 os.system('pip3 install -q scikit-learn>=0.21.0')
 
+import numpy as np
 import pandas as pd
 
 from sklearn.model_selection import TimeSeriesSplit
@@ -30,6 +31,13 @@ class Model(object):
         related_tables = Xs.copy()
         X = related_tables.pop('main')
 
+        if isinstance(self.info, dict) and 'time_col' in self.info:
+            X = X.sort_values(self.info['time_col'], na_position='first')
+            y = y.loc[X.index]
+
+        n_samples, _ = X.shape
+        sample_weight = np.arange(n_samples - 1, -1, -1) ** (-0.5)
+
         self.model_ = AutoMLClassifier(
             cv=TimeSeriesSplit(5),
             info=self.info,
@@ -37,7 +45,7 @@ class Model(object):
             shuffle=False
         )
 
-        self.model_.fit(X, y)
+        self.model_.fit(X, y, sample_weight=sample_weight)
 
     def predict(self, X, timeout):
         probas = self.model_.predict_proba(X)
