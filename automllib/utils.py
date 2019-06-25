@@ -11,7 +11,7 @@ class Timeit(object):
         self.logger = logger
 
     def __call__(self, func: Callable) -> Callable:
-        def wrapper(*args: Tuple[Any], **kwargs: Any) -> Any:
+        def wrapper(*args: Tuple, **kwargs: Any) -> Any:
             if self.logger is None:
                 logger = logging.getLogger(__name__)
             else:
@@ -20,6 +20,9 @@ class Timeit(object):
             logger.info(f'==> Start {func}.')
 
             timer = Timer()
+
+            timer.start()
+
             ret = func(*args, **kwargs)
             elapsed_time = timer.get_elapsed_time()
 
@@ -34,10 +37,8 @@ class Timer(object):
     def __init__(self, time_budget: float = None) -> None:
         self.time_budget = time_budget
 
-        self._start_time = time.perf_counter()
-
     def get_elapsed_time(self) -> float:
-        return time.perf_counter() - self._start_time
+        return time.perf_counter() - self.start_time_
 
     def get_remaining_time(self) -> float:
         if self.time_budget is None:
@@ -50,3 +51,6 @@ class Timer(object):
     def check_remaining_time(self) -> None:
         if self.get_remaining_time() == 0.0:
             raise RuntimeError('Execution time limit has been exceeded.')
+
+    def start(self) -> None:
+        self.start_time_ = time.perf_counter()

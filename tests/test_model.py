@@ -145,6 +145,9 @@ def test_model() -> None:
         logger.info(f'Loaded data from {path.name}.')
 
         timer = Timer(info['time_budget'])
+
+        timer.start()
+
         model = Model(info)
 
         model.fit(train_data, train_label, timer.get_remaining_time())
