@@ -186,15 +186,17 @@ def aggregate_functions(
         CATEGORICAL_TYPE: [
             'count',
             #'last',
-            pd.Series.nunique
+            'nunique'
+            #pd.Series.nunique
         ],
         MULTI_VALUE_CATEGORICAL_TYPE: [
             'count',
             #'last',
-            pd.Series.nunique
+            'nunique'
+            #pd.Series.nunique
         ],
         NUMERICAL_TYPE: [
-            'count',
+            #'count',
             #'last',
             #'min',
             #'max',
