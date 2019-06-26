@@ -202,12 +202,13 @@ def aggregate_functions(
             'mean',
         #     'median',
         #     'sum',
-            'std',
+        #     'std',
         #     'skew',
         #     kurtosis
         ],
         TIME_TYPE: [
         #     'count'
+            lambda x: (x.iloc[-1] - x.iloc[0]).total_seconds()
         ]
     }
     func = {}
@@ -215,12 +216,12 @@ def aggregate_functions(
     c_feature_names = get_categorical_feature_names(X)
     # m_feature_names = get_multi_value_categorical_feature_names(X)
     n_feature_names = get_numerical_feature_names(X)
-    # t_feature_names = get_time_feature_names(X)
+    t_feature_names = get_time_feature_names(X)
 
     func.update({name: AFS_MAP[CATEGORICAL_TYPE] for name in c_feature_names})
     # func.update({name: AFS_MAP[MULTI_VALUE_CATEGORICAL_TYPE] for name in m_feature_names})
     func.update({name: AFS_MAP[NUMERICAL_TYPE] for name in n_feature_names})
-    # func.update({name: AFS_MAP[TIME_TYPE] for name in t_feature_names})
+    func.update({name: AFS_MAP[TIME_TYPE] for name in t_feature_names})
 
     return func
 
