@@ -35,9 +35,6 @@ class Model(object):
             X = X.sort_values(self.info['time_col'], na_position='first')
             y = y.loc[X.index]
 
-        n_samples, _ = X.shape
-        sample_weight = np.arange(n_samples - 1, -1, -1) ** (-0.5)
-
         self.model_ = AutoMLClassifier(
             cv=TimeSeriesSplit(5),
             info=self.info,
@@ -45,7 +42,7 @@ class Model(object):
             shuffle=False
         )
 
-        self.model_.fit(X, y, sample_weight=sample_weight)
+        self.model_.fit(X, y)
 
     def predict(self, X, timeout):
         probas = self.model_.predict_proba(X)
