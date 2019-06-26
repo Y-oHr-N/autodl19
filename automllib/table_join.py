@@ -189,13 +189,13 @@ def aggregate_functions(
 ) -> Dict[str, List[Union[str, Callable]]]:
     AFS_MAP = {
         CATEGORICAL_TYPE: [
-            'count',
+            #'count',
             #'last',
             'nunique'
             #pd.Series.nunique
         ],
         MULTI_VALUE_CATEGORICAL_TYPE: [
-            'count',
+            #'count',
             #'last',
             'nunique'
             #pd.Series.nunique
