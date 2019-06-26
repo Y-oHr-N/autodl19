@@ -306,38 +306,63 @@ class BaseLGBMModelCV(BaseEstimator):
         params.update(self.study_.best_params)
 
         if self.n_iter_no_change is None:
-            num_boost_round = self.n_estimators
+            n_estimators = self.n_estimators
         else:
-            num_boost_round = best_iteration
+            n_estimators = best_iteration
 
-        self.boosters_ = []
+        n_jobs = effective_n_jobs(self.n_jobs)
+        parallel = Parallel(n_jobs=n_jobs)
+        func = delayed(self._parallel_refit_booster)
 
-        for i in range(self.n_seeds):
-            if self.n_seeds > 1:
-                seed = random_state.randint(0, np.iinfo('int32').max)
-                params['seed'] = seed
-
-            dataset = lgb.Dataset(
+        self.boosters_ = parallel(
+            func(
                 X,
-                categorical_feature=categorical_feature,
-                label=y,
-                params=params,
-                weight=sample_weight
-            )
-            b = lgb.train(
+                y,
                 params,
-                dataset,
-                num_boost_round=num_boost_round
-            )
-
-            b.free_dataset()
-
-            self.boosters_.append(b)
+                categorical_feature,
+                n_estimators,
+                random_state,
+                sample_weight
+            ) for _ in range(self.n_seeds)
+        )
 
         return self
 
     def _more_tags(self) -> Dict[str, Any]:
         return {'non_deterministic': True, 'no_validation': True}
+
+    def _parallel_refit_booster(
+        self,
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE,
+        params: Dict[str, Any],
+        categorical_feature: Union[str, List[Union[int, str]]],
+        n_estimators: int,
+        random_state: np.random.RandomState,
+        sample_weight: ONE_DIM_ARRAYLIKE_TYPE
+    ) -> lgb.Booster:
+        params = params.copy()
+
+        if self.n_seeds > 1:
+            seed = random_state.randint(0, np.iinfo('int32').max)
+            params['seed'] = seed
+
+        dataset = lgb.Dataset(
+            X,
+            categorical_feature=categorical_feature,
+            label=y,
+            params=params,
+            weight=sample_weight
+        )
+        booster = lgb.train(
+            params,
+            dataset,
+            num_boost_round=n_estimators
+        )
+
+        booster.free_dataset()
+
+        return booster
 
     @abstractmethod
     def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
