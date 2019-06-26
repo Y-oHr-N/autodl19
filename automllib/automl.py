@@ -60,7 +60,7 @@ class BaseAutoMLModel(BaseEstimator):
         n_iter_no_change: int = 10,
         n_jobs: int = -1,
         n_seeds: int = 10,
-        n_trials: int = 100,
+        n_trials: int = 10,
         random_state: Union[int, np.random.RandomState] = 0,
         related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE] = None,
         sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
