@@ -65,6 +65,7 @@ class BaseAutoMLModel(BaseEstimator):
         related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE] = None,
         sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
         shuffle: bool = True,
+        subsample: Union[int, float] = 1_000,
         timeout: float = None,
         verbose: int = 1
     ) -> None:
@@ -83,6 +84,7 @@ class BaseAutoMLModel(BaseEstimator):
         self.random_state = random_state
         self.related_tables = related_tables
         self.sampling_strategy = sampling_strategy
+        self.subsample = subsample
         self.shuffle = shuffle
         self.timeout = timeout
 
@@ -176,7 +178,10 @@ class BaseAutoMLModel(BaseEstimator):
                 verbose=self.verbose
             ),
             Clip(n_jobs=self.n_jobs, verbose=self.verbose),
-            DropCollinearFeatures(verbose=self.verbose),
+            DropCollinearFeatures(
+                subsample=self.subsample,
+                verbose=self.verbose
+            ),
             make_union(
                 ArithmeticalFeatures(
                     dtype=self.dtype,

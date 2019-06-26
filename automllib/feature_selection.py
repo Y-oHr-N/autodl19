@@ -29,9 +29,17 @@ class DropCollinearFeatures(BaseSelector):
     (4, 2)
     """
 
-    def __init__(self, threshold: float = 0.95, verbose: int = 0) -> None:
+    def __init__(
+        self,
+        random_state: Union[int, np.random.RandomState] = None,
+        subsample: Union[int, float] = 1.0,
+        threshold: float = 0.95,
+        verbose: int = 0
+    ) -> None:
         super().__init__(verbose=verbose)
 
+        self.random_state = random_state
+        self.subsample = subsample
         self.threshold = threshold
 
     def _check_params(self) -> None:
@@ -42,7 +50,18 @@ class DropCollinearFeatures(BaseSelector):
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'DropCollinearFeatures':
+        random_state = check_random_state(self.random_state)
         X = X.astype('float64')
+        n_samples, _ = X.shape
+
+        if isinstance(self.subsample, int):
+            max_samples = self.subsample
+        else:
+            max_samples = int(self.subsample * n_samples)
+
+        if max_samples < n_samples:
+            indices = random_state.choice(n_samples, max_samples, replace=False)
+            X = X[indices]
 
         self.corr_ = pd._libs.algos.nancorr(X)
 
