@@ -94,8 +94,7 @@ def join(u, v, u_name, v_name, key, type_, config):
         key = key[0]
 
     if type_.split("_")[2] == 'many':
-        columns = v.columns.drop(key)
-        func = aggregate_functions(columns)
+        func = aggregate_functions(v.drop(key, axis=1))
         v = v.groupby(key).agg(func)
         v.columns = v.columns.map(
             lambda a: f"{NUMERICAL_PREFIX}{a[1].upper()}({a[0]})"

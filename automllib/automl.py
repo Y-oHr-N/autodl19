@@ -39,15 +39,15 @@ from .under_sampling import ModifiedRandomUnderSampler
 class BaseAutoMLModel(BaseEstimator):
     @property
     def best_iteration_(self) -> int:
-        return self.model_._final_estimator.best_iteration_
+        return self.model_.best_iteration_
 
     @property
     def best_params_(self) -> Dict[str, Any]:
-        return self.model_._final_estimator.best_params_
+        return self.model_.best_params_
 
     @property
     def best_score_(self) -> float:
-        return self.model_._final_estimator.best_score_
+        return self.model_.best_score_
 
     def __init__(
         self,
@@ -92,25 +92,30 @@ class BaseAutoMLModel(BaseEstimator):
     def _fit(
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
-        y: ONE_DIM_ARRAYLIKE_TYPE
+        y: ONE_DIM_ARRAYLIKE_TYPE,
+        sample_weight: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'BaseAutoMLModel':
-        if isinstance(self.info, dict) and 'time_col' in self.info:
-            X = X.sort_values(self.info['time_col'], na_position='first')
-            y = y.loc[X.index]
-
-        self.model_ = make_pipeline(
-            TableJoiner(
-                info=self.info,
-                related_tables=self.related_tables,
-                verbose=self.verbose
-            ),
-            self._make_mixed_transformer(),
-            self._make_sampler(),
-            self._make_model(),
-            memory=self.memory
+        self.joiner_ = TableJoiner(
+            info=self.info,
+            related_tables=self.related_tables,
+            verbose=self.verbose
         )
+        self.engineer_ = self._make_mixed_transformer()
+        self.sampler_ = self._make_sampler()
+        self.model_ = self._make_model()
 
-        self.model_.fit(X, y)
+        X = self.joiner_.fit_transform(X)
+        X = self.engineer_.fit_transform(X)
+
+        if sample_weight is None:
+            n_samples, _ = X.shape
+            sample_weight = np.ones(n_samples)
+
+        if self.sampler_ is not None:
+            X, y = self.sampler_.fit_resample(X, y)
+            sample_weight = sample_weight[self.sampler_.sample_indices_]
+
+        self.model_.fit(X, y, sample_weight=sample_weight)
 
         return self
 
@@ -266,6 +271,9 @@ class BaseAutoMLModel(BaseEstimator):
     def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
         self._check_is_fitted()
 
+        X = self.joiner_.transform(X)
+        X = self.engineer_.transform(X)
+
         return self.model_.predict(X)
 
 
@@ -275,6 +283,9 @@ class AutoMLClassifier(BaseAutoMLModel, ClassifierMixin):
         X: TWO_DIM_ARRAYLIKE_TYPE
     ) -> ONE_DIM_ARRAYLIKE_TYPE:
         self._check_is_fitted()
+
+        X = self.joiner_.transform(X)
+        X = self.engineer_.transform(X)
 
         return self.model_.predict_proba(X)
 
