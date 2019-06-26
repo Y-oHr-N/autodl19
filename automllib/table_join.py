@@ -90,7 +90,6 @@ def get_time_feature_names(
 
 def join(u, v, v_name, key, type_):
     if type_.split("_")[2] == 'many':
-        columns = v.columns.drop(key)
         func = aggregate_functions(v.drop(key, axis=1))
         v = v.groupby(key).agg(func)
         v.columns = v.columns.map(
