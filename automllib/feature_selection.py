@@ -77,15 +77,15 @@ class DropDriftFeatures(BaseSelector):
     def __init__(
         self,
         alpha: float = 0.05,
+        max_samples: int = 100_000,
         random_state: Union[int, np.random.RandomState] = None,
-        size: int = 100,
         verbose: int = 0
     ) -> None:
         super().__init__(verbose=verbose)
 
         self.alpha = alpha
+        self.max_samples = max_samples
         self.random_state = random_state
-        self.size = size
 
     def _check_params(self) -> None:
         pass
@@ -103,6 +103,10 @@ class DropDriftFeatures(BaseSelector):
 
         X_test, _ = self._check_X_y(X_test)
         random_state = check_random_state(self.random_state)
+        train_size, _ = X.shape
+        train_size = min(train_size, self.max_samples)
+        test_size, _ = X_test.shape
+        test_size = min(test_size, self.max_samples)
 
         self.pvalues_ = np.empty(self.n_features_)
 
@@ -112,9 +116,9 @@ class DropDriftFeatures(BaseSelector):
             is_nan = pd.isnull(column)
             is_nan_test = pd.isnull(column_test)
             train = np.where(~is_nan)[0]
-            train = random_state.choice(train, size=self.size)
+            train = random_state.choice(train, size=train_size)
             test = np.where(~is_nan_test)[0]
-            test = random_state.choice(test, size=self.size)
+            test = random_state.choice(test, size=test_size)
             column = safe_indexing(column, train)
             column_test = safe_indexing(column_test, test)
 
