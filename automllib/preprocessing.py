@@ -292,27 +292,26 @@ class ArithmeticalFeatures(BasePreprocessor):
 
         n_samples, _ = X.shape
         n_combinations = self.n_features_ * (self.n_features_ - 1) // 2
-        Xs = []
-
-        if self.include_X:
-            Xs.append(X)
 
         if isinstance(self.operand, str):
             operands = [self.operand]
         else:
             operands = self.operand
 
-        for operand in operands:
-            Xt = np.empty((n_samples, n_combinations), dtype=dtype)
+        n_operands = len(operands)
+        Xt = np.empty((n_samples, n_operands * n_combinations), dtype=dtype)
+
+        for i, operand in enumerate(operands):
             iterable = itertools.combinations(range(self.n_features_), 2)
             func = getattr(np, operand)
 
             for j, (k, l) in enumerate(iterable):
-                Xt[:, j] = func(X[:, k], X[:, l])
+                Xt[:, i * n_combinations + j] = func(X[:, k], X[:, l])
 
-            Xs.append(Xt)
+        if self.include_X:
+            Xt = np.concatenate([X, Xt], axis=1)
 
-        return np.concatenate(Xs, axis=1)
+        return Xt
 
 
 class TextStatistics(BasePreprocessor):
