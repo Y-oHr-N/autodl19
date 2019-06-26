@@ -272,7 +272,11 @@ class ArithmeticalFeatures(BasePreprocessor):
         return self
 
     def _more_tags(self) -> Dict[str, Any]:
-        return {'allow_nan': True, 'stateless': True}
+        return {
+            'allow_nan': True,
+            'stateless': True,
+            'X_types': ['2darray', 'str']
+        }
 
     def _parallel_transform(
         self,
@@ -281,8 +285,10 @@ class ArithmeticalFeatures(BasePreprocessor):
         dtype = self.dtype
 
         if dtype is None:
-            if X.dtype.kind in ('f', 'i', 'u'):
+            if X.dtype.kind in ('f', 'i', 'O', 'u'):
                 dtype = X.dtype
+            else:
+                dtype = 'float64'
 
         n_samples, _ = X.shape
         n_combinations = self.n_features_ * (self.n_features_ - 1) // 2
