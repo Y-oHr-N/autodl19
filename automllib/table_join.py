@@ -89,6 +89,10 @@ def get_time_feature_names(
 
 
 def join(u, v, u_name, v_name, key, type_, config):
+    if isinstance(key, list):
+        assert len(key) == 1
+        key = key[0]
+
     if type_.split("_")[2] == 'many':
         columns = v.columns.drop(key)
         func = aggregate_functions(columns)
@@ -99,14 +103,15 @@ def join(u, v, u_name, v_name, key, type_, config):
     else:
         v = v.set_index(key)
     if type_.split("_")[0] == 'many':
-        if u.columns.str.endswith(f'BY({key[0]})').sum() == 0:
+        if u.columns.str.endswith(f'BY({key})').sum() == 0:
             raw_columns = list(config['tables'][u_name]['type'].keys())
             func = aggregate_functions(u[raw_columns].drop(columns=key))
             intermediate = u.groupby(key).agg(func)
             intermediate.columns = intermediate.columns.map(
-                lambda a: f"{NUMERICAL_PREFIX}{a[1].upper()}({a[0]})_BY({key[0]})"
+                lambda a: f"{NUMERICAL_PREFIX}{a[1].upper()}({a[0]})_BY({key})"
             )
             intermediate = intermediate.reset_index()
+            print(intermediate.head())
             u = pd.merge(u, intermediate, how='left', on=key)
     v.columns = v.columns.map(lambda a: f"{a.split('_', 1)[0]}_{v_name}.{a}")
 
@@ -129,16 +134,16 @@ def temporal_join(u, v, u_name, v_name, key, type_, config):
     )
     tmp_u = tmp_u.drop(columns=[key, time_col])
     if type_.split("_")[0] == 'many':
-        if u.columns.str.endswith(f'BY({key[0]})').sum() == 0:
+        if u.columns.str.endswith(f'BY({key})').sum() == 0:
             raw_columns = list(config['tables'][u_name]['type'].keys())
             func = aggregate_functions(u[raw_columns].drop(columns=key))
             intermediate = u.groupby(key).agg(func)
             intermediate.columns = intermediate.columns.map(
-                lambda a: f"{NUMERICAL_PREFIX}{a[1].upper()}({a[0]})_BY({key[0]})"
+                lambda a: f"{NUMERICAL_PREFIX}{a[1].upper()}({a[0]})_BY({key})"
             )
             intermediate = intermediate.reset_index()
             u = pd.merge(u, intermediate, how='left', on=key)
-
+            print(intermediate.head())
     if tmp_u.empty:
         logger.info('Return u because temp_u is empty.')
         return u
@@ -173,7 +178,7 @@ def dfs(u_name, config, tables, graph):
             u = join(u, v, u_name, v_name, key, type_, config)
 
         del v
-
+    print(u.head())
     logger.info(f'Leave {u_name}.')
 
     return u
