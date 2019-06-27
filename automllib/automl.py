@@ -287,6 +287,20 @@ class BaseAutoMLModel(BaseEstimator):
 
 
 class AutoMLClassifier(BaseAutoMLModel, ClassifierMixin):
+    """
+
+    Examples
+    --------
+    >>> from sklearn.datasets import load_iris
+    >>> from automllib.automl import AutoMLClassifier
+    >>> clf = AutoMLClassifier(n_iter_no_change=10, random_state=0)
+    >>> X, y = load_iris(return_X_y=True)
+    >>> clf.fit(X, y)
+    AutoMLClassifier(...)
+    >>> clf.score(X, y)
+    0.9...
+    """
+
     def predict_proba(
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE
@@ -300,4 +314,16 @@ class AutoMLClassifier(BaseAutoMLModel, ClassifierMixin):
 
 
 class AutoMLRegressor(BaseAutoMLModel, RegressorMixin):
-    pass
+    """
+
+    Examples
+    --------
+    >>> from sklearn.datasets import load_boston
+    >>> from automllib.automl import AutoMLRegressor
+    >>> reg = AutoMLRegressor(n_iter_no_change=10, random_state=0)
+    >>> X, y = load_boston(return_X_y=True)
+    >>> reg.fit(X, y)
+    AutoMLRegressor(...)
+    >>> reg.score(X, y)
+    0.9...
+    """

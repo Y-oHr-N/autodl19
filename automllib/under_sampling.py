@@ -13,7 +13,7 @@ from .base import TWO_DIM_ARRAYLIKE_TYPE
 
 
 class ModifiedRandomUnderSampler(BaseSampler):
-    """
+    """Under-sample the majority class(es) by randomly picking samples.
 
     Examples
     --------
