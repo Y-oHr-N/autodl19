@@ -785,7 +785,7 @@ class OptunaSearchCV(BaseEstimator):
         return self
 
     def _more_tags(self):
-        # type () -> Dict[str, bool]
+        # type: () -> Dict[str, bool]
 
         return {'non_deterministic': True, 'no_validation': True}
 
