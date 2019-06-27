@@ -4,6 +4,7 @@ from typing import Type
 from typing import Union
 
 import numpy as np
+import optuna
 
 from imblearn.pipeline import make_pipeline
 from joblib import Memory
@@ -65,6 +66,7 @@ class BaseAutoMLModel(BaseEstimator):
         related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE] = None,
         sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
         shuffle: bool = True,
+        study: optuna.study.Study = None,
         subsample: Union[int, float] = 1_000,
         timeout: float = None,
         verbose: int = 1
@@ -84,6 +86,7 @@ class BaseAutoMLModel(BaseEstimator):
         self.random_state = random_state
         self.related_tables = related_tables
         self.sampling_strategy = sampling_strategy
+        self.study = study
         self.subsample = subsample
         self.shuffle = shuffle
         self.timeout = timeout
@@ -257,6 +260,7 @@ class BaseAutoMLModel(BaseEstimator):
             'n_seeds': self.n_seeds,
             'n_trials': self.n_trials,
             'random_state': self.random_state,
+            'study': self.study,
             'timeout': self.timeout,
             'verbose': self.verbose
         }
