@@ -57,34 +57,83 @@ def get_feature_names_by_prefix(
 
 def get_categorical_feature_names(
     X: TWO_DIM_ARRAYLIKE_TYPE,
+    method: str = 'prefix',
     indices: bool = False
 ) -> ONE_DIM_ARRAYLIKE_TYPE:
-    return get_feature_names_by_prefix(X, CATEGORICAL_PREFIX, indices=indices)
+    if method == 'prefix':
+        return get_feature_names_by_prefix(
+            X,
+            CATEGORICAL_PREFIX,
+            indices=indices
+        )
+
+    elif method == 'dtype':
+        X = X.select_dtypes('category')
+
+        return X.columns
+
+    else:
+        raise ValueError(f'Unknown method: {method}.')
 
 
 def get_multi_value_categorical_feature_names(
     X: TWO_DIM_ARRAYLIKE_TYPE,
+    method: str = 'prefix',
     indices: bool = False
 ) -> ONE_DIM_ARRAYLIKE_TYPE:
-    return get_feature_names_by_prefix(
-        X,
-        MULTI_VALUE_CATEGORICAL_PREFIX,
-        indices=indices
-    )
+    if method == 'prefix':
+        return get_feature_names_by_prefix(
+            X,
+            MULTI_VALUE_CATEGORICAL_PREFIX,
+            indices=indices
+        )
+
+    elif method == 'dtype':
+        X = X.select_dtypes('object')
+
+        return X.columns
+
+    else:
+        raise ValueError(f'Unknown method: {method}.')
 
 
 def get_numerical_feature_names(
     X: TWO_DIM_ARRAYLIKE_TYPE,
+    method: str = 'prefix',
     indices: bool = False
 ) -> ONE_DIM_ARRAYLIKE_TYPE:
-    return get_feature_names_by_prefix(X, NUMERICAL_PREFIX, indices=indices)
+    if method == 'prefix':
+        return get_feature_names_by_prefix(
+            X,
+            NUMERICAL_PREFIX,
+            indices=indices
+        )
+
+    elif method == 'dtype':
+        X = X.select_dtypes('number')
+
+        return X.columns
+
+    else:
+        raise ValueError(f'Unknown method: {method}.')
 
 
 def get_time_feature_names(
     X: TWO_DIM_ARRAYLIKE_TYPE,
+    method: str = 'prefix',
     indices: bool = False
 ) -> ONE_DIM_ARRAYLIKE_TYPE:
-    return get_feature_names_by_prefix(X, TIME_PREFIX, indices=indices)
+
+    if method == 'prefix':
+        return get_feature_names_by_prefix(X, TIME_PREFIX, indices=indices)
+
+    elif method == 'dtype':
+        X = X.select_dtypes('datetime')
+
+        return X.columns
+
+    else:
+        raise ValueError(f'Unknown method: {method}.')
 
 
 def join(u, v, u_name, v_name, key, type_, config):
