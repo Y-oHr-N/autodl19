@@ -18,6 +18,7 @@ from sklearn.base import RegressorMixin
 from sklearn.model_selection import BaseCrossValidator
 from sklearn.model_selection import check_cv
 from sklearn.utils import check_random_state
+from sklearn.utils.class_weight import compute_sample_weight
 
 from .base import BaseEstimator
 from .base import ONE_DIM_ARRAYLIKE_TYPE
@@ -113,7 +114,6 @@ class Objective(object):
 
 
 class BaseLGBMModelCV(BaseEstimator):
-    # TODO(Kon): Add `class_weight` into __init__
     # TODO(Kon): Add `groups` into fit
     # TODO(Kon): Search best `boosting_type`
     # TODO(Kon): Search best `min_split_gain`
@@ -190,6 +190,7 @@ class BaseLGBMModelCV(BaseEstimator):
 
     def __init__(
         self,
+        class_weight: Union[str, Dict[str, float]] = None,
         cv: Union[int, BaseCrossValidator] = 5,
         importance_type: str = 'split',
         learning_rate: float = 0.1,
@@ -207,6 +208,7 @@ class BaseLGBMModelCV(BaseEstimator):
     ):
         super().__init__(verbose=verbose)
 
+        self.class_weight = class_weight
         self.cv = cv
         self.importance_type = importance_type
         self.learning_rate = learning_rate
@@ -263,6 +265,12 @@ class BaseLGBMModelCV(BaseEstimator):
             direction = 'minimize'
             metric = 'l2'
             params['objective'] = 'regression'
+
+        if self.class_weight is not None:
+            if sample_weight is None:
+                sample_weight = compute_sample_weight(self.class_weight, y)
+            else:
+                sample_weight *= compute_sample_weight(self.class_weight, y)
 
         func = Objective(
             X,
