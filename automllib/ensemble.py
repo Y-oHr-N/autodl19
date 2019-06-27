@@ -195,7 +195,7 @@ class BaseLGBMModelCV(BaseEstimator):
         importance_type: str = 'split',
         learning_rate: float = 0.1,
         min_split_gain: float = 0.0,
-        n_estimators: int = 100,
+        n_estimators: int = 1_000,
         n_iter_no_change: int = None,
         n_jobs: int = 1,
         n_seeds: int = 10,

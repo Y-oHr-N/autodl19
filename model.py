@@ -36,7 +36,7 @@ class Model(object):
             y = y.loc[X.index]
 
         self.model_ = AutoMLClassifier(
-            cv=TimeSeriesSplit(3),
+            cv=TimeSeriesSplit(5),
             info=self.info,
             related_tables=related_tables,
             shuffle=False
