@@ -47,19 +47,19 @@ class TimeVectorizer(BasePreprocessor):
             properties = []
 
             if duration > secondsinminute \
-                and len(pd.unique(column.dt.second)) > 1:
+                    and len(pd.unique(column.dt.second)) > 1:
                 properties.append('second')
             if duration > secondsinhour \
-                and len(pd.unique(column.dt.minute)) > 1:
+                    and len(pd.unique(column.dt.minute)) > 1:
                 properties.append('minute')
             if duration > secondsinday \
-                and len(pd.unique(column.dt.hour)) > 1:
+                    and len(pd.unique(column.dt.hour)) > 1:
                 properties.append('hour')
             if duration > secondsinweekday \
-                and len(pd.unique(column.dt.weekday)) > 1:
+                    and len(pd.unique(column.dt.weekday)) > 1:
                 properties.append('weekday')
             if duration > secondsinmonth \
-                and len(pd.unique(column.dt.day)) > 1:
+                    and len(pd.unique(column.dt.day)) > 1:
                 properties.append('day')
             if duration > secondsinyear:
                 if len(pd.unique(column.dt.month)) > 1:

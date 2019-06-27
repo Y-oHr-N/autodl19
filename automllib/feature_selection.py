@@ -60,7 +60,11 @@ class DropCollinearFeatures(BaseSelector):
             max_samples = int(self.subsample * n_samples)
 
         if max_samples < n_samples:
-            indices = random_state.choice(n_samples, max_samples, replace=False)
+            indices = random_state.choice(
+                n_samples,
+                max_samples,
+                replace=False
+            )
             X = X[indices]
 
         self.corr_ = pd._libs.algos.nancorr(X)

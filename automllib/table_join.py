@@ -11,8 +11,7 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
-from scipy.sparse import spmatrix
-from scipy.stats import kurtosis
+# from scipy.stats import kurtosis
 
 from .base import BaseTransformer
 from .base import ONE_DIM_ARRAYLIKE_TYPE
