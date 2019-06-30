@@ -42,7 +42,6 @@ class Objective(object):
         params: Dict[str, Any],
         categorical_feature: Union[str, List[Union[int, str]]] = 'auto',
         cv: BaseCrossValidator = None,
-        metric: str = 'l2',
         n_estimators: int = 100,
         n_iter_no_change: int = None,
         sample_weight: ONE_DIM_ARRAYLIKE_TYPE = None,
@@ -50,7 +49,6 @@ class Objective(object):
     ) -> None:
         self.categorical_feature = categorical_feature
         self.cv = cv
-        self.metric = metric
         self.n_estimators = n_estimators
         self.n_iter_no_change = n_iter_no_change
         self.params = params
@@ -60,8 +58,7 @@ class Objective(object):
         self.y = y
 
     def __call__(self, trial: optuna.trial.Trial) -> float:
-        params = self.params.copy()
-        other_params = {
+        params = {
             'colsample_bytree':
                 trial.suggest_uniform('colsample_bytree', 0.1, 1.0),
             'min_child_samples':
@@ -80,10 +77,10 @@ class Objective(object):
         extraction_callback = EnvExtractionCallback()
         pruning_callback = optuna.integration.LightGBMPruningCallback(
             trial,
-            self.metric
+            self.params['metric']
         )
 
-        params.update(other_params)
+        params.update(self.params)
 
         dataset = lgb.Dataset(
             self.X,
@@ -98,7 +95,6 @@ class Objective(object):
             callbacks=[extraction_callback, pruning_callback],
             early_stopping_rounds=self.n_iter_no_change,
             folds=self.cv,
-            metrics=self.metric,
             num_boost_round=self.n_estimators,
             seed=self.seed
         )
@@ -110,7 +106,7 @@ class Objective(object):
 
         trial.set_user_attr('best_iteration', best_iteration)
 
-        return eval_hist[f'{self.metric}-mean'][-1]
+        return eval_hist[f"{self.params['metric']}-mean"][-1]
 
 
 class BaseLGBMModelCV(BaseEstimator):
@@ -195,7 +191,7 @@ class BaseLGBMModelCV(BaseEstimator):
         importance_type: str = 'split',
         learning_rate: float = 0.1,
         min_split_gain: float = 0.0,
-        n_estimators: int = 1_000,
+        n_estimators: int = 100,
         n_iter_no_change: int = None,
         n_jobs: int = 1,
         n_seeds: int = 10,
@@ -243,27 +239,27 @@ class BaseLGBMModelCV(BaseEstimator):
             'subsample_for_bin': self.subsample_for_bin,
             'verbose': -1
         }
-        classifier = self._estimator_type == 'classifier'
-        cv = check_cv(self.cv, y, classifier)
+        is_classifier = self._estimator_type == 'classifier'
+        cv = check_cv(self.cv, y, is_classifier)
 
-        if classifier:
+        if is_classifier:
             self.classes_ = np.unique(y)
             self.n_classes_ = len(self.classes_)
 
             if self.n_classes_ > 2:
                 direction = 'minimize'
-                metric = 'multi_logloss'
+                params['metric'] = 'multi_logloss'
                 params['num_classes'] = self.n_classes_
                 params['objective'] = 'multiclass'
             else:
                 direction = 'maximize'
-                metric = 'auc'
+                params['metric'] = 'auc'
                 params['is_unbalance'] = True
                 params['objective'] = 'binary'
 
         else:
             direction = 'minimize'
-            metric = 'l2'
+            params['metric'] = 'l2'
             params['objective'] = 'regression'
 
         if self.class_weight is not None:
@@ -278,7 +274,6 @@ class BaseLGBMModelCV(BaseEstimator):
             params,
             categorical_feature=categorical_feature,
             cv=cv,
-            metric=metric,
             n_estimators=self.n_estimators,
             n_iter_no_change=self.n_iter_no_change,
             sample_weight=sample_weight
@@ -349,10 +344,9 @@ class BaseLGBMModelCV(BaseEstimator):
         random_state: np.random.RandomState,
         sample_weight: ONE_DIM_ARRAYLIKE_TYPE
     ) -> lgb.Booster:
-        params = params.copy()
-
         if self.n_seeds > 1:
             seed = random_state.randint(0, np.iinfo('int32').max)
+            params = params.copy()
             params['seed'] = seed
 
         dataset = lgb.Dataset(
