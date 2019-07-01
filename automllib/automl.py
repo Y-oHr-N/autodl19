@@ -1,5 +1,7 @@
 from typing import Any
+from typing import Callable
 from typing import Dict
+from typing import Sequence
 from typing import Type
 from typing import Union
 
@@ -7,7 +9,6 @@ import numpy as np
 import optuna
 
 from imblearn.pipeline import make_pipeline
-from joblib import Memory
 from sklearn.base import ClassifierMixin
 from sklearn.base import RegressorMixin
 from sklearn.compose import make_column_transformer
@@ -52,32 +53,42 @@ class BaseAutoMLModel(BaseEstimator):
 
     def __init__(
         self,
-        cv: Union[int, BaseCrossValidator] = 5,
-        dtype: Union[str, Type] = 'float32',
+        n_jobs: int = -1,
+        random_state: Union[int, np.random.RandomState] = 0,
+        verbose: int = 1,
+        # Parameters for a joiner
         info: Dict[str, Any] = None,
+        related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE] = None,
+        # Parameters for an engineer
+        categorical_features: Union[Callable, Sequence] = None,
+        dtype: Union[str, Type] = 'float32',
+        multi_value_categorical_features: Union[Callable, Sequence] = None,
+        numerical_features: Union[Callable, Sequence] = None,
+        subsample: Union[float, int] = 1_000,
+        time_features: Union[Callable, Sequence] = None,
+        # Parameters for a sampler
+        sampling_strategy: Union[Dict[str, int], float, str] = 'auto',
+        shuffle: bool = True,
+        # Parameters for a model
+        cv: Union[BaseCrossValidator, int] = 5,
         learning_rate: float = 0.1,
-        memory: Union[str, Memory] = None,
         n_estimators: int = 1_000,
         n_iter_no_change: int = 10,
-        n_jobs: int = -1,
-        n_seeds: int = 10,
         n_trials: int = 10,
-        random_state: Union[int, np.random.RandomState] = 0,
-        related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE] = None,
-        sampling_strategy: Union[str, float, Dict[str, int]] = 'auto',
-        shuffle: bool = True,
+        n_seeds: int = 10,
         study: optuna.study.Study = None,
-        subsample: Union[int, float] = 1_000,
-        timeout: float = None,
-        verbose: int = 1
+        timeout: float = None
     ) -> None:
         super().__init__(verbose=verbose)
 
+        self.categorical_features = categorical_features
         self.cv = cv
         self.dtype = dtype
         self.info = info
         self.learning_rate = learning_rate
-        self.memory = memory
+        self.multi_value_categorical_features = \
+            multi_value_categorical_features
+        self.numerical_features = numerical_features
         self.n_estimators = n_estimators
         self.n_iter_no_change = n_iter_no_change
         self.n_jobs = n_jobs
@@ -90,6 +101,7 @@ class BaseAutoMLModel(BaseEstimator):
         self.subsample = subsample
         self.shuffle = shuffle
         self.timeout = timeout
+        self.time_features = time_features
 
     def _check_params(self) -> None:
         pass
@@ -100,6 +112,10 @@ class BaseAutoMLModel(BaseEstimator):
         y: ONE_DIM_ARRAYLIKE_TYPE,
         sample_weight: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'BaseAutoMLModel':
+        if sample_weight is None:
+            n_samples, _ = X.shape
+            sample_weight = np.ones(n_samples)
+
         self.joiner_ = TableJoiner(
             info=self.info,
             related_tables=self.related_tables,
@@ -111,10 +127,6 @@ class BaseAutoMLModel(BaseEstimator):
 
         X = self.joiner_.fit_transform(X)
         X = self.engineer_.fit_transform(X)
-
-        if sample_weight is None:
-            n_samples, _ = X.shape
-            sample_weight = np.ones(n_samples)
 
         if self.sampler_ is not None:
             X, y = self.sampler_.fit_resample(X, y)
@@ -216,22 +228,41 @@ class BaseAutoMLModel(BaseEstimator):
         )
 
     def _make_mixed_transformer(self) -> BaseEstimator:
+        categorical_features = self.categorical_features
+        multi_value_categorical_features = \
+            self.multi_value_categorical_features
+        numerical_features = self.numerical_features
+        time_features = self.time_features
+
+        if self.categorical_features is None:
+            categorical_features = get_categorical_feature_names
+
+        if self.multi_value_categorical_features is None:
+            multi_value_categorical_features = \
+                get_multi_value_categorical_feature_names
+
+        if self.numerical_features is None:
+            numerical_features = get_numerical_feature_names
+
+        if self.time_features is None:
+            time_features = get_time_feature_names
+
         return make_column_transformer(
             (
                 self._make_categorical_transformer(),
-                get_categorical_feature_names
+                categorical_features
             ),
             (
                 self._make_multi_value_categorical_transformer(),
-                get_multi_value_categorical_feature_names
+                multi_value_categorical_features
             ),
             (
                 self._make_numerical_transformer(),
-                get_numerical_feature_names
+                numerical_features
             ),
             (
                 self._make_time_transformer(),
-                get_time_feature_names
+                time_features
             )
         )
 
