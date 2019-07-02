@@ -309,6 +309,19 @@ class BaseAutoMLModel(BaseEstimator):
         return {'non_deterministic': True, 'no_validation': True}
 
     def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
+        """Predict using the Fitted model.
+
+        Parameters
+        ----------
+        X
+            Data.
+
+        Returns
+        -------
+        y_pred
+            Predicted values.
+        """
+
         self._check_is_fitted()
 
         X = self.joiner_.transform(X)
@@ -318,13 +331,13 @@ class BaseAutoMLModel(BaseEstimator):
 
 
 class AutoMLClassifier(BaseAutoMLModel, ClassifierMixin):
-    """
+    """AutoML classifier.
 
     Examples
     --------
     >>> from sklearn.datasets import load_iris
     >>> from automllib.automl import AutoMLClassifier
-    >>> clf = AutoMLClassifier(n_iter_no_change=10, random_state=0)
+    >>> clf = AutoMLClassifier(random_state=0)
     >>> X, y = load_iris(return_X_y=True)
     >>> clf.fit(X, y)
     AutoMLClassifier(...)
@@ -336,6 +349,19 @@ class AutoMLClassifier(BaseAutoMLModel, ClassifierMixin):
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE
     ) -> ONE_DIM_ARRAYLIKE_TYPE:
+        """Predict class probabilities for data.
+
+        Parameters
+        ----------
+        X
+            Data.
+
+        Returns
+        -------
+        p
+            Class probabilities of data.
+        """
+
         self._check_is_fitted()
 
         X = self.joiner_.transform(X)
@@ -345,13 +371,13 @@ class AutoMLClassifier(BaseAutoMLModel, ClassifierMixin):
 
 
 class AutoMLRegressor(BaseAutoMLModel, RegressorMixin):
-    """
+    """AutoML regressor.
 
     Examples
     --------
     >>> from sklearn.datasets import load_boston
     >>> from automllib.automl import AutoMLRegressor
-    >>> reg = AutoMLRegressor(n_iter_no_change=10, random_state=0)
+    >>> reg = AutoMLRegressor(random_state=0)
     >>> X, y = load_boston(return_X_y=True)
     >>> reg.fit(X, y)
     AutoMLRegressor(...)

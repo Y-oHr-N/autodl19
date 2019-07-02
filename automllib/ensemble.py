@@ -387,6 +387,19 @@ class LGBMClassifierCV(BaseLGBMModelCV, ClassifierMixin):
     """
 
     def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
+        """Predict using the Fitted model.
+
+        Parameters
+        ----------
+        X
+            Data.
+
+        Returns
+        -------
+        y_pred
+            Predicted values.
+        """
+
         probas = self.predict_proba(X)
 
         return self.classes_[np.argmax(probas, axis=1)]
@@ -395,6 +408,19 @@ class LGBMClassifierCV(BaseLGBMModelCV, ClassifierMixin):
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE
     ) -> TWO_DIM_ARRAYLIKE_TYPE:
+        """Predict class probabilities for data.
+
+        Parameters
+        ----------
+        X
+            Data.
+
+        Returns
+        -------
+        p
+            Class probabilities of data.
+        """
+
         self._check_is_fitted()
 
         n_jobs = effective_n_jobs(self.n_jobs)
@@ -428,6 +454,19 @@ class LGBMRegressorCV(BaseLGBMModelCV, RegressorMixin):
     """
 
     def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
+        """Predict using the Fitted model.
+
+        Parameters
+        ----------
+        X
+            Data.
+
+        Returns
+        -------
+        y_pred
+            Predicted values.
+        """
+
         self._check_is_fitted()
 
         n_jobs = effective_n_jobs(self.n_jobs)
