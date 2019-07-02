@@ -190,7 +190,6 @@ class BaseLGBMModelCV(BaseEstimator):
         cv: Union[int, BaseCrossValidator] = 5,
         importance_type: str = 'split',
         learning_rate: float = 0.1,
-        min_split_gain: float = 0.0,
         n_estimators: int = 100,
         n_iter_no_change: int = None,
         n_jobs: int = 1,
@@ -198,7 +197,6 @@ class BaseLGBMModelCV(BaseEstimator):
         n_trials: int = 10,
         random_state: Union[int, np.random.RandomState] = None,
         study: optuna.study.Study = None,
-        subsample_for_bin: int = 200_000,
         timeout: float = None,
         verbose: int = 0
     ):
@@ -208,7 +206,6 @@ class BaseLGBMModelCV(BaseEstimator):
         self.cv = cv
         self.importance_type = importance_type
         self.learning_rate = learning_rate
-        self.min_split_gain = min_split_gain
         self.n_estimators = n_estimators
         self.n_iter_no_change = n_iter_no_change
         self.n_jobs = n_jobs
@@ -216,7 +213,6 @@ class BaseLGBMModelCV(BaseEstimator):
         self.n_trials = n_trials
         self.random_state = random_state
         self.study = study
-        self.subsample_for_bin = subsample_for_bin
         self.timeout = timeout
 
     def _check_params(self) -> None:
@@ -233,10 +229,8 @@ class BaseLGBMModelCV(BaseEstimator):
         seed = random_state.randint(0, np.iinfo('int32').max)
         params = {
             'learning_rate': self.learning_rate,
-            'min_split_gain': self.min_split_gain,
             'n_jobs': 1,
             'seed': seed,
-            'subsample_for_bin': self.subsample_for_bin,
             'verbose': -1
         }
         is_classifier = self._estimator_type == 'classifier'
