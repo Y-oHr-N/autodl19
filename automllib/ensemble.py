@@ -42,6 +42,7 @@ class Objective(object):
         params: Dict[str, Any],
         categorical_features: Union[Sequence[Union[int, str]], str] = 'auto',
         cv: BaseCrossValidator = None,
+        enable_pruning: bool = False,
         n_estimators: int = 100,
         n_iter_no_change: int = None,
         sample_weight: ONE_DIM_ARRAYLIKE_TYPE = None,
@@ -49,6 +50,7 @@ class Objective(object):
     ) -> None:
         self.categorical_features = categorical_features
         self.cv = cv
+        self.enable_pruning = enable_pruning
         self.n_estimators = n_estimators
         self.n_iter_no_change = n_iter_no_change
         self.params = params
@@ -75,10 +77,15 @@ class Objective(object):
                 trial.suggest_uniform('subsample', 0.1, 1.0)
         }
         extraction_callback = EnvExtractionCallback()
-        pruning_callback = optuna.integration.LightGBMPruningCallback(
-            trial,
-            self.params['metric']
-        )
+        callbacks = [extraction_callback]
+
+        if self.enable_pruning:
+            pruning_callback = optuna.integration.LightGBMPruningCallback(
+                trial,
+                self.params['metric']
+            )
+
+            callbacks.append(pruning_callback)
 
         params.update(self.params)
 
@@ -92,7 +99,7 @@ class Objective(object):
         eval_hist = lgb.cv(
             params,
             dataset,
-            callbacks=[extraction_callback, pruning_callback],
+            callbacks=callbacks,
             early_stopping_rounds=self.n_iter_no_change,
             folds=self.cv,
             num_boost_round=self.n_estimators,
@@ -196,6 +203,7 @@ class BaseLGBMModelCV(BaseEstimator):
         categorical_features: Union[Sequence[Union[int, str]], str] = None,
         class_weight: Union[str, Dict[str, float]] = None,
         cv: Union[int, BaseCrossValidator] = 5,
+        enable_pruning: bool = False,
         importance_type: str = 'split',
         learning_rate: float = 0.1,
         n_estimators: int = 100,
@@ -213,6 +221,7 @@ class BaseLGBMModelCV(BaseEstimator):
         self.categorical_features = categorical_features
         self.class_weight = class_weight
         self.cv = cv
+        self.enable_pruning = enable_pruning
         self.importance_type = importance_type
         self.learning_rate = learning_rate
         self.n_estimators = n_estimators
@@ -276,6 +285,7 @@ class BaseLGBMModelCV(BaseEstimator):
             params,
             categorical_features=self._categorical_features,
             cv=cv,
+            enable_pruning=self.enable_pruning,
             n_estimators=self.n_estimators,
             n_iter_no_change=self.n_iter_no_change,
             sample_weight=sample_weight

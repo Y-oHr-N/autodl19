@@ -105,6 +105,7 @@ class BaseAutoMLModel(BaseEstimator):
         shuffle: bool = True,
         # Parameters for a model
         cv: Union[BaseCrossValidator, int] = 5,
+        enable_pruning: bool = True,
         learning_rate: float = 0.1,
         n_estimators: int = 1_000,
         n_iter_no_change: int = 10,
@@ -118,6 +119,7 @@ class BaseAutoMLModel(BaseEstimator):
         self.categorical_features = categorical_features
         self.cv = cv
         self.dtype = dtype
+        self.enable_pruning = enable_pruning
         self.info = info
         self.learning_rate = learning_rate
         self.multi_value_categorical_features = \
@@ -299,6 +301,7 @@ class BaseAutoMLModel(BaseEstimator):
     def _make_model(self) -> BaseEstimator:
         params = {
             'cv': self.cv,
+            'enable_pruning': self.enable_pruning,
             'learning_rate': self.learning_rate,
             'n_estimators': self.n_estimators,
             'n_iter_no_change': self.n_iter_no_change,
