@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import Any
 from typing import Callable
 from typing import Dict
-from typing import List
+from typing import Sequence
 from typing import NamedTuple
 from typing import Union
 
@@ -161,7 +161,7 @@ class BaseLGBMModelCV(BaseEstimator):
         return len(self.trials_)
 
     @property
-    def trials_(self) -> List[optuna.structs.FrozenTrial]:
+    def trials_(self) -> Sequence[optuna.structs.FrozenTrial]:
         self._check_is_fitted()
 
         return self.study_.trials
@@ -200,7 +200,7 @@ class BaseLGBMModelCV(BaseEstimator):
         study: optuna.study.Study = None,
         timeout: float = None,
         verbose: int = 0
-    ):
+    ) -> None:
         super().__init__(verbose=verbose)
 
         self.categorical_features = categorical_features
