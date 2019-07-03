@@ -40,6 +40,40 @@ from .under_sampling import ModifiedRandomUnderSampler
 
 class BaseAutoMLModel(BaseEstimator):
     @property
+    def _categorical_features(
+        self
+    ) -> Union[Callable, Sequence[Union[int, str]]]:
+        if self.categorical_features is None:
+            return get_categorical_feature_names
+
+        return self.categorical_features
+
+    @property
+    def _multi_value_categorical_features(
+        self
+    ) -> Union[Callable, Sequence[Union[int, str]]]:
+        if self.multi_value_categorical_features is None:
+            return get_multi_value_categorical_feature_names
+
+        return self.multi_value_categorical_features
+
+    @property
+    def _numerical_features(
+        self
+    ) -> Union[Callable, Sequence[Union[int, str]]]:
+        if self.numerical_features is None:
+            return get_numerical_feature_names
+
+        return self.numerical_features
+
+    @property
+    def _time_features(self) -> Union[Callable, Sequence[Union[int, str]]]:
+        if self.time_features is None:
+            return get_time_feature_names
+
+        return self.time_features
+
+    @property
     def best_iteration_(self) -> int:
         return self.model_.best_iteration_
 
@@ -228,41 +262,22 @@ class BaseAutoMLModel(BaseEstimator):
         )
 
     def _make_mixed_transformer(self) -> BaseEstimator:
-        categorical_features = self.categorical_features
-        multi_value_categorical_features = \
-            self.multi_value_categorical_features
-        numerical_features = self.numerical_features
-        time_features = self.time_features
-
-        if self.categorical_features is None:
-            categorical_features = get_categorical_feature_names
-
-        if self.multi_value_categorical_features is None:
-            multi_value_categorical_features = \
-                get_multi_value_categorical_feature_names
-
-        if self.numerical_features is None:
-            numerical_features = get_numerical_feature_names
-
-        if self.time_features is None:
-            time_features = get_time_feature_names
-
         return make_column_transformer(
             (
                 self._make_categorical_transformer(),
-                categorical_features
+                self._categorical_features
             ),
             (
                 self._make_multi_value_categorical_transformer(),
-                multi_value_categorical_features
+                self._multi_value_categorical_features
             ),
             (
                 self._make_numerical_transformer(),
-                numerical_features
+                self._numerical_features
             ),
             (
                 self._make_time_transformer(),
-                time_features
+                self._time_features
             )
         )
 

@@ -116,6 +116,13 @@ class BaseLGBMModelCV(BaseEstimator):
     # TODO(Kon): Output SHAP values
 
     @property
+    def _categorical_features(self) -> Union[Sequence[Union[int, str]], str]:
+        if self.categorical_features is None:
+            return 'auto'
+
+        return self.categorical_features
+
+    @property
     def best_index_(self) -> int:
         df = self.trials_dataframe()
 
@@ -257,11 +264,6 @@ class BaseLGBMModelCV(BaseEstimator):
             params['metric'] = 'l2'
             params['objective'] = 'regression'
 
-        if self.categorical_features is None:
-            categorical_features = 'auto'
-        else:
-            categorical_features = self.categorical_features
-
         if self.class_weight is not None:
             if sample_weight is None:
                 sample_weight = compute_sample_weight(self.class_weight, y)
@@ -272,7 +274,7 @@ class BaseLGBMModelCV(BaseEstimator):
             X,
             y,
             params,
-            categorical_features=categorical_features,
+            categorical_features=self._categorical_features,
             cv=cv,
             n_estimators=self.n_estimators,
             n_iter_no_change=self.n_iter_no_change,
@@ -322,7 +324,6 @@ class BaseLGBMModelCV(BaseEstimator):
                 X,
                 y,
                 params,
-                categorical_features,
                 n_estimators,
                 random_state,
                 sample_weight
@@ -339,7 +340,6 @@ class BaseLGBMModelCV(BaseEstimator):
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE,
         params: Dict[str, Any],
-        categorical_features: Union[Sequence[Union[int, str]], str],
         n_estimators: int,
         random_state: np.random.RandomState,
         sample_weight: ONE_DIM_ARRAYLIKE_TYPE
@@ -351,7 +351,7 @@ class BaseLGBMModelCV(BaseEstimator):
 
         dataset = lgb.Dataset(
             X,
-            categorical_feature=categorical_features,
+            categorical_feature=self._categorical_features,
             label=y,
             params=params,
             weight=sample_weight
