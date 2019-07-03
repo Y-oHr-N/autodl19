@@ -95,11 +95,11 @@ class BaseAutoMLModel(BaseEstimator):
         related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE] = None,
         # Parameters for an engineer
         categorical_features: Union[Callable, Sequence] = None,
-        dtype: Union[str, Type] = 'float32',
         multi_value_categorical_features: Union[Callable, Sequence] = None,
         numerical_features: Union[Callable, Sequence] = None,
-        subsample: Union[float, int] = 1_000,
         time_features: Union[Callable, Sequence] = None,
+        dtype: Union[str, Type] = 'float32',
+        subsample: Union[float, int] = 1_000,
         # Parameters for a sampler
         sampling_strategy: Union[Dict[str, int], float, str] = 'auto',
         shuffle: bool = True,
@@ -366,7 +366,7 @@ class AutoMLClassifier(BaseAutoMLModel, ClassifierMixin):
     def predict_proba(
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE
-    ) -> ONE_DIM_ARRAYLIKE_TYPE:
+    ) -> TWO_DIM_ARRAYLIKE_TYPE:
         """Predict class probabilities for data.
 
         Parameters

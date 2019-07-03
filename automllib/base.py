@@ -4,7 +4,7 @@ import pathlib
 from abc import ABC
 from abc import abstractmethod
 from typing import Any
-from typing import List
+from typing import Sequence
 from typing import Tuple
 from typing import Type
 from typing import Union
@@ -31,7 +31,7 @@ from sklearn.utils.validation import check_is_fitted
 from .utils import Timeit
 
 ONE_DIM_ARRAYLIKE_TYPE = Union[np.ndarray, pd.Series]
-TWO_DIM_ARRAYLIKE_TYPE = Union[np.ndarray, spmatrix, pd.DataFrame]
+TWO_DIM_ARRAYLIKE_TYPE = Union[np.ndarray, pd.DataFrame, spmatrix]
 
 
 class BaseEstimator(SKLearnBaseEstimator, ABC):
@@ -154,9 +154,9 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
 
     def to_pickle(
         self,
-        filename: Union[str, pathlib.Path],
+        filename: Union[pathlib.Path, str],
         **kwargs: Any
-    ) -> List[str]:
+    ) -> Sequence[str]:
         """Persist an estimator object.
 
         Parameters
@@ -324,7 +324,7 @@ class BasePreprocessor(BaseTransformer):
 
 class BaseSelector(BaseTransformer):
     @abstractmethod
-    def _get_support(self) -> ONE_DIM_ARRAYLIKE_TYPE:
+    def _get_support(self) -> Sequence[bool]:
         pass
 
     def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
@@ -342,7 +342,7 @@ class BaseSelector(BaseTransformer):
 
         return X[:, support]
 
-    def get_support(self, indices: bool = False) -> ONE_DIM_ARRAYLIKE_TYPE:
+    def get_support(self, indices: bool = False) -> Sequence[Union[bool, int]]:
         """Get a mask of the features selected.
 
         Parameters

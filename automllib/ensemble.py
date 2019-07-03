@@ -158,7 +158,7 @@ class BaseLGBMModelCV(BaseEstimator):
         return self.study_.best_trial
 
     @property
-    def feature_importances_(self) -> ONE_DIM_ARRAYLIKE_TYPE:
+    def feature_importances_(self) -> Sequence[float]:
         self._check_is_fitted()
 
         n_jobs = effective_n_jobs(self.n_jobs)
@@ -202,7 +202,7 @@ class BaseLGBMModelCV(BaseEstimator):
         self,
         categorical_features: Union[Sequence[Union[int, str]], str] = None,
         class_weight: Union[str, Dict[str, float]] = None,
-        cv: Union[int, BaseCrossValidator] = 5,
+        cv: Union[BaseCrossValidator, int] = 5,
         enable_pruning: bool = False,
         importance_type: str = 'split',
         learning_rate: float = 0.1,
