@@ -36,6 +36,21 @@ class EnvExtractionCallback(object):
 
 
 class Objective(object):
+    _colsample_bytree_low = 0.1
+    _colsample_bytree_high = 1.0
+    _min_child_samples_low = 1
+    _min_child_samples_high = 100
+    _min_child_weight_low = 1e-03
+    _min_child_weight_high = 10.0
+    _num_leaves_low = 2
+    _num_leaves_high = 127
+    _reg_alpha_low = 1e-06
+    _reg_alpha_high = 10.0
+    _reg_lambda_low = 1e-06
+    _reg_lambda_high = 10.0
+    _subsample_low = 0.1
+    _subsample_high = 1.0
+
     def __init__(
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
@@ -63,19 +78,47 @@ class Objective(object):
     def __call__(self, trial: optuna.trial.Trial) -> float:
         params = {
             'colsample_bytree':
-                trial.suggest_uniform('colsample_bytree', 0.1, 1.0),
+                trial.suggest_uniform(
+                    'colsample_bytree',
+                    self._colsample_bytree_low,
+                    self._colsample_bytree_high
+                ),
             'min_child_samples':
-                trial.suggest_int('min_child_samples', 1, 100),
+                trial.suggest_int(
+                    'min_child_samples',
+                    self._min_child_samples_low,
+                    self._min_child_samples_high
+                ),
             'min_child_weight':
-                trial.suggest_loguniform('min_child_weight', 1e-03, 10.0),
+                trial.suggest_loguniform(
+                    'min_child_weight',
+                    self._min_child_weight_low,
+                    self._min_child_weight_high
+                ),
             'num_leaves':
-                trial.suggest_int('num_leaves', 2, 127),
+                trial.suggest_int(
+                    'num_leaves',
+                    self._num_leaves_low,
+                    self._num_leaves_high
+                ),
             'reg_alpha':
-                trial.suggest_loguniform('reg_alpha', 1e-06, 10.0),
+                trial.suggest_loguniform(
+                    'reg_alpha',
+                    self._reg_alpha_low,
+                    self._reg_alpha_high
+                ),
             'reg_lambda':
-                trial.suggest_loguniform('reg_lambda', 1e-06, 10.0),
+                trial.suggest_loguniform(
+                    'reg_lambda',
+                    self._reg_lambda_low,
+                    self._reg_alpha_high
+                ),
             'subsample':
-                trial.suggest_uniform('subsample', 0.1, 1.0)
+                trial.suggest_uniform(
+                    'subsample',
+                    self._subsample_low,
+                    self._subsample_high
+                )
         }
         extraction_callback = EnvExtractionCallback()
         callbacks = [extraction_callback]
@@ -137,20 +180,10 @@ class BaseLGBMModelCV(BaseEstimator):
         return df['value'].idxmin()
 
     @property
-    def best_iteration_(self) -> int:
-        return self.best_trial_.user_attrs['best_iteration']
-
-    @property
     def best_params_(self) -> Dict[str, Any]:
         self._check_is_fitted()
 
         return self.study_.best_params
-
-    @property
-    def best_score_(self) -> float:
-        self._check_is_fitted()
-
-        return self.study_.best_value
 
     @property
     def best_trial_(self) -> optuna.structs.FrozenTrial:
@@ -322,18 +355,20 @@ class BaseLGBMModelCV(BaseEstimator):
         )
 
         logger = self._get_logger()
-        best_iteration = self.study_.best_trial.user_attrs['best_iteration']
-        best_score = self.study_.best_value
 
-        logger.info(f'The best iteration is {best_iteration}.')
-        logger.info(f'The best CV score is {best_score:.3f}.')
+        self.best_iteration_ = \
+            self.study_.best_trial.user_attrs['best_iteration']
+        self.best_score_ = self.study_.best_value
+
+        logger.info(f'The best iteration is {self.best_iteration_}.')
+        logger.info(f'The best CV score is {self.best_score_:.3f}.')
 
         params.update(self.study_.best_params)
 
         if self.n_iter_no_change is None:
             n_estimators = self.n_estimators
         else:
-            n_estimators = best_iteration
+            n_estimators = self.best_iteration_
 
         n_jobs = effective_n_jobs(self.n_jobs)
         parallel = Parallel(n_jobs=n_jobs)

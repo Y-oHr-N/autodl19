@@ -15,6 +15,7 @@ from sklearn.compose import make_column_transformer
 from sklearn.impute import MissingIndicator
 from sklearn.model_selection import BaseCrossValidator
 from sklearn.pipeline import make_union
+from sklearn.utils import safe_indexing
 
 from .base import BaseEstimator
 from .base import ONE_DIM_ARRAYLIKE_TYPE
@@ -168,7 +169,10 @@ class BaseAutoMLModel(BaseEstimator):
 
         if self.sampler_ is not None:
             X, y = self.sampler_.fit_resample(X, y)
-            sample_weight = sample_weight[self.sampler_.sample_indices_]
+            sample_weight = safe_indexing(
+                sample_weight,
+                self.sampler_.sample_indices_
+            )
 
         self.model_.fit(X, y, sample_weight=sample_weight)
 
