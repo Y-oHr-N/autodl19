@@ -92,7 +92,9 @@ class BaseAutoMLModel(BaseEstimator):
         random_state: Union[int, np.random.RandomState] = 0,
         verbose: int = 1,
         # Parameters for a joiner
-        info: Dict[str, Any] = None,
+        relations: Sequence[Dict[str, str]] = None,
+        tables: Dict[str, Dict[str, str]] = None,
+        time_col: str = None,
         # Parameters for an engineer
         categorical_features: Union[Callable, Sequence] = None,
         multi_value_categorical_features: Union[Callable, Sequence] = None,
@@ -113,7 +115,8 @@ class BaseAutoMLModel(BaseEstimator):
         n_trials: int = 10,
         n_seeds: int = 10,
         study: optuna.study.Study = None,
-        timeout: float = None
+        timeout: float = None,
+        **kwargs: Any
     ) -> None:
         super().__init__(verbose=verbose)
 
@@ -121,7 +124,6 @@ class BaseAutoMLModel(BaseEstimator):
         self.cv = cv
         self.dtype = dtype
         self.enable_pruning = enable_pruning
-        self.info = info
         self.learning_rate = learning_rate
         self.multi_value_categorical_features = \
             multi_value_categorical_features
@@ -133,11 +135,14 @@ class BaseAutoMLModel(BaseEstimator):
         self.n_trials = n_trials
         self.operand = operand
         self.random_state = random_state
+        self.relations = relations
         self.sampling_strategy = sampling_strategy
         self.study = study
         self.subsample = subsample
         self.shuffle = shuffle
+        self.tables = tables
         self.timeout = timeout
+        self.time_col = time_col
         self.time_features = time_features
 
     def _check_params(self) -> None:
@@ -154,7 +159,12 @@ class BaseAutoMLModel(BaseEstimator):
             n_samples, _ = X.shape
             sample_weight = np.ones(n_samples)
 
-        self.joiner_ = TableJoiner(info=self.info, verbose=self.verbose)
+        self.joiner_ = TableJoiner(
+            relations=self.relations,
+            tables=self.tables,
+            time_col=self.time_col,
+            verbose=self.verbose
+        )
         self.engineer_ = self._make_mixed_transformer()
         self.sampler_ = self._make_sampler()
         self.model_ = self._make_model()

@@ -35,12 +35,12 @@ class Model(object):
             X = X.sort_values(self.info['time_col'], na_position='first')
             y = y.loc[X.index]
 
-        self.model_ = AutoMLClassifier(
-            cv=TimeSeriesSplit(5),
-            info=self.info,
-            operand=None,
-            shuffle=False
-        )
+        info = self.info.copy()
+        info['cv'] = TimeSeriesSplit(5)
+        info['operand'] = None
+        info['shuffle'] = False
+
+        self.model_ = AutoMLClassifier(**info)
 
         self.model_.fit(X, y, related_tables=related_tables)
 

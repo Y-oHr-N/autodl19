@@ -277,14 +277,18 @@ def aggregate_functions(
 class TableJoiner(BaseTransformer):
     def __init__(
         self,
-        info: Dict[str, Any],
         main_table_name: str = 'main',
+        relations: List[Dict[str, str]] = None,
+        tables: Dict[str, Dict[str, str]] = None,
+        time_col: str = None,
         verbose: int = 0
     ) -> None:
         super().__init__(verbose=verbose)
 
-        self.info = info
         self.main_table_name = main_table_name
+        self.relations = relations
+        self.tables = tables
+        self.time_col = time_col
 
     def _check_params(self) -> None:
         pass
@@ -302,7 +306,7 @@ class TableJoiner(BaseTransformer):
         else:
             self.related_tables_ = related_tables
 
-        for rel in self.info['relations']:
+        for rel in self.relations:
             ta = rel['table_A']
             tb = rel['table_B']
 
@@ -318,10 +322,13 @@ class TableJoiner(BaseTransformer):
                 'type': '_'.join(rel['type'].split('_')[::-1])
             })
 
-        self.config_ = self.info.copy()
-        self.config_['tables'] = {}
+        self.config_ = {
+            'relations': self.relations,
+            'tables': {},
+            'time_col': self.time_col
+        }
 
-        for tname, ttype in self.info['tables'].items():
+        for tname, ttype in self.tables.items():
             self.config_['tables'][tname] = {}
             self.config_['tables'][tname]['type'] = ttype
 
