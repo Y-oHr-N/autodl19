@@ -17,6 +17,7 @@ from sklearn.base import ClassifierMixin
 from sklearn.base import RegressorMixin
 from sklearn.model_selection import BaseCrossValidator
 from sklearn.model_selection import check_cv
+from sklearn.preprocessing import LabelEncoder
 from sklearn.utils import check_random_state
 from sklearn.utils.class_weight import compute_sample_weight
 
@@ -158,6 +159,12 @@ class BaseLGBMModelCV(BaseEstimator):
         return self.study_.best_trial
 
     @property
+    def classes_(self) -> Sequence:
+        self._check_is_fitted()
+
+        return self.encoder_.classes_
+
+    @property
     def feature_importances_(self) -> Sequence[float]:
         self._check_is_fitted()
 
@@ -254,8 +261,11 @@ class BaseLGBMModelCV(BaseEstimator):
         cv = check_cv(self.cv, y, is_classifier)
 
         if is_classifier:
-            self.classes_ = np.unique(y)
-            self.n_classes_ = len(self.classes_)
+            self.encoder_ = LabelEncoder()
+
+            y = self.encoder_.fit_transform(y)
+
+            self.n_classes_ = len(self.encoder_.classes_)
 
             if self.n_classes_ > 2:
                 direction = 'minimize'
@@ -411,8 +421,9 @@ class LGBMClassifierCV(BaseLGBMModelCV, ClassifierMixin):
         """
 
         probas = self.predict_proba(X)
+        class_index = np.argmax(probas, axis=1)
 
-        return self.classes_[np.argmax(probas, axis=1)]
+        return self.encoder_.inverse_transform(class_index)
 
     def predict_proba(
         self,
