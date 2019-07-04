@@ -48,13 +48,14 @@ if types.TYPE_CHECKING:
     from typing import Any  # NOQA
     from typing import Callable  # NOQA
     from typing import Dict  # NOQA
-    from typing import List  # NOQA
+    from typing import Sequence  # NOQA
     from typing import Mapping  # NOQA
     from typing import Optional  # NOQA
     from typing import Union  # NOQA
 
-    OneDimArrayLikeType = Union[List[float], np.ndarray, pd.Series]
-    TwoDimArrayLikeType = Union[List[List[float]], np.ndarray, spmatrix, pd.DataFrame]
+    OneDimArrayLikeType = Union[Sequence[float], np.ndarray, pd.Series]
+    TwoDimArrayLikeType = \
+        Union[Sequence[Sequence[float]], np.ndarray, spmatrix, pd.DataFrame]
 
 
 def _check_sklearn_availability():
@@ -265,11 +266,11 @@ class Objective(object):
     def _partial_fit_and_score(
         self,
         estimator,  # type: BaseEstimator
-        train,  # type: List[int]
-        test,  # type: List[int]
+        train,  # type: Sequence[int]
+        test,  # type: Sequence[int]
         partial_fit_params  # type: Dict[str, Any]
     ):
-        # type: (...) -> List[float]
+        # type: (...) -> Sequence[float]
 
         X_train, y_train = _safe_split(estimator, self.X, self.y, train)
         X_test, y_test = _safe_split(
@@ -527,7 +528,7 @@ class OptunaSearchCV(BaseEstimator):
 
     @property
     def trials_(self):
-        # type: () -> List[structs.FrozenTrial]
+        # type: () -> Sequence[structs.FrozenTrial]
         """All trials in the :class:`~optuna.study.Study`."""
 
         self._check_is_fitted()

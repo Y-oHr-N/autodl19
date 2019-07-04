@@ -5,7 +5,7 @@ from collections import deque
 from typing import Any
 from typing import Callable
 from typing import Dict
-from typing import List
+from typing import Sequence
 from typing import Union
 
 import numpy as np
@@ -152,7 +152,7 @@ def join(u, v, u_name, v_name, key, type_, config):
 
     if type_.split("_")[0] == 'many':
         if u.columns.str.endswith(f'_BY({key})').sum() == 0:
-            raw_columns = list(config['tables'][u_name]['type'].keys())
+            raw_columns = config[u_name]['type'].keys()
             func = aggregate_functions(u[raw_columns].drop(columns=key))
             intermediate = u.groupby(key).agg(func)
             intermediate.columns = intermediate.columns.map(
@@ -166,12 +166,11 @@ def join(u, v, u_name, v_name, key, type_, config):
     return u.join(v, on=key)
 
 
-def temporal_join(u, v, u_name, v_name, key, type_, config):
+def temporal_join(u, v, u_name, v_name, key, type_, config, time_col):
     if isinstance(key, list):
         assert len(key) == 1
         key = key[0]
 
-    time_col = config['time_col']
     logger = logging.getLogger(__name__)
     tmp_u = u[[time_col, key]]
     tmp_u = pd.concat([tmp_u, v], keys=['u', 'v'], sort=False)
@@ -184,7 +183,7 @@ def temporal_join(u, v, u_name, v_name, key, type_, config):
 
     if type_.split("_")[0] == 'many':
         if u.columns.str.endswith(f'_BY({key})').sum() == 0:
-            raw_columns = list(config['tables'][u_name]['type'].keys())
+            raw_columns = config[u_name]['type'].keys()
             func = aggregate_functions(u[raw_columns].drop(columns=key))
             intermediate = u.groupby(key).agg(func)
             intermediate.columns = intermediate.columns.map(
@@ -200,30 +199,33 @@ def temporal_join(u, v, u_name, v_name, key, type_, config):
     return pd.concat([u, tmp_u.loc['u']], axis=1, join_axes=[u.index])
 
 
-def dfs(u_name, config, tables, graph):
+def dfs(u_name, config, Xs, graph, time_col):
     logger = logging.getLogger(__name__)
-    u = tables[u_name]
+    u = Xs[u_name]
 
     logger.info(f'Enter {u_name}.')
 
     for edge in graph[u_name]:
         v_name = edge['to']
 
-        if config['tables'][v_name]['depth'] <= config['tables'][u_name]['depth']:
+        if config[v_name]['depth'] <= config[u_name]['depth']:
             continue
 
-        v = dfs(v_name, config, tables, graph)
+        v = dfs(v_name, config, Xs, graph, time_col)
         key = edge['key']
         type_ = edge['type']
 
-        if config['time_col'] not in u and config['time_col'] in v:
+        if time_col not in u and time_col in v:
             continue
 
-        if config['time_col'] in u and config['time_col'] in v:
+        if time_col in u and time_col in v:
             logger.info(f'Temporal Join {u_name} <--{type_}--t {v_name}.')
-            u = temporal_join(u, v, u_name, v_name, key, type_, config)
+
+            u = temporal_join(u, v, u_name, v_name, key, type_, config, time_col)
+
         else:
             logger.info(f'Join {u_name} <--{type_}--nt {v_name}.')
+
             u = join(u, v, u_name, v_name, key, type_, config)
 
     logger.info(f'Leave {u_name}.')
@@ -233,7 +235,7 @@ def dfs(u_name, config, tables, graph):
 
 def aggregate_functions(
     X: TWO_DIM_ARRAYLIKE_TYPE
-) -> Dict[str, List[Union[str, Callable]]]:
+) -> Dict[str, Sequence[Union[str, Callable]]]:
     AFS_MAP = {
         CATEGORICAL_TYPE: [
         #     'count',
@@ -278,7 +280,7 @@ class TableJoiner(BaseTransformer):
     def __init__(
         self,
         main_table_name: str = 'main',
-        relations: List[Dict[str, str]] = None,
+        relations: Sequence[Dict[str, str]] = None,
         tables: Dict[str, Dict[str, str]] = None,
         time_col: str = None,
         verbose: int = 0
@@ -300,6 +302,7 @@ class TableJoiner(BaseTransformer):
         related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE] = None,
     ) -> 'TableJoiner':
         self.graph_ = defaultdict(list)
+        self.config_ = {}
 
         if related_tables is None:
             self.related_tables_ = {}
@@ -322,17 +325,11 @@ class TableJoiner(BaseTransformer):
                 'type': '_'.join(rel['type'].split('_')[::-1])
             })
 
-        self.config_ = {
-            'relations': self.relations,
-            'tables': {},
-            'time_col': self.time_col
-        }
-
         for tname, ttype in self.tables.items():
-            self.config_['tables'][tname] = {}
-            self.config_['tables'][tname]['type'] = ttype
+            self.config_[tname] = {}
+            self.config_[tname]['type'] = ttype
 
-        self.config_['tables'][self.main_table_name]['depth'] = 0
+        self.config_[self.main_table_name]['depth'] = 0
 
         queue = deque([self.main_table_name])
 
@@ -342,9 +339,9 @@ class TableJoiner(BaseTransformer):
             for edge in self.graph_[u_name]:
                 v_name = edge['to']
 
-                if 'depth' not in self.config_['tables'][v_name]:
-                    self.config_['tables'][v_name]['depth'] = \
-                        self.config_['tables'][u_name]['depth'] + 1
+                if 'depth' not in self.config_[v_name]:
+                    self.config_[v_name]['depth'] = \
+                        self.config_[u_name]['depth'] + 1
 
                     queue.append(v_name)
 
@@ -358,7 +355,8 @@ class TableJoiner(BaseTransformer):
             self.main_table_name,
             self.config_,
             Xs,
-            self.graph_
+            self.graph_,
+            self.time_col
         )
 
     def _more_tags(self) -> Dict[str, Any]:

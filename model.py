@@ -7,7 +7,6 @@ os.system('pip3 install -q optuna')
 os.system('pip3 install -q pandas==0.24.2')
 os.system('pip3 install -q scikit-learn>=0.21.0')
 
-import numpy as np
 import pandas as pd
 
 from sklearn.model_selection import TimeSeriesSplit
@@ -37,7 +36,6 @@ class Model(object):
 
         info = self.info.copy()
         info['cv'] = TimeSeriesSplit(5)
-        info['operand'] = None
         info['shuffle'] = False
 
         self.model_ = AutoMLClassifier(**info)

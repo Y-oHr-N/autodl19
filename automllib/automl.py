@@ -101,7 +101,7 @@ class BaseAutoMLModel(BaseEstimator):
         numerical_features: Union[Callable, Sequence] = None,
         time_features: Union[Callable, Sequence] = None,
         dtype: Union[str, Type] = 'float32',
-        operand: Union[Sequence[str], str] = 'multiply',
+        operand: Union[Sequence[str], str] = None,
         subsample: Union[float, int] = 1_000,
         # Parameters for a sampler
         sampling_strategy: Union[Dict[str, int], float, str] = 'auto',
