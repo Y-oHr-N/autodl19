@@ -38,6 +38,7 @@ class Model(object):
         self.model_ = AutoMLClassifier(
             cv=TimeSeriesSplit(5),
             info=self.info,
+            operand=[],
             related_tables=related_tables,
             shuffle=False
         )

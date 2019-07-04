@@ -99,6 +99,7 @@ class BaseAutoMLModel(BaseEstimator):
         numerical_features: Union[Callable, Sequence] = None,
         time_features: Union[Callable, Sequence] = None,
         dtype: Union[str, Type] = 'float32',
+        operand: Union[Sequence[str], str] = 'multiply',
         subsample: Union[float, int] = 1_000,
         # Parameters for a sampler
         sampling_strategy: Union[Dict[str, int], float, str] = 'auto',
@@ -130,6 +131,7 @@ class BaseAutoMLModel(BaseEstimator):
         self.n_jobs = n_jobs
         self.n_seeds = n_seeds
         self.n_trials = n_trials
+        self.operand = operand
         self.random_state = random_state
         self.related_tables = related_tables
         self.sampling_strategy = sampling_strategy
@@ -237,7 +239,7 @@ class BaseAutoMLModel(BaseEstimator):
                 ArithmeticalFeatures(
                     dtype=self.dtype,
                     n_jobs=self.n_jobs,
-                    operand=[],
+                    operand=self.operand,
                     verbose=self.verbose
                 ),
                 MissingIndicator(error_on_new=False)
