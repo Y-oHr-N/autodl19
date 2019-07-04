@@ -39,11 +39,10 @@ class Model(object):
             cv=TimeSeriesSplit(5),
             info=self.info,
             operand=None,
-            related_tables=related_tables,
             shuffle=False
         )
 
-        self.model_.fit(X, y)
+        self.model_.fit(X, y, related_tables=related_tables)
 
     def predict(self, X, timeout):
         probas = self.model_.predict_proba(X)

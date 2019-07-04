@@ -278,14 +278,12 @@ class TableJoiner(BaseTransformer):
     def __init__(
         self,
         info: Dict[str, Any],
-        related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE],
         main_table_name: str = 'main',
         verbose: int = 0
     ) -> None:
         super().__init__(verbose=verbose)
 
         self.info = info
-        self.related_tables = related_tables
         self.main_table_name = main_table_name
 
     def _check_params(self) -> None:
@@ -294,9 +292,15 @@ class TableJoiner(BaseTransformer):
     def _fit(
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
-        y: ONE_DIM_ARRAYLIKE_TYPE = None
+        y: ONE_DIM_ARRAYLIKE_TYPE = None,
+        related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE] = None,
     ) -> 'TableJoiner':
         self.graph_ = defaultdict(list)
+
+        if related_tables is None:
+            self.related_tables_ = {}
+        else:
+            self.related_tables_ = related_tables
 
         for rel in self.info['relations']:
             ta = rel['table_A']
@@ -340,7 +344,7 @@ class TableJoiner(BaseTransformer):
         return self
 
     def _transform(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> TWO_DIM_ARRAYLIKE_TYPE:
-        Xs = self.related_tables.copy()
+        Xs = self.related_tables_.copy()
         Xs[self.main_table_name] = X
 
         return dfs(

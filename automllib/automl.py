@@ -93,7 +93,6 @@ class BaseAutoMLModel(BaseEstimator):
         verbose: int = 1,
         # Parameters for a joiner
         info: Dict[str, Any] = None,
-        related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE] = None,
         # Parameters for an engineer
         categorical_features: Union[Callable, Sequence] = None,
         multi_value_categorical_features: Union[Callable, Sequence] = None,
@@ -134,7 +133,6 @@ class BaseAutoMLModel(BaseEstimator):
         self.n_trials = n_trials
         self.operand = operand
         self.random_state = random_state
-        self.related_tables = related_tables
         self.sampling_strategy = sampling_strategy
         self.study = study
         self.subsample = subsample
@@ -149,22 +147,19 @@ class BaseAutoMLModel(BaseEstimator):
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE,
-        sample_weight: ONE_DIM_ARRAYLIKE_TYPE = None
+        sample_weight: ONE_DIM_ARRAYLIKE_TYPE = None,
+        related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE] = None
     ) -> 'BaseAutoMLModel':
         if sample_weight is None:
             n_samples, _ = X.shape
             sample_weight = np.ones(n_samples)
 
-        self.joiner_ = TableJoiner(
-            info=self.info,
-            related_tables=self.related_tables,
-            verbose=self.verbose
-        )
+        self.joiner_ = TableJoiner(info=self.info, verbose=self.verbose)
         self.engineer_ = self._make_mixed_transformer()
         self.sampler_ = self._make_sampler()
         self.model_ = self._make_model()
 
-        X = self.joiner_.fit_transform(X)
+        X = self.joiner_.fit_transform(X, related_tables=related_tables)
         X = self.engineer_.fit_transform(X)
 
         if self.sampler_ is not None:
