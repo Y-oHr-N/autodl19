@@ -9,8 +9,6 @@ os.system('pip3 install -q scikit-learn>=0.21.0')
 
 import pandas as pd
 
-from sklearn.model_selection import TimeSeriesSplit
-
 from automllib.automl import AutoMLClassifier
 
 
@@ -27,18 +25,15 @@ class Model(object):
         self.info = info
 
     def fit(self, Xs, y, timeout):
+        params = self.info.copy()
+        params['n_jobs'] = -1
+        params['random_state'] = 0
+        params['subsample'] = 1_000
+        params['verbose'] = 1
         related_tables = Xs.copy()
         X = related_tables.pop('main')
 
-        if isinstance(self.info, dict) and 'time_col' in self.info:
-            X = X.sort_values(self.info['time_col'], na_position='first')
-            y = y.loc[X.index]
-
-        info = self.info.copy()
-        info['cv'] = TimeSeriesSplit(5)
-        info['shuffle'] = False
-
-        self.model_ = AutoMLClassifier(**info)
+        self.model_ = AutoMLClassifier(**params)
 
         self.model_.fit(X, y, related_tables=related_tables)
 

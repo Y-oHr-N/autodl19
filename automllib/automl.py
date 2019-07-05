@@ -14,6 +14,7 @@ from sklearn.base import RegressorMixin
 from sklearn.compose import make_column_transformer
 from sklearn.impute import MissingIndicator
 from sklearn.model_selection import BaseCrossValidator
+from sklearn.model_selection import TimeSeriesSplit
 from sklearn.pipeline import make_union
 from sklearn.utils import safe_indexing
 
@@ -88,9 +89,9 @@ class BaseAutoMLModel(BaseEstimator):
 
     def __init__(
         self,
-        n_jobs: int = -1,
-        random_state: Union[int, np.random.RandomState] = 0,
-        verbose: int = 1,
+        n_jobs: int = 1,
+        random_state: Union[int, np.random.RandomState] = None,
+        verbose: int = 0,
         # Parameters for a joiner
         relations: Sequence[Dict[str, str]] = None,
         tables: Dict[str, Dict[str, str]] = None,
@@ -102,10 +103,9 @@ class BaseAutoMLModel(BaseEstimator):
         time_features: Union[Callable, Sequence] = None,
         dtype: Union[str, Type] = 'float32',
         operand: Union[Sequence[str], str] = None,
-        subsample: Union[float, int] = 1_000,
+        subsample: Union[float, int] = 1.0,
         # Parameters for a sampler
         sampling_strategy: Union[Dict[str, int], float, str] = 'auto',
-        shuffle: bool = True,
         # Parameters for a model
         cv: Union[BaseCrossValidator, int] = 5,
         enable_pruning: bool = True,
@@ -139,7 +139,6 @@ class BaseAutoMLModel(BaseEstimator):
         self.sampling_strategy = sampling_strategy
         self.study = study
         self.subsample = subsample
-        self.shuffle = shuffle
         self.tables = tables
         self.timeout = timeout
         self.time_col = time_col
@@ -158,6 +157,12 @@ class BaseAutoMLModel(BaseEstimator):
         if sample_weight is None:
             n_samples, _ = X.shape
             sample_weight = np.ones(n_samples)
+
+        if self.time_col is not None:
+            indices = np.argsort(X[self.time_col].values)
+            X = safe_indexing(X, indices)
+            y = safe_indexing(y, indices)
+            sample_weight = safe_indexing(sample_weight, indices)
 
         self.joiner_ = TableJoiner(
             relations=self.relations,
@@ -299,7 +304,7 @@ class BaseAutoMLModel(BaseEstimator):
             return ModifiedRandomUnderSampler(
                 random_state=self.random_state,
                 sampling_strategy=self.sampling_strategy,
-                shuffle=self.shuffle,
+                shuffle=False,
                 verbose=self.verbose
             )
         elif self._estimator_type == 'regressor':
@@ -310,8 +315,13 @@ class BaseAutoMLModel(BaseEstimator):
             )
 
     def _make_model(self) -> BaseEstimator:
+        if isinstance(self.cv, int) and self.time_col is not None:
+            cv = TimeSeriesSplit(self.cv)
+        else:
+            cv = self.cv
+
         params = {
-            'cv': self.cv,
+            'cv': cv,
             'enable_pruning': self.enable_pruning,
             'learning_rate': self.learning_rate,
             'n_estimators': self.n_estimators,
