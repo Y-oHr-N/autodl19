@@ -372,7 +372,7 @@ class BaseLGBMModelCV(BaseEstimator):
 
         n_jobs = effective_n_jobs(self.n_jobs)
         parallel = Parallel(n_jobs=n_jobs)
-        func = delayed(self._parallel_refit_booster)
+        func = delayed(self._parallel_fit_booster)
 
         self.boosters_ = parallel(
             func(
@@ -380,8 +380,8 @@ class BaseLGBMModelCV(BaseEstimator):
                 y,
                 params,
                 n_estimators,
-                random_state,
-                sample_weight
+                sample_weight,
+                random_state.randint(0, np.iinfo('int32').max)
             ) for _ in range(self.n_seeds)
         )
 
@@ -390,19 +390,17 @@ class BaseLGBMModelCV(BaseEstimator):
     def _more_tags(self) -> Dict[str, Any]:
         return {'non_deterministic': True, 'no_validation': True}
 
-    def _parallel_refit_booster(
+    def _parallel_fit_booster(
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE,
         params: Dict[str, Any],
         n_estimators: int,
-        random_state: np.random.RandomState,
-        sample_weight: ONE_DIM_ARRAYLIKE_TYPE
+        sample_weight: ONE_DIM_ARRAYLIKE_TYPE,
+        seed: int
     ) -> lgb.Booster:
-        if self.n_seeds > 1:
-            seed = random_state.randint(0, np.iinfo('int32').max)
-            params = params.copy()
-            params['seed'] = seed
+        params = params.copy()
+        params['seed'] = seed
 
         dataset = lgb.Dataset(
             X,
