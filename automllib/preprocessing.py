@@ -50,7 +50,7 @@ class ArithmeticalFeatures(BasePreprocessor):
         dtype: Union[str, Type] = None,
         n_jobs: int = 1,
         include_X: bool = True,
-        operand: Union[str, Sequence[str]] = 'multiply',
+        operand: Union[None, str, Sequence[str]] = 'multiply',
         verbose: int = 0
     ) -> None:
         super().__init__(dtype=dtype, n_jobs=n_jobs, verbose=verbose)

@@ -2,8 +2,8 @@ from abc import abstractmethod
 from typing import Any
 from typing import Callable
 from typing import Dict
-from typing import Sequence
 from typing import NamedTuple
+from typing import Sequence
 from typing import Union
 
 import lightgbm as lgb
@@ -292,6 +292,10 @@ class BaseLGBMModelCV(BaseEstimator):
         }
         is_classifier = self._estimator_type == 'classifier'
         cv = check_cv(self.cv, y, is_classifier)
+        n_jobs = effective_n_jobs(self.n_jobs)
+        parallel = Parallel(n_jobs=n_jobs)
+        func = delayed(self._parallel_fit_booster)
+        logger = self._get_logger()
 
         if is_classifier:
             self.encoder_ = LabelEncoder()
@@ -322,7 +326,7 @@ class BaseLGBMModelCV(BaseEstimator):
             else:
                 sample_weight *= compute_sample_weight(self.class_weight, y)
 
-        func = Objective(
+        objective = Objective(
             X,
             y,
             params,
@@ -348,13 +352,11 @@ class BaseLGBMModelCV(BaseEstimator):
             self.study_ = self.study
 
         self.study_.optimize(
-            func,
+            objective,
             n_jobs=self.n_jobs,
             n_trials=self.n_trials,
             timeout=self.timeout
         )
-
-        logger = self._get_logger()
 
         self.best_iteration_ = \
             self.study_.best_trial.user_attrs['best_iteration']
@@ -369,10 +371,6 @@ class BaseLGBMModelCV(BaseEstimator):
             n_estimators = self.n_estimators
         else:
             n_estimators = self.best_iteration_
-
-        n_jobs = effective_n_jobs(self.n_jobs)
-        parallel = Parallel(n_jobs=n_jobs)
-        func = delayed(self._parallel_fit_booster)
 
         self.boosters_ = parallel(
             func(

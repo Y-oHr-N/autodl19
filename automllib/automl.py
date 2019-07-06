@@ -2,7 +2,6 @@ from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import Sequence
-from typing import Type
 from typing import Union
 
 import numpy as np
@@ -41,6 +40,8 @@ from .under_sampling import ModifiedRandomUnderSampler
 
 
 class BaseAutoMLModel(BaseEstimator):
+    _dtype = 'float32'
+
     @property
     def _categorical_features(
         self
@@ -101,7 +102,6 @@ class BaseAutoMLModel(BaseEstimator):
         multi_value_categorical_features: Union[Callable, Sequence] = None,
         numerical_features: Union[Callable, Sequence] = None,
         time_features: Union[Callable, Sequence] = None,
-        dtype: Union[str, Type] = 'float32',
         operand: Union[Sequence[str], str] = None,
         subsample: Union[float, int] = 1.0,
         # Parameters for a sampler
@@ -122,7 +122,6 @@ class BaseAutoMLModel(BaseEstimator):
 
         self.categorical_features = categorical_features
         self.cv = cv
-        self.dtype = dtype
         self.enable_pruning = enable_pruning
         self.learning_rate = learning_rate
         self.multi_value_categorical_features = \
@@ -200,7 +199,7 @@ class BaseAutoMLModel(BaseEstimator):
                         verbose=self.verbose
                     ),
                     CountEncoder(
-                        dtype=self.dtype,
+                        dtype=self._dtype,
                         n_jobs=self.n_jobs,
                         verbose=self.verbose
                     )
@@ -222,12 +221,12 @@ class BaseAutoMLModel(BaseEstimator):
                     ),
                     make_union(
                         CountEncoder(
-                            dtype=self.dtype,
+                            dtype=self._dtype,
                             n_jobs=self.n_jobs,
                             verbose=self.verbose
                         ),
                         TextStatistics(
-                            dtype=self.dtype,
+                            dtype=self._dtype,
                             n_jobs=self.n_jobs,
                             verbose=self.verbose
                         )
@@ -251,7 +250,7 @@ class BaseAutoMLModel(BaseEstimator):
             ),
             make_union(
                 ArithmeticalFeatures(
-                    dtype=self.dtype,
+                    dtype=self._dtype,
                     n_jobs=self.n_jobs,
                     operand=self.operand,
                     verbose=self.verbose
@@ -265,12 +264,12 @@ class BaseAutoMLModel(BaseEstimator):
             NAProportionThreshold(verbose=self.verbose),
             make_union(
                 TimeVectorizer(
-                    dtype=self.dtype,
+                    dtype=self._dtype,
                     n_jobs=self.n_jobs,
                     verbose=self.verbose
                 ),
                 ArithmeticalFeatures(
-                    dtype=self.dtype,
+                    dtype=self._dtype,
                     include_X=False,
                     n_jobs=self.n_jobs,
                     operand='subtract',
