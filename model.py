@@ -28,7 +28,6 @@ class Model(object):
         params = self.info.copy()
         params['n_jobs'] = -1
         params['random_state'] = 0
-        params['subsample'] = 1_000
         params['verbose'] = 1
         related_tables = Xs.copy()
         X = related_tables.pop('main')
