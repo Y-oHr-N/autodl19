@@ -43,7 +43,7 @@ class ArithmeticalFeatures(BasePreprocessor):
         elif self.operand in ('add', 'subtract', 'multiply', 'divide'):
             return (self.operand, )
         else:
-            raise ValueError(f'Unknown operand: {self.operand}')
+            raise ValueError(f'Invalid operand: {self.operand}')
 
     def __init__(
         self,

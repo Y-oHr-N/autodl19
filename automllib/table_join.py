@@ -73,7 +73,7 @@ def get_categorical_feature_names(
         return X.columns
 
     else:
-        raise ValueError(f'Unknown method: {method}.')
+        raise ValueError(f'Invalid method: {method}.')
 
 
 def get_multi_value_categorical_feature_names(
@@ -94,7 +94,7 @@ def get_multi_value_categorical_feature_names(
         return X.columns
 
     else:
-        raise ValueError(f'Unknown method: {method}.')
+        raise ValueError(f'Invalid method: {method}.')
 
 
 def get_numerical_feature_names(
@@ -115,7 +115,7 @@ def get_numerical_feature_names(
         return X.columns
 
     else:
-        raise ValueError(f'Unknown method: {method}.')
+        raise ValueError(f'Invalid method: {method}.')
 
 
 def get_time_feature_names(
@@ -133,7 +133,7 @@ def get_time_feature_names(
         return X.columns
 
     else:
-        raise ValueError(f'Unknown method: {method}.')
+        raise ValueError(f'Invalid method: {method}.')
 
 
 def join(u, v, u_name, v_name, key, type_, config):

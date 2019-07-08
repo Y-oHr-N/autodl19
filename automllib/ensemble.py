@@ -211,12 +211,6 @@ class BaseLGBMModelCV(BaseEstimator):
         return df['value'].idxmin()
 
     @property
-    def best_params_(self) -> Dict[str, Any]:
-        self._check_is_fitted()
-
-        return self.study_.best_params
-
-    @property
     def best_trial_(self) -> optuna.structs.FrozenTrial:
         self._check_is_fitted()
 
@@ -389,12 +383,11 @@ class BaseLGBMModelCV(BaseEstimator):
 
         self.best_iteration_ = \
             self.study_.best_trial.user_attrs['best_iteration']
+        self.best_params_ = {**params, **self.study_.best_params}
         self.best_score_ = self.study_.best_value
 
         logger.info(f'The best iteration is {self.best_iteration_}.')
         logger.info(f'The best CV score is {self.best_score_:.3f}.')
-
-        params.update(self.study_.best_params)
 
         if self.n_iter_no_change is None:
             n_estimators = self.n_estimators
@@ -405,7 +398,7 @@ class BaseLGBMModelCV(BaseEstimator):
             func(
                 X,
                 y,
-                params,
+                self.best_params_,
                 n_estimators,
                 sample_weight,
                 random_state.randint(0, np.iinfo('int32').max)

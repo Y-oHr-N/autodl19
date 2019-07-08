@@ -85,7 +85,7 @@ class ModifiedSimpleImputer(BasePreprocessor):
                 self.statistics_[j] = np.min(column[~is_nan])
 
         else:
-            raise ValueError(f'Unknown strategy: {self.strategy}.')
+            raise ValueError(f'Invalid strategy: {self.strategy}.')
 
         return self
 
