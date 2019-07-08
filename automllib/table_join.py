@@ -309,7 +309,10 @@ class TableJoiner(BaseTransformer):
         else:
             self.related_tables_ = related_tables
 
-        for rel in self.relations:
+        relations = self.relations or []
+        tables = self.tables or {self.main_table_name: {}}
+
+        for rel in relations:
             ta = rel['table_A']
             tb = rel['table_B']
 
@@ -325,7 +328,7 @@ class TableJoiner(BaseTransformer):
                 'type': '_'.join(rel['type'].split('_')[::-1])
             })
 
-        for tname, ttype in self.tables.items():
+        for tname, ttype in tables.items():
             self.config_[tname] = {}
             self.config_[tname]['type'] = ttype
 
