@@ -25,6 +25,37 @@ from .base import BaseEstimator
 from .base import ONE_DIM_ARRAYLIKE_TYPE
 from .base import TWO_DIM_ARRAYLIKE_TYPE
 
+CLASSIFICATION_METRICS = {
+    'binary': 'binary_logloss',
+    'multiclass': 'multi_logloss',
+    'softmax': 'multi_logloss',
+    'multiclassova': 'multi_logloss',
+    'multiclass_ova': 'multi_logloss',
+    'ova': 'multi_logloss',
+    'ovr': 'multi_logloss'
+}
+REGRESSION_METRICS = {
+    'mean_absoluter_error': 'l1',
+    'mae': 'l1',
+    'regression_l1': 'l1',
+    'l2_root': 'l2',
+    'mean_squared_error': 'l2',
+    'mse': 'l2',
+    'regression': 'l2',
+    'regression_l2': 'l2',
+    'root_mean_squared_error': 'l2',
+    'rmse': 'l2',
+    'huber': 'huber',
+    'fair': 'fair',
+    'poisson': 'poisson',
+    'quantile': 'quantile',
+    'mean_absolute_percentage_error': 'mape',
+    'mape': 'mape',
+    'gamma': 'gamma',
+    'tweedie': 'tweedie'
+}
+METRICS = {**CLASSIFICATION_METRICS, **REGRESSION_METRICS}
+
 
 class EnvExtractionCallback(object):
     @property
@@ -251,6 +282,7 @@ class BaseLGBMModelCV(BaseEstimator):
         n_jobs: int = 1,
         n_seeds: int = 10,
         n_trials: int = 10,
+        objective: str = None,
         random_state: Union[int, np.random.RandomState] = None,
         study: optuna.study.Study = None,
         timeout: float = None,
@@ -269,12 +301,10 @@ class BaseLGBMModelCV(BaseEstimator):
         self.n_jobs = n_jobs
         self.n_seeds = n_seeds
         self.n_trials = n_trials
+        self.objective = objective
         self.random_state = random_state
         self.study = study
         self.timeout = timeout
-
-    def _check_params(self) -> None:
-        pass
 
     def _fit(
         self,
@@ -305,20 +335,23 @@ class BaseLGBMModelCV(BaseEstimator):
             self.n_classes_ = len(self.encoder_.classes_)
 
             if self.n_classes_ > 2:
-                direction = 'minimize'
-                params['metric'] = 'multi_logloss'
                 params['num_classes'] = self.n_classes_
-                params['objective'] = 'multiclass'
+
+                if self.objective is None:
+                    params['objective'] = 'multiclass'
+
             else:
-                direction = 'maximize'
-                params['metric'] = 'auc'
-                params['is_unbalance'] = True
-                params['objective'] = 'binary'
+                if self.objective is None:
+                    params['objective'] = 'binary'
 
         else:
-            direction = 'minimize'
-            params['metric'] = 'l2'
-            params['objective'] = 'regression'
+            if self.objective is None:
+                params['objective'] = 'regression'
+
+        if self.objective is not None:
+            params['objective'] = self.objective
+
+        params['metric'] = METRICS[params['objective']]
 
         if self.class_weight is not None:
             if sample_weight is None:
@@ -342,11 +375,7 @@ class BaseLGBMModelCV(BaseEstimator):
             pruner = optuna.pruners.SuccessiveHalvingPruner()
             sampler = optuna.samplers.TPESampler(seed=seed)
 
-            self.study_ = optuna.create_study(
-                direction=direction,
-                pruner=pruner,
-                sampler=sampler
-            )
+            self.study_ = optuna.create_study(pruner=pruner, sampler=sampler)
 
         else:
             self.study_ = self.study
@@ -437,6 +466,11 @@ class LGBMClassifierCV(BaseLGBMModelCV, ClassifierMixin):
     0.9...
     """
 
+    def _check_params(self) -> None:
+        if self.objective is not None \
+                and self.objective not in CLASSIFICATION_METRICS:
+            raise ValueError(f'Invalid objective: {self.objective}')
+
     def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
         """Predict using the Fitted model.
 
@@ -504,6 +538,11 @@ class LGBMRegressorCV(BaseLGBMModelCV, RegressorMixin):
     >>> reg.score(X, y)
     0.9...
     """
+
+    def _check_params(self) -> None:
+        if self.objective is not None \
+                and self.objective not in REGRESSION_METRICS:
+            raise ValueError(f'Invalid objective: {self.objective}')
 
     def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
         """Predict using the Fitted model.
