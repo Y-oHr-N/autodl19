@@ -56,6 +56,8 @@ REGRESSION_METRICS = {
 }
 METRICS = {**CLASSIFICATION_METRICS, **REGRESSION_METRICS}
 
+MAX_INT = np.iinfo(np.int32).max
+
 
 class EnvExtractionCallback(object):
     @property
@@ -386,8 +388,9 @@ class BaseLGBMModelCV(BaseEstimator):
         self.best_params_ = {**params, **self.study_.best_params}
         self.best_score_ = self.study_.best_value
 
-        logger.info(f'The best iteration is {self.best_iteration_}.')
-        logger.info(f'The best CV score is {self.best_score_:.3f}.')
+        logger.info(f'Shape of data: {X.shape}.')
+        logger.info(f'Best iteration: {self.best_iteration_}.')
+        logger.info(f'Best score: {self.best_score_:.3f}.')
 
         if self.n_iter_no_change is None:
             n_estimators = self.n_estimators
@@ -401,7 +404,7 @@ class BaseLGBMModelCV(BaseEstimator):
                 self.best_params_,
                 n_estimators,
                 sample_weight,
-                random_state.randint(0, np.iinfo('int32').max)
+                random_state.randint(0, MAX_INT)
             ) for _ in range(self.n_seeds)
         )
 
@@ -462,7 +465,7 @@ class LGBMClassifierCV(BaseLGBMModelCV, ClassifierMixin):
     def _check_params(self) -> None:
         if self.objective is not None \
                 and self.objective not in CLASSIFICATION_METRICS:
-            raise ValueError(f'Invalid objective: {self.objective}')
+            raise ValueError(f'Invalid objective: {self.objective}.')
 
     def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
         """Predict using the Fitted model.
@@ -535,7 +538,7 @@ class LGBMRegressorCV(BaseLGBMModelCV, RegressorMixin):
     def _check_params(self) -> None:
         if self.objective is not None \
                 and self.objective not in REGRESSION_METRICS:
-            raise ValueError(f'Invalid objective: {self.objective}')
+            raise ValueError(f'Invalid objective: {self.objective}.')
 
     def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
         """Predict using the Fitted model.

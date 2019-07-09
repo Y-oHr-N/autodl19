@@ -96,7 +96,7 @@ class BaseEstimator(SKLearnBaseEstimator, ABC):
             _, n_input_features = X.shape
 
             if n_input_features != n_features:
-                raise ValueError(f'Invalid data: shape={X.shape}')
+                raise ValueError(f'Invalid data: X.shape={X.shape}.')
 
         return X, y
 
