@@ -114,6 +114,7 @@ class BaseAutoMLModel(BaseEstimator):
         n_iter_no_change: int = 10,
         n_trials: int = 10,
         n_seeds: int = 10,
+        objective: str = None,
         study: optuna.study.Study = None,
         timeout: float = None,
         **kwargs: Any
@@ -132,6 +133,7 @@ class BaseAutoMLModel(BaseEstimator):
         self.n_jobs = n_jobs
         self.n_seeds = n_seeds
         self.n_trials = n_trials
+        self.objective = objective
         self.operand = operand
         self.random_state = random_state
         self.relations = relations
@@ -329,6 +331,7 @@ class BaseAutoMLModel(BaseEstimator):
             'n_seeds': self.n_seeds,
             'n_trials': self.n_trials,
             'random_state': self.random_state,
+            'objective': self.objective,
             'study': self.study,
             'timeout': self.timeout,
             'verbose': self.verbose
