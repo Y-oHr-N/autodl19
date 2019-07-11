@@ -14,6 +14,8 @@ from .base import BaseSelector
 from .base import ONE_DIM_ARRAYLIKE_TYPE
 from .base import TWO_DIM_ARRAYLIKE_TYPE
 
+MAX_INT = np.iinfo(np.int32).max
+
 
 class DropCollinearFeatures(BaseSelector):
     """Drop collinear features.
@@ -183,9 +185,16 @@ class FrequencyThreshold(BaseSelector):
     (4, 1)
     """
 
+    @property
+    def _max_frequency(self) -> int:
+        if self.max_frequency is None:
+            return MAX_INT
+
+        return self.max_frequency
+
     def __init__(
         self,
-        max_frequency: Union[int, float] = 1.0,
+        max_frequency: Union[int, float, None] = 1.0,
         min_frequency: Union[int, float] = 1,
         verbose: int = 0
     ) -> None:
@@ -208,7 +217,7 @@ class FrequencyThreshold(BaseSelector):
         return self
 
     def _get_support(self) -> ONE_DIM_ARRAYLIKE_TYPE:
-        max_frequency = self.max_frequency
+        max_frequency = self._max_frequency
         min_frequency = self.min_frequency
 
         if isinstance(max_frequency, float):

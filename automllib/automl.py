@@ -38,8 +38,6 @@ from .table_join import get_time_feature_names
 from .table_join import TableJoiner
 from .under_sampling import ModifiedRandomUnderSampler
 
-MAX_INT = np.iinfo(np.int32).max
-
 
 class BaseAutoMLModel(BaseEstimator):
     _dtype = 'float32'
@@ -244,7 +242,7 @@ class BaseAutoMLModel(BaseEstimator):
         return make_pipeline(
             NAProportionThreshold(verbose=self.verbose),
             FrequencyThreshold(
-                max_frequency=MAX_INT,
+                max_frequency=None,
                 verbose=self.verbose
             ),
             Clip(n_jobs=self.n_jobs, verbose=self.verbose),
