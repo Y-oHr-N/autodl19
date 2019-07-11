@@ -48,14 +48,14 @@ if types.TYPE_CHECKING:
     from typing import Any  # NOQA
     from typing import Callable  # NOQA
     from typing import Dict  # NOQA
-    from typing import Sequence  # NOQA
+    from typing import List  # NOQA
     from typing import Mapping  # NOQA
     from typing import Optional  # NOQA
     from typing import Union  # NOQA
 
-    OneDimArrayLikeType = Union[Sequence[float], np.ndarray, pd.Series]
+    OneDimArrayLikeType = Union[List[float], np.ndarray, pd.Series]
     TwoDimArrayLikeType = \
-        Union[Sequence[Sequence[float]], np.ndarray, spmatrix, pd.DataFrame]
+        Union[List[List[float]], np.ndarray, pd.DataFrame, spmatrix]
 
 
 def _check_sklearn_availability():
@@ -147,7 +147,7 @@ class Objective(object):
         y,  # type: Optional[Union[OneDimArrayLikeType, TwoDimArrayLikeType]]
         cv,  # type: BaseCrossValidator
         enable_pruning,  # type: bool
-        error_score,  # type: Union[str, float]
+        error_score,  # type: Union[float, str]
         fit_params,  # type: Dict[str, Any]
         groups,  # type: Optional[OneDimArrayLikeType]
         max_iter,  # type: int
@@ -245,7 +245,7 @@ class Objective(object):
 
             trial.report(intermediate_value, step=step)
 
-            if trial.should_prune(step):
+            if trial.should_prune():
                 self._store_scores(trial, scores)
 
                 raise structs.TrialPruned(
@@ -266,11 +266,11 @@ class Objective(object):
     def _partial_fit_and_score(
         self,
         estimator,  # type: BaseEstimator
-        train,  # type: Sequence[int]
-        test,  # type: Sequence[int]
+        train,  # type: List[int]
+        test,  # type: List[int]
         partial_fit_params  # type: Dict[str, Any]
     ):
-        # type: (...) -> Sequence[float]
+        # type: (...) -> List[float]
 
         X_train, y_train = _safe_split(estimator, self.X, self.y, train)
         X_test, y_test = _safe_split(
@@ -301,7 +301,7 @@ class Objective(object):
             else:
                 raise ValueError(
                     'error_score must be \'raise\' or numeric.'
-                ) from e
+                )
 
         else:
             fit_time = time() - start_time
@@ -528,7 +528,7 @@ class OptunaSearchCV(BaseEstimator):
 
     @property
     def trials_(self):
-        # type: () -> Sequence[structs.FrozenTrial]
+        # type: () -> List[structs.FrozenTrial]
         """All trials in the :class:`~optuna.study.Study`."""
 
         self._check_is_fitted()
@@ -657,18 +657,18 @@ class OptunaSearchCV(BaseEstimator):
         self,
         estimator,  # type: BaseEstimator
         param_distributions,  # type: Mapping[str, distributions.BaseDistribution]
-        cv=5,  # type: Optional[Union[int, BaseCrossValidator]]
+        cv=5,  # type: Optional[Union[BaseCrossValidator, int]]
         enable_pruning=False,  # type: bool
-        error_score=np.nan,  # type: Union[str, float]
+        error_score=np.nan,  # type: Union[float, str]
         max_iter=1000,  # type: int
         n_jobs=1,  # type: int
         n_trials=10,  # type: int
         random_state=None,  # type: Optional[Union[int, np.random.RandomState]]
         refit=True,  # type: bool
         return_train_score=False,  # type: bool
-        scoring=None,  # type: Optional[Union[str, Callable[..., float]]]
+        scoring=None,  # type: Optional[Union[Callable[..., float], str]]
         study=None,  # type: Optional[study_module.Study]
-        subsample=1.0,  # type: Union[int, float]
+        subsample=1.0,  # type: Union[float, int]
         timeout=None,  # type: Optional[float]
         verbose=0  # type: int
     ):
@@ -697,7 +697,6 @@ class OptunaSearchCV(BaseEstimator):
         # type: () -> None
 
         attributes = [
-            'logger_',
             'n_splits_',
             'sample_indices_',
             'scorer_',
@@ -751,6 +750,11 @@ class OptunaSearchCV(BaseEstimator):
 
         return logger
 
+    def _more_tags(self):
+        # type: () -> Dict[str, bool]
+
+        return {'non_deterministic': True, 'no_validation': True}
+
     def _refit(
         self,
         X,  # type: TwoDimArrayLikeType
@@ -760,15 +764,16 @@ class OptunaSearchCV(BaseEstimator):
         # type: (...) -> 'OptunaSearchCV'
 
         n_samples = _num_samples(X)
+        logger = self._get_logger()
 
         self.best_estimator_ = clone(self.estimator)
 
         try:
             self.best_estimator_.set_params(**self.study_.best_params)
         except ValueError as e:
-            self.logger_.exception(e)
+            logger.exception(e)
 
-        self.logger_.info(
+        logger.info(
             'Refitting the estimator using {} samples...'.format(n_samples)
         )
 
@@ -778,17 +783,12 @@ class OptunaSearchCV(BaseEstimator):
 
         self.refit_time_ = time() - start_time
 
-        self.logger_.info(
+        logger.info(
             'Finished refitting! '
             '(elapsed time: {:.3f} sec.)'.format(self.refit_time_)
         )
 
         return self
-
-    def _more_tags(self):
-        # type: () -> Dict[str, bool]
-
-        return {'non_deterministic': True, 'no_validation': True}
 
     def fit(
         self,
@@ -824,8 +824,8 @@ class OptunaSearchCV(BaseEstimator):
         random_state = check_random_state(self.random_state)
         max_samples = self.subsample
         n_samples = _num_samples(X)
+        logger = self._get_logger()
 
-        self.logger_ = self._get_logger()
         self.sample_indices_ = np.arange(n_samples)
 
         if type(max_samples) is float:
@@ -887,7 +887,7 @@ class OptunaSearchCV(BaseEstimator):
             self.scorer_
         )
 
-        self.logger_.info(
+        logger.info(
             'Searching the best hyperparameters using {} '
             'samples...'.format(_num_samples(self.sample_indices_))
         )
@@ -899,7 +899,7 @@ class OptunaSearchCV(BaseEstimator):
             timeout=self.timeout
         )
 
-        self.logger_.info('Finished hyperparemeter search!')
+        logger.info('Finished hyperparemeter search!')
 
         if self.refit:
             self._refit(X, y, **fit_params)
