@@ -258,7 +258,7 @@ def aggregate_functions(
         ],
         TIME_TYPE: [
         #     'count'
-            lambda x: (x.iloc[-1] - x.iloc[0]).total_seconds()
+            lambda x: (x.max() - x.min()).total_seconds()
         ]
     }
     func = {}
