@@ -190,7 +190,7 @@ class Objective(object):
 
         trial.set_user_attr('best_iteration', best_iteration)
 
-        return eval_hist[f"{self.params['metric']}-mean"][-1]
+        return eval_hist[f'{self.params["metric"]}-mean'][-1]
 
 
 class BaseLGBMModelCV(BaseEstimator):
@@ -390,7 +390,7 @@ class BaseLGBMModelCV(BaseEstimator):
 
         logger.info(f'Shape of data: {X.shape}.')
         logger.info(f'Best iteration: {self.best_iteration_}.')
-        logger.info(f'Best score: {self.best_score_:.3f}.')
+        logger.info(f'Best {params["metric"]}: {self.best_score_:.3f}.')
 
         if self.n_iter_no_change is None:
             n_estimators = self.n_estimators
