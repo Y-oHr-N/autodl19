@@ -152,8 +152,6 @@ def test_model() -> None:
 
         model.fit(train_data, train_label, timer.get_remaining_time())
 
-        assert model.best_score_ > 0.5
-
         if experiment is not None:
             experiment.log_parameters(model.best_params_)
 
