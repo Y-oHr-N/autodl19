@@ -247,6 +247,7 @@ class BaseAutoMLModel(BaseEstimator):
             ),
             Clip(n_jobs=self.n_jobs, verbose=self.verbose),
             DropCollinearFeatures(
+                random_state=self.random_state,
                 subsample=self.subsample,
                 verbose=self.verbose
             ),
@@ -330,8 +331,8 @@ class BaseAutoMLModel(BaseEstimator):
             'n_jobs': self.n_jobs,
             'n_seeds': self.n_seeds,
             'n_trials': self.n_trials,
-            'random_state': self.random_state,
             'objective': self.objective,
+            'random_state': self.random_state,
             'study': self.study,
             'timeout': self.timeout,
             'verbose': self.verbose
