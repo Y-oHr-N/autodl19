@@ -195,8 +195,9 @@ class Objective(object):
 
 class BaseLGBMModelCV(BaseEstimator):
     # TODO(Kon): Add `groups` into fit
-    # TODO(Kon): Search best `boosting_type`
-    # TODO(Kon): Search best `min_split_gain`
+    # TODO(Kon): Search the best `boosting_type`
+    # TODO(Kon): Search the best `max_bin`
+    # TODO(Kon): Search the best `min_split_gain`
     # TODO(Kon): Output SHAP values
 
     @property
@@ -309,7 +310,7 @@ class BaseLGBMModelCV(BaseEstimator):
         sample_weight: ONE_DIM_ARRAYLIKE_TYPE = None,
     ) -> 'BaseLGBMModelCV':
         random_state = check_random_state(self.random_state)
-        seed = random_state.randint(0, np.iinfo('int32').max)
+        seed = random_state.randint(0, MAX_INT)
         params = {
             'learning_rate': self.learning_rate,
             'n_jobs': 1,
