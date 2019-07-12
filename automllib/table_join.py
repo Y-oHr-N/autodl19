@@ -137,6 +137,10 @@ def get_time_feature_names(
 
 
 def join(u, v, u_name, v_name, key, type_, config):
+    if isinstance(key, list):
+        assert len(key) == 1
+        key = key[0]
+
     if type_.split("_")[2] == 'many':
         func = aggregate_functions(v.drop(columns=key))
         v = v.groupby(key).agg(func)
@@ -163,6 +167,10 @@ def join(u, v, u_name, v_name, key, type_, config):
 
 
 def temporal_join(u, v, u_name, v_name, key, type_, config, time_col):
+    if isinstance(key, list):
+        assert len(key) == 1
+        key = key[0]
+
     logger = logging.getLogger(__name__)
     tmp_u = u[[time_col, key]]
     tmp_u = pd.concat([tmp_u, v], keys=['u', 'v'], sort=False)
