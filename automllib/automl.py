@@ -43,40 +43,6 @@ class BaseAutoMLModel(BaseEstimator):
     _dtype = 'float32'
 
     @property
-    def _categorical_features(
-        self
-    ) -> Union[Callable, Sequence[Union[int, str]]]:
-        if self.categorical_features is None:
-            return get_categorical_feature_names
-
-        return self.categorical_features
-
-    @property
-    def _multi_value_categorical_features(
-        self
-    ) -> Union[Callable, Sequence[Union[int, str]]]:
-        if self.multi_value_categorical_features is None:
-            return get_multi_value_categorical_feature_names
-
-        return self.multi_value_categorical_features
-
-    @property
-    def _numerical_features(
-        self
-    ) -> Union[Callable, Sequence[Union[int, str]]]:
-        if self.numerical_features is None:
-            return get_numerical_feature_names
-
-        return self.numerical_features
-
-    @property
-    def _time_features(self) -> Union[Callable, Sequence[Union[int, str]]]:
-        if self.time_features is None:
-            return get_time_feature_names
-
-        return self.time_features
-
-    @property
     def best_iteration_(self) -> int:
         return self.model_.best_iteration_
 
@@ -98,10 +64,6 @@ class BaseAutoMLModel(BaseEstimator):
         tables: Dict[str, Dict[str, str]] = None,
         time_col: str = None,
         # Parameters for an engineer
-        categorical_features: Union[Callable, Sequence] = None,
-        multi_value_categorical_features: Union[Callable, Sequence] = None,
-        numerical_features: Union[Callable, Sequence] = None,
-        time_features: Union[Callable, Sequence] = None,
         operand: Union[Sequence[str], str] = None,
         subsample: Union[float, int] = 1_000,
         # Parameters for a sampler
@@ -121,13 +83,9 @@ class BaseAutoMLModel(BaseEstimator):
     ) -> None:
         super().__init__(verbose=verbose)
 
-        self.categorical_features = categorical_features
         self.cv = cv
         self.enable_pruning = enable_pruning
         self.learning_rate = learning_rate
-        self.multi_value_categorical_features = \
-            multi_value_categorical_features
-        self.numerical_features = numerical_features
         self.n_estimators = n_estimators
         self.n_iter_no_change = n_iter_no_change
         self.n_jobs = n_jobs
@@ -143,7 +101,6 @@ class BaseAutoMLModel(BaseEstimator):
         self.tables = tables
         self.timeout = timeout
         self.time_col = time_col
-        self.time_features = time_features
 
     def _check_params(self) -> None:
         pass
@@ -285,19 +242,19 @@ class BaseAutoMLModel(BaseEstimator):
         return make_column_transformer(
             (
                 self._make_categorical_transformer(),
-                self._categorical_features
+                get_categorical_feature_names
             ),
             (
                 self._make_multi_value_categorical_transformer(),
-                self._multi_value_categorical_features
+                get_multi_value_categorical_feature_names
             ),
             (
                 self._make_numerical_transformer(),
-                self._numerical_features
+                get_numerical_feature_names
             ),
             (
                 self._make_time_transformer(),
-                self._time_features
+                get_time_feature_names
             )
         )
 
