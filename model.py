@@ -27,6 +27,7 @@ class Model(object):
     def fit(self, Xs, y, timeout):
         params = self.info.copy()
         params['n_jobs'] = -1
+        params['n_seeds'] = 12
         params['random_state'] = 0
         params['verbose'] = 1
         related_tables = Xs.copy()
