@@ -66,6 +66,7 @@ class BaseAutoMLModel(BaseEstimator):
         # Parameters for an engineer
         operand: Union[Sequence[str], str] = None,
         subsample: Union[float, int] = 1_000,
+        threshold: float = 0.6,
         # Parameters for a sampler
         sampling_strategy: Union[Dict[str, int], float, str] = 'auto',
         # Parameters for a model
@@ -99,6 +100,7 @@ class BaseAutoMLModel(BaseEstimator):
         self.study = study
         self.subsample = subsample
         self.tables = tables
+        self.threshold = threshold
         self.timeout = timeout
         self.time_col = time_col
 
@@ -148,7 +150,10 @@ class BaseAutoMLModel(BaseEstimator):
 
     def _make_categorical_transformer(self) -> BaseEstimator:
         return make_pipeline(
-            NAProportionThreshold(verbose=self.verbose),
+            NAProportionThreshold(
+                threshold=self.threshold,
+                verbose=self.verbose
+            ),
             FrequencyThreshold(verbose=self.verbose),
             make_union(
                 make_pipeline(
@@ -169,7 +174,10 @@ class BaseAutoMLModel(BaseEstimator):
 
     def _make_multi_value_categorical_transformer(self) -> BaseEstimator:
         return make_pipeline(
-            NAProportionThreshold(verbose=self.verbose),
+            NAProportionThreshold(
+                threshold=self.threshold,
+                verbose=self.verbose
+            ),
             make_union(
                 make_pipeline(
                     ModifiedSimpleImputer(
@@ -197,7 +205,10 @@ class BaseAutoMLModel(BaseEstimator):
 
     def _make_numerical_transformer(self) -> BaseEstimator:
         return make_pipeline(
-            NAProportionThreshold(verbose=self.verbose),
+            NAProportionThreshold(
+                threshold=self.threshold,
+                verbose=self.verbose
+            ),
             FrequencyThreshold(
                 max_frequency=None,
                 verbose=self.verbose
@@ -221,7 +232,10 @@ class BaseAutoMLModel(BaseEstimator):
 
     def _make_time_transformer(self) -> BaseEstimator:
         return make_pipeline(
-            NAProportionThreshold(verbose=self.verbose),
+            NAProportionThreshold(
+                threshold=self.threshold,
+                verbose=self.verbose
+            ),
             make_union(
                 TimeVectorizer(
                     dtype=self._dtype,
