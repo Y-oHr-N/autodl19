@@ -144,7 +144,7 @@ class Objective(object):
                 trial.suggest_loguniform(
                     'reg_lambda',
                     self._reg_lambda_low,
-                    self._reg_lambda_high
+                    self._reg_alpha_high
                 ),
             'subsample':
                 trial.suggest_uniform(
@@ -393,7 +393,7 @@ class BaseLGBMModelCV(BaseEstimator):
         logger.info(f'Best iteration: {self.best_iteration_}.')
         logger.info(f'Best {params["metric"]}: {self.best_score_:.3f}.')
 
-        if self.best_iteration_ is None:
+        if self.n_iter_no_change is None:
             n_estimators = self.n_estimators
         else:
             n_estimators = self.best_iteration_
