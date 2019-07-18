@@ -123,7 +123,9 @@ def make_experiment() -> Experiment:
         if pull_request:
             experiment.log_other('Pull request number', pull_request)
 
-    except Exception:
+    except Exception as e:
+        logger.exception(e)
+
         experiment = None
 
     return experiment
