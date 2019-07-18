@@ -11,3 +11,8 @@ formatter = colorlog.ColoredFormatter(
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
+
+try:
+    import comet_ml
+except ImportError as e:
+    logger.exception(e)
