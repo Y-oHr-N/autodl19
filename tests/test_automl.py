@@ -100,7 +100,7 @@ def load_test_data(path: pathlib.Path, info: Dict[str, Any]) -> pd.DataFrame:
 
 
 def load_test_label(path: pathlib.Path) -> pd.Series:
-    label_path = path / 'main_test.solution.gz'
+    label_path = path / 'test' / 'main_test.solution.gz'
 
     return pd.read_csv(label_path, squeeze=True)
 
@@ -170,7 +170,7 @@ def test_automl_classifier() -> None:
 
         timer.check_remaining_time()
 
-    for path in ref_path.iterdir():
+    for path in data_path.iterdir():
         y_test = load_test_label(path)
 
         logger.info(f'Loaded ref from {path.name}.')
