@@ -1,10 +1,11 @@
 import re
 
-import jieba
 import lightgbm as lgb
 import numpy as np
 
 from sklearn.feature_extraction.text import TfidfVectorizer
+
+from automllib.ensemble import LGBMClassifierCV
 
 MAX_VOCAB_SIZE = 10000
 
@@ -49,7 +50,11 @@ class Model(object):
             preprocessor=preprocessor,
             tokenizer=tokenizer
         )
-        self.model_ = lgb.LGBMClassifier(random_state=0)
+        self.model_ = LGBMClassifierCV(
+            n_jobs=-1,
+            n_seeds=4,
+            random_state=0
+        )
 
         x_train, y_train = train_dataset
         x_train = self.vectorizer_.fit_transform(x_train)
