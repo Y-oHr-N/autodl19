@@ -18,9 +18,9 @@ except ImportError:
 
 from sklearn.metrics import roc_auc_score
 
+from automllib.automl import AutoMLClassifier
 from automllib.table_join import TYPE_MAP
 from automllib.utils import Timer
-from model import Model
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +131,7 @@ def make_experiment() -> Experiment:
     return experiment
 
 
-def test_model() -> None:
+def test_automl_classifier() -> None:
     data_path = pathlib.Path('data')
     ref_path = pathlib.Path('ref')
     probabilities = {}
@@ -140,9 +140,14 @@ def test_model() -> None:
 
     for path in data_path.iterdir():
         info = load_info(path)
-        train_data = load_train_data(path, info)
-        train_label = load_train_label(path)
-        test_data = load_test_data(path, info)
+        info['n_jobs'] = -1
+        info['n_seeds'] = 12
+        info['random_state'] = 0
+        info['verbose'] = 1
+        related_tables = load_train_data(path, info)
+        X_train = related_tables.pop('main')
+        y_train = load_train_label(path)
+        X_test = load_test_data(path, info)
 
         logger.info(f'Loaded data from {path.name}.')
 
@@ -150,28 +155,27 @@ def test_model() -> None:
 
         timer.start()
 
-        model = Model(info)
+        model = AutoMLClassifier(**info)
 
-        model.fit(train_data, train_label, timer.get_remaining_time())
+        model.fit(X_train, y_train, related_tables=related_tables)
 
         if experiment is not None:
             experiment.log_parameters(model.best_params_)
 
-        y_score = model.predict(test_data, timer.get_remaining_time())
+        probas = model.predict_proba(X_test)
 
-        assert len(test_data) == len(y_score)
-        assert y_score.isnull().sum() == 0
+        assert len(X_test) == len(probas)
 
-        probabilities[path.name] = y_score
+        probabilities[path.name] = probas[:, 1]
 
         timer.check_remaining_time()
 
     for path in ref_path.iterdir():
-        test_label = load_test_label(path)
+        y_test = load_test_label(path)
 
         logger.info(f'Loaded ref from {path.name}.')
 
-        score = roc_auc_score(test_label, probabilities[path.name])
+        score = roc_auc_score(y_test, probabilities[path.name])
 
         logger.info(f'The AUC of {path.name} is {score:.3f}.')
 
