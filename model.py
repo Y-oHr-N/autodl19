@@ -18,6 +18,22 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 from automllib.under_sampling import RandomUnderSampler
 
+CHINESE_STOP_WORDS = frozenset([
+    'the', 'of', 'is', 'and',
+    'to', 'in', 'that', 'we',
+    'for', 'an', 'are', 'by',
+    'be', 'as', 'on', 'with',
+    'can', 'if', 'from', 'which',
+    'you', 'it', 'this', 'then',
+    'at', 'have', 'all', 'not',
+    'one', 'has', 'or', 'that',
+    '的', '了', '和', '是',
+    '就', '都', '而', '及',
+    '與', '著', '或', '一個',
+    '沒有', '我們', '你們', '妳們',
+    '他們', '她們', '是否'
+])
+
 
 def clean_en_text(text):
     REPLACE_BY_SPACE_RE = re.compile('["/(){}\[\]\|@,;]')
@@ -63,7 +79,7 @@ class Model(object):
 
         if self.metadata['language'] == 'ZH':
             preprocessor = clean_zh_text
-            stop_words = None
+            stop_words = CHINESE_STOP_WORDS
             tokenizer = _tokenize_chinese_words
         else:
             preprocessor = clean_en_text
