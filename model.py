@@ -8,6 +8,8 @@ import collections
 import re
 import time
 
+from typing import List
+
 import jieba
 import lightgbm as lgb
 import numpy as np
@@ -16,7 +18,7 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.dummy import DummyClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from automllib.under_sampling import RandomUnderSampler
+from automllib.under_sampling import ModifiedRandomUnderSampler
 
 CHINESE_STOP_WORDS = frozenset([
     'the', 'of', 'is', 'and',
@@ -34,28 +36,27 @@ CHINESE_STOP_WORDS = frozenset([
     '他們', '她們', '是否'
 ])
 
-
-def clean_en_text(text):
-    REPLACE_BY_SPACE_RE = re.compile('["/(){}\[\]\|@,;]')
-    BAD_SYMBOLS_RE = re.compile('[^0-9a-zA-Z #+_]')
-    text = text.lower()
-    text = REPLACE_BY_SPACE_RE.sub(' ', text)
-    text = BAD_SYMBOLS_RE.sub('', text)
-    text = text.strip()
-
-    return text
+REPLACE_BY_SPACE_RE_EN = re.compile('["/(){}\[\]\|@,;]')
+REPLACE_BY_SPACE_RE_ZH = re.compile('[“”【】/（）：！～「」、|，；。"/(){}\[\]\|@,\.;]')
+BAD_SYMBOLS_RE_EN = re.compile('[^0-9a-zA-Z #+_]')
 
 
-def clean_zh_text(text):
-    REPLACE_BY_SPACE_RE = re.compile('[“”【】/（）：！～「」、|，；。"/(){}\[\]\|@,\.;]')
-    text = REPLACE_BY_SPACE_RE.sub(' ', text)
-    text = text.strip()
+def english_preprocessor(doc: str) -> str:
+    doc = doc.lower()
+    doc = REPLACE_BY_SPACE_RE_EN.sub(' ', doc)
+    doc = BAD_SYMBOLS_RE_EN.sub('', doc)
 
-    return text
+    return doc.strip()
 
 
-def _tokenize_chinese_words(text):
-    return list(jieba.cut(text, cut_all=False))
+def chinese_preprocessor(doc: str) -> str:
+    doc = REPLACE_BY_SPACE_RE_ZH.sub(' ', doc)
+
+    return doc.strip()
+
+
+def chinese_tokenizer(doc: str) -> List[str]:
+    return list(jieba.cut(doc, cut_all=False))
 
 
 class Model(object):
@@ -78,11 +79,11 @@ class Model(object):
             return
 
         if self.metadata['language'] == 'ZH':
-            preprocessor = clean_zh_text
+            preprocessor = chinese_preprocessor
             stop_words = CHINESE_STOP_WORDS
-            tokenizer = _tokenize_chinese_words
+            tokenizer = chinese_tokenizer
         else:
-            preprocessor = clean_en_text
+            preprocessor = english_preprocessor
             stop_words = 'english'
             tokenizer = None
 
@@ -96,7 +97,7 @@ class Model(object):
             tokenizer=tokenizer
         )
         self.reducer_ = TruncatedSVD(n_components=100, random_state=0)
-        self.sampler_ = RandomUnderSampler(random_state=0, verbose=1)
+        self.sampler_ = ModifiedRandomUnderSampler(random_state=0, verbose=1)
         self.model_ = lgb.LGBMClassifier(n_jobs=-1, random_state=0)
 
         print(self.metadata)
