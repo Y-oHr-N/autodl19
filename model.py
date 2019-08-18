@@ -2,20 +2,21 @@ import os
 
 os.system('pip3 install -q colorlog')
 os.system('pip3 install -q imbalanced-learn')
-os.system('pip3 install -q lightgbm')
 os.system('pip3 install -q optuna')
-os.system('pip3 install -q pandas==0.24.2')
-os.system('pip3 install -q scikit-learn>=0.21.0')
 
+import collections
 import re
+import time
 
 import jieba
+import lightgbm as lgb
 import numpy as np
 
 from sklearn.decomposition import TruncatedSVD
+from sklearn.dummy import DummyClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from automllib.ensemble import LGBMClassifierCV
+from automllib.under_sampling import RandomUnderSampler
 
 
 def clean_en_text(text):
@@ -45,8 +46,21 @@ class Model(object):
     def __init__(self, metadata):
         self.done_training = False
         self.metadata = metadata
+        self.epoch = 0
 
     def train(self, train_dataset, remaining_time_budget=None):
+        X_train, y_train = train_dataset
+        y_train = np.argmax(y_train, axis=1)
+
+        if self.epoch == 0:
+            self.model_ = DummyClassifier()
+
+            self.model_.fit(X_train, y_train)
+
+            self.epoch += 1
+
+            return
+
         if self.metadata['language'] == 'ZH':
             preprocessor = clean_zh_text
             stop_words = None
@@ -66,28 +80,29 @@ class Model(object):
             tokenizer=tokenizer
         )
         self.reducer_ = TruncatedSVD(n_components=100, random_state=0)
-        self.model_ = LGBMClassifierCV(
-            n_estimators=1_000,
-            n_iter_no_change=30,
-            n_jobs=-1,
-            n_seeds=4,
-            random_state=0,
-            verbose=1
-        )
-
-        x_train, y_train = train_dataset
-        x_train = self.vectorizer_.fit_transform(x_train)
-        x_train = self.reducer_.fit_transform(x_train)
-        y_train = np.argmax(y_train, axis=1)
+        self.sampler_ = RandomUnderSampler(random_state=0, verbose=1)
+        self.model_ = lgb.LGBMClassifier(n_jobs=-1, random_state=0)
 
         print(self.metadata)
+        print(collections.Counter(y_train))
 
-        self.model_.fit(x_train, y_train)
+        start_time = time.perf_counter()
+        X_train = self.vectorizer_.fit_transform(X_train)
+        print(f'elapsed_time={time.perf_counter() - start_time:.3f}')
+
+        start_time = time.perf_counter()
+        X_train = self.reducer_.fit_transform(X_train)
+        print(f'elapsed_time={time.perf_counter() - start_time:.3f}')
+
+        X_train, y_train = self.sampler_.fit_resample(X_train, y_train)
+
+        self.model_.fit(X_train, y_train)
 
         self.done_training = True
 
-    def test(self, x_test, remaining_time_budget=None):
-        x_test = self.vectorizer_.transform(x_test)
-        x_test = self.reducer_.transform(x_test)
+    def test(self, X_test, remaining_time_budget=None):
+        if self.epoch > 0:
+            X_test = self.vectorizer_.transform(X_test)
+            X_test = self.reducer_.transform(X_test)
 
-        return self.model_.predict_proba(x_test)
+        return self.model_.predict_proba(X_test)
