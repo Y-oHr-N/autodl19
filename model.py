@@ -118,7 +118,7 @@ class Model(object):
         self.done_training = True
 
     def test(self, X_test, remaining_time_budget=None):
-        if self.epoch > 0:
+        if self.epoch > 1:
             X_test = self.vectorizer_.transform(X_test)
             X_test = self.reducer_.transform(X_test)
 
