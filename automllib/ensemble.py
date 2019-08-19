@@ -71,6 +71,7 @@ class EnvExtractionCallback(object):
 class Objective(object):
     _colsample_bytree_low = 0.1
     _colsample_bytree_high = 1.0
+    _max_depth_choices = (-1, 2, 3, 4, 5, 6)
     _min_child_samples_low = 1
     _min_child_samples_high = 100
     _min_child_weight_low = 1e-03
@@ -83,6 +84,8 @@ class Objective(object):
     _reg_lambda_high = 10.0
     _subsample_low = 0.1
     _subsample_high = 1.0
+    _subsample_freq_low = 1
+    _subsample_freq_high = 10
 
     def __init__(
         self,
@@ -115,6 +118,11 @@ class Objective(object):
                     'colsample_bytree',
                     self._colsample_bytree_low,
                     self._colsample_bytree_high
+                ),
+            'max_depth':
+                trial.suggest_categorical(
+                    'max_depth',
+                    self._max_depth_choices
                 ),
             'min_child_samples':
                 trial.suggest_int(
@@ -151,6 +159,12 @@ class Objective(object):
                     'subsample',
                     self._subsample_low,
                     self._subsample_high
+                ),
+            'subsample_freq':
+                trial.suggest_int(
+                    'subsample_freq',
+                    self._subsample_freq_low,
+                    self._subsample_freq_high
                 )
         }
         extraction_callback = EnvExtractionCallback()
