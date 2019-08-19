@@ -132,8 +132,7 @@ def make_experiment() -> Experiment:
 
 
 def test_automl_classifier() -> None:
-    data_path = pathlib.Path('data')
-    ref_path = pathlib.Path('ref')
+    data_path = pathlib.Path('data', 'automl-kddcup19')
     probabilities = {}
     scores = []
     experiment = make_experiment()
