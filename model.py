@@ -15,7 +15,6 @@ import lightgbm as lgb
 import numpy as np
 
 from sklearn.decomposition import TruncatedSVD
-from sklearn.dummy import DummyClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from automllib.under_sampling import ModifiedRandomUnderSampler
@@ -63,20 +62,10 @@ class Model(object):
     def __init__(self, metadata):
         self.done_training = False
         self.metadata = metadata
-        self.epoch = 0
 
     def train(self, train_dataset, remaining_time_budget=None):
         X_train, y_train = train_dataset
         y_train = np.argmax(y_train, axis=1)
-
-        if self.epoch == 0:
-            self.model_ = DummyClassifier()
-
-            self.model_.fit(X_train, y_train)
-
-            self.epoch += 1
-
-            return
 
         if self.metadata['language'] == 'ZH':
             preprocessor = chinese_preprocessor
@@ -117,11 +106,8 @@ class Model(object):
 
         self.done_training = True
 
-        self.epoch += 1
-
     def test(self, X_test, remaining_time_budget=None):
-        if self.epoch > 1:
-            X_test = self.vectorizer_.transform(X_test)
-            X_test = self.reducer_.transform(X_test)
+        X_test = self.vectorizer_.transform(X_test)
+        X_test = self.reducer_.transform(X_test)
 
         return self.model_.predict_proba(X_test)
