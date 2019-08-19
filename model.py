@@ -117,6 +117,8 @@ class Model(object):
 
         self.done_training = True
 
+        self.epoch += 1
+
     def test(self, X_test, remaining_time_budget=None):
         if self.epoch > 1:
             X_test = self.vectorizer_.transform(X_test)
