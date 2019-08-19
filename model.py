@@ -77,7 +77,7 @@ class Model(object):
             tokenizer = None
 
         self.vectorizer_ = TfidfVectorizer(
-            dtype='float32',
+            dtype=np.float32,
             max_features=10_000,
             max_df=0.95,
             min_df=2,

@@ -59,7 +59,7 @@ def test_model() -> None:
 
     while not model.done_training:
         model.train((X_train, y_train))
-        
+
         probas = model.test(X_test)
 
         timer.check_remaining_time()
