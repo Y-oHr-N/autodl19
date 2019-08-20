@@ -28,6 +28,7 @@ ANY_EMAIL_ADDRESS = re.compile(r'[\w.+-]+@[\w-]+(\.[\w-]+)+')
 ANY_URL = re.compile(r'http(s)?[^\s]+[\w]')
 ANY_NUMBER = re.compile(r'[+-]?\d+(\.\d+)?')
 ANY_SYMBOLS = re.compile(r'[!-/:-@[-`{-~]')
+BAD_SYMBOLS_RE = re.compile(r'[^0-9a-zA-Z #+_]')
 
 CHINESE_STOP_WORDS = frozenset([
     'the', 'of', 'is', 'and',
@@ -46,7 +47,19 @@ CHINESE_STOP_WORDS = frozenset([
 ])
 
 
-def preprocessor(doc: str) -> str:
+def english_preprocessor(doc: str) -> str:
+    doc = doc.translate(F2H)
+    doc = doc.lower()
+    doc = ANY_EMAIL_ADDRESS.sub('EMAILADDRESS', doc)
+    doc = ANY_URL.sub('URL', doc)
+    doc = ANY_NUMBER.sub('NUMBER', doc)
+    doc = ANY_SYMBOLS.sub(' ', doc)
+    doc = BAD_SYMBOLS_RE.sub('', doc)
+
+    return doc.strip()
+
+
+def chinese_preprocessor(doc: str) -> str:
     doc = doc.translate(F2H)
     doc = doc.lower()
     doc = ANY_EMAIL_ADDRESS.sub('EMAILADDRESS', doc)
@@ -72,9 +85,11 @@ class Model(object):
         random_state = 0
 
         if self.metadata['language'] == 'ZH':
+            preprocessor = chinese_preprocessor
             stop_words = CHINESE_STOP_WORDS
             tokenizer = chinese_tokenizer
         else:
+            preprocessor = english_preprocessor
             stop_words = 'english'
             tokenizer = None
 
