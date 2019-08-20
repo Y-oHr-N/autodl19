@@ -329,7 +329,6 @@ class BaseLGBMModelCV(BaseEstimator):
             'learning_rate': self.learning_rate,
             'n_jobs': 1,
             'seed': seed,
-            'subsample_freq': 1,
             'verbose': -1
         }
         is_classifier = self._estimator_type == 'classifier'
