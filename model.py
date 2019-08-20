@@ -7,7 +7,6 @@ os.system('pip3 install -q optuna')
 
 import collections
 import re
-import time
 
 from typing import Sequence
 
@@ -70,7 +69,7 @@ class Model(object):
     def train(self, train_dataset, remaining_time_budget=None):
         X_train, y_train = train_dataset
         y_train = np.argmax(y_train, axis=1)
-        random_state=0
+        random_state = 0
 
         if self.metadata['language'] == 'ZH':
             stop_words = CHINESE_STOP_WORDS
@@ -89,7 +88,10 @@ class Model(object):
             tokenizer=tokenizer
         )
         reducer = TruncatedSVD(n_components=100, random_state=random_state)
-        sampler = ModifiedRandomUnderSampler(random_state=random_state, verbose=1)
+        sampler = ModifiedRandomUnderSampler(
+            random_state=random_state,
+            verbose=1
+        )
         model = lgb.LGBMClassifier(n_jobs=-1, random_state=random_state)
 
         self.model_ = make_pipeline(vectorizer, reducer, sampler, model)
