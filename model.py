@@ -26,8 +26,9 @@ FULL_WIDTH_CHARS = ''.join(chr(0xff01 + i) for i in range(94))
 F2H = str.maketrans(FULL_WIDTH_CHARS, HALF_WIDTH_CHARS)
 
 ANY_EMAIL_ADDRESS = re.compile(r'[\w.+-]+@[\w-]+(\.[\w-]+)+')
-ANY_NUMBER = re.compile(r'[+-]?\d+(\.\d+)?')
 ANY_URL = re.compile(r'http(s)?[^\s]+[\w]')
+ANY_NUMBER = re.compile(r'[+-]?\d+(\.\d+)?')
+ANY_SYMBOLS = re.compile(r'[!-/:-@[-`{-~]')
 
 CHINESE_STOP_WORDS = frozenset([
     'the', 'of', 'is', 'and',
@@ -50,8 +51,9 @@ def preprocessor(doc: str) -> str:
     doc = doc.translate(F2H)
     doc = doc.lower()
     doc = ANY_EMAIL_ADDRESS.sub('EMAILADDRESS', doc)
-    doc = ANY_NUMBER.sub('NUMBER', doc)
     doc = ANY_URL.sub('URL', doc)
+    doc = ANY_NUMBER.sub('NUMBER', doc)
+    doc = ANY_SYMBOLS.sub(' ', doc)
 
     return doc.strip()
 
@@ -93,6 +95,7 @@ class Model(object):
         self.model_ = make_pipeline(vectorizer, reducer, sampler, model)
 
         print(self.metadata)
+        print(''.join(X_train[:10]))
         print(collections.Counter(y_train))
 
         self.model_.fit(X_train, y_train)
