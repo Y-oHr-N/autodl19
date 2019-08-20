@@ -21,6 +21,14 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 from automllib.under_sampling import ModifiedRandomUnderSampler
 
+HALF_WIDTH_CHARS = ''.join(chr(0x21 + i) for i in range(94))
+FULL_WIDTH_CHARS = ''.join(chr(0xff01 + i) for i in range(94))
+F2H = str.maketrans(FULL_WIDTH_CHARS, HALF_WIDTH_CHARS)
+
+ANY_EMAIL_ADDRESS = re.compile(r'[\w.+-]+@[\w-]+(\.[\w-]+)+')
+ANY_NUMBER = re.compile(r'[+-]?\d+(\.\d+)?')
+ANY_URL = re.compile(r'http(s)?[^\s]+[\w]')
+
 CHINESE_STOP_WORDS = frozenset([
     'the', 'of', 'is', 'and',
     'to', 'in', 'that', 'we',
@@ -37,21 +45,13 @@ CHINESE_STOP_WORDS = frozenset([
     '他們', '她們', '是否'
 ])
 
-REPLACE_BY_SPACE_RE_EN = re.compile('["/(){}\[\]\|@,;]')
-REPLACE_BY_SPACE_RE_ZH = re.compile('[“”【】/（）：！～「」、|，；。"/(){}\[\]\|@,\.;]')
-BAD_SYMBOLS_RE_EN = re.compile('[^0-9a-zA-Z #+_]')
 
-
-def english_preprocessor(doc: str) -> str:
+def preprocessor(doc: str) -> str:
+    doc = doc.translate(F2H)
     doc = doc.lower()
-    doc = REPLACE_BY_SPACE_RE_EN.sub(' ', doc)
-    doc = BAD_SYMBOLS_RE_EN.sub('', doc)
-
-    return doc.strip()
-
-
-def chinese_preprocessor(doc: str) -> str:
-    doc = REPLACE_BY_SPACE_RE_ZH.sub(' ', doc)
+    doc = ANY_EMAIL_ADDRESS.sub('EMAILADDRESS', doc)
+    doc = ANY_NUMBER.sub('NUMBER', doc)
+    doc = ANY_URL.sub('URL', doc)
 
     return doc.strip()
 
@@ -71,11 +71,9 @@ class Model(object):
         random_state=0
 
         if self.metadata['language'] == 'ZH':
-            preprocessor = chinese_preprocessor
             stop_words = CHINESE_STOP_WORDS
             tokenizer = chinese_tokenizer
         else:
-            preprocessor = english_preprocessor
             stop_words = 'english'
             tokenizer = None
 
