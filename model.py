@@ -15,6 +15,7 @@ import jieba_fast as jieba
 import lightgbm as lgb
 import numpy as np
 
+from imblearn.pipeline import make_pipeline
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -67,6 +68,7 @@ class Model(object):
     def train(self, train_dataset, remaining_time_budget=None):
         X_train, y_train = train_dataset
         y_train = np.argmax(y_train, axis=1)
+        random_state=0
 
         if self.metadata['language'] == 'ZH':
             preprocessor = chinese_preprocessor
@@ -77,7 +79,7 @@ class Model(object):
             stop_words = 'english'
             tokenizer = None
 
-        self.vectorizer_ = TfidfVectorizer(
+        vectorizer = TfidfVectorizer(
             dtype=np.float32,
             max_features=10_000,
             max_df=0.95,
@@ -86,29 +88,18 @@ class Model(object):
             stop_words=stop_words,
             tokenizer=tokenizer
         )
-        self.reducer_ = TruncatedSVD(n_components=100, random_state=0)
-        self.sampler_ = ModifiedRandomUnderSampler(random_state=0, verbose=1)
-        self.model_ = lgb.LGBMClassifier(n_jobs=-1, random_state=0)
+        reducer = TruncatedSVD(n_components=100, random_state=random_state)
+        sampler = ModifiedRandomUnderSampler(random_state=random_state, verbose=1)
+        model = lgb.LGBMClassifier(n_jobs=-1, random_state=random_state)
+
+        self.model_ = make_pipeline(vectorizer, reducer, sampler, model)
 
         print(self.metadata)
         print(collections.Counter(y_train))
-
-        start_time = time.perf_counter()
-        X_train = self.vectorizer_.fit_transform(X_train)
-        print(f'elapsed_time={time.perf_counter() - start_time:.3f}')
-
-        start_time = time.perf_counter()
-        X_train = self.reducer_.fit_transform(X_train)
-        print(f'elapsed_time={time.perf_counter() - start_time:.3f}')
-
-        X_train, y_train = self.sampler_.fit_resample(X_train, y_train)
 
         self.model_.fit(X_train, y_train)
 
         self.done_training = True
 
     def test(self, X_test, remaining_time_budget=None):
-        X_test = self.vectorizer_.transform(X_test)
-        X_test = self.reducer_.transform(X_test)
-
         return self.model_.predict_proba(X_test)
