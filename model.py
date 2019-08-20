@@ -12,12 +12,12 @@ import time
 from typing import Sequence
 
 import jieba_fast as jieba
+import lightgbm as lgb
 import numpy as np
 
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from automllib.ensemble import LGBMClassifierCV
 from automllib.under_sampling import ModifiedRandomUnderSampler
 
 CHINESE_STOP_WORDS = frozenset([
@@ -88,14 +88,7 @@ class Model(object):
         )
         self.reducer_ = TruncatedSVD(n_components=100, random_state=0)
         self.sampler_ = ModifiedRandomUnderSampler(random_state=0, verbose=1)
-        self.model_ = LGBMClassifierCV(
-            cv=3,
-            n_iter_no_change=10,
-            n_jobs=-1,
-            n_seeds=4,
-            random_state=0,
-            verbose=1
-        )
+        self.model_ = lgb.LGBMClassifier(n_jobs=-1, random_state=0)
 
         print(self.metadata)
         print(collections.Counter(y_train))
