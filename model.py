@@ -2,15 +2,16 @@ import os
 
 os.system('pip3 install -q colorlog')
 os.system('pip3 install -q imbalanced-learn')
+os.system('pip3 install -q jieba-fast')
 os.system('pip3 install -q optuna')
 
 import collections
 import re
 import time
 
-from typing import List
+from typing import Sequence
 
-import jieba
+import jieba_fast as jieba
 import numpy as np
 
 from sklearn.decomposition import TruncatedSVD
@@ -54,8 +55,8 @@ def chinese_preprocessor(doc: str) -> str:
     return doc.strip()
 
 
-def chinese_tokenizer(doc: str) -> List[str]:
-    return list(jieba.cut(doc, cut_all=False))
+def chinese_tokenizer(doc: str) -> Sequence[str]:
+    return jieba.cut(doc, HMM=False)
 
 
 class Model(object):
