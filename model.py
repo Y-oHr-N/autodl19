@@ -5,7 +5,6 @@ os.system('pip3 install -q imbalanced-learn')
 os.system('pip3 install -q jieba-fast')
 os.system('pip3 install -q optuna')
 
-import collections
 import re
 
 from typing import Sequence
@@ -14,7 +13,6 @@ import jieba_fast as jieba
 import lightgbm as lgb
 import numpy as np
 
-from imblearn.pipeline import make_pipeline
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
@@ -101,9 +99,9 @@ class Model(object):
         )
 
         X, y = train_dataset
+        y = np.argmax(y, axis=1)
         X = self.vectorizer_.fit_transform(X)
         X = self.reducer_.fit_transform(X)
-        y = np.argmax(y, axis=1)
         X, y = self.sampler_.fit_resample(X, y)
         X, X_valid, y, y_valid = train_test_split(
             X,
@@ -114,13 +112,12 @@ class Model(object):
         self.model_.fit(
             X,
             y,
-            early_stopping_rounds=30,
+            early_stopping_rounds=10,
             eval_set=[(X_valid, y_valid)]
         )
 
         print(f'Best iteration: {self.model_.best_iteration_}.')
         print(f'Best score: {self.model_.best_score_}.')
-        print(self.model_.score(X_valid, y_valid))
 
         self.done_training = True
 
