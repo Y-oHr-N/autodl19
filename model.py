@@ -93,7 +93,7 @@ class Model(object):
 
         self.vectorizer_ = TfidfVectorizer(
             dtype=np.float32,
-            max_features=10_000,
+            max_features=100_000,
             max_df=0.95,
             min_df=2,
             preprocessor=preprocessor,
