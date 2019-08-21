@@ -17,6 +17,7 @@ import numpy as np
 from imblearn.pipeline import make_pipeline
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
 
 from automllib.under_sampling import ModifiedRandomUnderSampler
 
@@ -75,15 +76,12 @@ def chinese_tokenizer(doc: str) -> Sequence[str]:
 
 
 class Model(object):
-    def __init__(self, metadata):
+    def __init__(self, metadata, random_state=0):
         self.done_training = False
         self.metadata = metadata
+        self.random_state = random_state
 
     def train(self, train_dataset, remaining_time_budget=None):
-        X_train, y_train = train_dataset
-        y_train = np.argmax(y_train, axis=1)
-        random_state = 0
-
         if self.metadata['language'] == 'ZH':
             preprocessor = chinese_preprocessor
             stop_words = CHINESE_STOP_WORDS
@@ -93,7 +91,7 @@ class Model(object):
             stop_words = 'english'
             tokenizer = None
 
-        vectorizer = TfidfVectorizer(
+        self.vectorizer_ = TfidfVectorizer(
             dtype=np.float32,
             max_features=10_000,
             max_df=0.95,
@@ -102,22 +100,45 @@ class Model(object):
             stop_words=stop_words,
             tokenizer=tokenizer
         )
-        reducer = TruncatedSVD(n_components=100, random_state=random_state)
-        sampler = ModifiedRandomUnderSampler(
-            random_state=random_state,
-            verbose=1
+        self.reducer_ = TruncatedSVD(
+            n_components=100,
+            random_state=self.random_state
         )
-        model = lgb.LGBMClassifier(n_jobs=-1, random_state=random_state)
+        self.sampler_ = ModifiedRandomUnderSampler(
+            random_state=self.random_state
+        )
+        self.model_ = lgb.LGBMClassifier(
+            n_estimators=1_000,
+            n_jobs=-1,
+            random_state=self.random_state
+        )
 
-        self.model_ = make_pipeline(vectorizer, reducer, sampler, model)
+        X, y = train_dataset
+        X = self.vectorizer_.fit_transform(X)
+        X = self.reducer_.fit_transform(X)
+        y = np.argmax(y, axis=1)
+        X, y = self.sampler_.fit_resample(X, y)
+        X, X_valid, y, y_valid = train_test_split(
+            X,
+            y,
+            random_state=self.random_state
+        )
 
-        print(self.metadata)
-        print(''.join(X_train[:10]))
-        print(collections.Counter(y_train))
+        self.model_.fit(
+            X,
+            y,
+            early_stopping_rounds=30,
+            eval_set=[(X_valid, y_valid)]
+        )
 
-        self.model_.fit(X_train, y_train)
+        print(f'Best iteration: {self.model_.best_iteration_}.')
+        print(f'Best score: {self.model_.best_score_}.')
+        print(self.model_.score(X_valid, y_valid))
 
         self.done_training = True
 
-    def test(self, X_test, remaining_time_budget=None):
-        return self.model_.predict_proba(X_test)
+    def test(self, X, remaining_time_budget=None):
+        X = self.vectorizer_.transform(X)
+        X = self.reducer_.transform(X)
+
+        return self.model_.predict_proba(X)
