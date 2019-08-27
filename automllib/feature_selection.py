@@ -294,27 +294,21 @@ class Objective(object):
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE,
+        val_X: TWO_DIM_ARRAYLIKE_TYPE,
+        val_y: ONE_DIM_ARRAYLIKE_TYPE,
         params: Dict[str, Any],
-        valid_size: float = None,
         num_boost_round: int = None,
         early_stopping_rounds: int = None,
     ) -> None:
         self.X = X
         self.y = y
+        self.val_X = val_X
+        self.val_y = val_y
         self.params = params
-        self.valid_size = valid_size
         self.num_boost_round = num_boost_round
         self.early_stopping_rounds = early_stopping_rounds
 
     def __call__(self, trial: optuna.trial.Trial) -> float:
-
-        val_len = int(self.valid_size * len(self.X))
-
-        train_X = self.X[:-val_len]
-        val_X = self.X[-val_len:]
-
-        train_y = self.y[:-val_len]
-        val_y = self.y[-val_len:]
 
         params = {
             'max_depth':
@@ -366,14 +360,14 @@ class Objective(object):
         params.update(self.params)
 
         train_data = lgb.Dataset(
-            train_X,
-            label=train_y,
+            self.X,
+            label=self.y,
             params=params,
         )
 
         val_data = lgb.Dataset(
-            val_X,
-            label=val_y,
+            self.val_X,
+            label=self.val_y,
             params=params,
             reference = train_data,
         )
@@ -452,6 +446,14 @@ class FeatureSelector(BaseSelector):
             tuning_X = train_X[:-tuning_len]
             tuning_y = train_y[:-tuning_len]
 
+        val_len = int(self.valid_size * len(tuning_X))
+
+        tuning_train_X = tuning_X[:-val_len]
+        tuning_val_X = tuning_X[-val_len:]
+
+        tuning_train_y = tuning_y[:-val_len]
+        tuning_val_y = tuning_y[-val_len:]
+
         params = {
             'objective': 'binary',
             'learning_rate': self.learning_rate,
@@ -460,10 +462,11 @@ class FeatureSelector(BaseSelector):
         }
 
         objective = Objective(
-            tuning_X,
-            tuning_y,
+            tuning_train_X,
+            tuning_train_y,
+            tuning_val_X,
+            tuning_val_y,
             params,
-            valid_size=self.valid_size,
             num_boost_round=self.num_boost_round,
             early_stopping_rounds=self.early_stopping_rounds,
         )
