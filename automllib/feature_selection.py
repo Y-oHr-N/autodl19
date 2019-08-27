@@ -4,6 +4,7 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
+import random
 
 from scipy.sparse import issparse
 from scipy.stats import ks_2samp
@@ -270,3 +271,62 @@ class NAProportionThreshold(BaseSelector):
 
     def _more_tags(self) -> Dict[str, Any]:
         return {'allow_nan': True, 'X_types': ['2darray', 'str']}
+        
+
+class FeatureSelector(BaseSelector):
+
+    def __init__(
+        self,
+        time_col: str = None,
+        train_size: float = 0.8, # Use 80% data for training
+        train_sizefor_searching : float = 0.4, # Use 40% train data for tuning
+        valid_size: float = 0.2, # Use 20% tuning data for validation
+        learning_rate: float = 0.01,
+        num_boost_round: int = 100,
+        early_stopping_rounds: int = 10,
+        n_trials: int = 2,
+        importance_type: str = 'split',
+        k: int = 0,
+        study: optuna.study.Study = None,
+        verbose: int = 0,
+    ) -> None:
+        super().__init__(verbose=verbose)
+
+        self.time_col = time_col
+        self.train_size = train_size
+        self.train_sizefor_searching = train_sizefor_searching
+        self.valid_size = valid_size
+        self.learning_rate = learning_rate
+        self.num_boost_round = num_boost_round
+        self.early_stopping_rounds = early_stopping_rounds
+        self.n_trials = n_trials
+        self.importance_type = importance_type
+        self.k = k
+        self.study = study
+
+    def _check_params(self) -> None:
+        pass
+
+    def _fit(
+        self,
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE = None
+    ) -> 'SelectFeaturesLGBM':
+
+        train_len = int(self.train_size * len(X))
+
+        if self.time_col is None:
+            train_X = X[random.sample(range(0,X.shape[0]),train_len),]
+            train_y = y[random.sample(range(0,X.shape[0]),train_len),]
+        else:
+            train_X = X[:-train_len]
+            train_y = y[:-train_len]
+
+        tuning_len = int(self.train_sizefor_searching * len(train_X))
+
+        if self.time_col is None:
+            tuning_X = train_X[random.sample(range(0,train_X.shape[0]),tuning_len),]
+            tuning_y = train_y[random.sample(range(0,train_X.shape[0]),tuning_len),]
+        else:
+            tuning_X = train_X[:-tuning_len]
+            tuning_y = train_y[:-tuning_len]
