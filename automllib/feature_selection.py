@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import lightgbm as lgb
 import random
+import optuna
 
 from scipy.sparse import issparse
 from scipy.stats import ks_2samp
@@ -274,6 +275,125 @@ class NAProportionThreshold(BaseSelector):
         return {'allow_nan': True, 'X_types': ['2darray', 'str']}
 
 
+class Objective(object):
+
+    _max_depth_choices = (-1, 2, 3, 4, 5, 6, 7)
+    _num_leaves_low = 10
+    _num_leaves_high = 200
+    _feature_fraction_choices = (0.6, 0.7, 0.8, 0.9, 1.0)
+    _bagging_fraction_choices = (0.6, 0.7, 0.8, 0.9, 1.0)
+    _bagging_freq_choices = (0, 10, 20, 30, 40, 50)
+    _reg_alpha_low = 1e-06
+    _reg_alpha_high = 2.0
+    _reg_lambda_low = 1e-06
+    _reg_lambda_high = 2.0
+    _min_child_weight_low = 1e-03
+    _min_child_weight_high = 10.0
+
+    def __init__(
+        self,
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE,
+        params: Dict[str, Any],
+        valid_size: float = None,
+        num_boost_round: int = None,
+        early_stopping_rounds: int = None,
+    ) -> None:
+        self.X = X
+        self.y = y
+        self.params = params
+        self.valid_size = valid_size
+        self.num_boost_round = num_boost_round
+        self.early_stopping_rounds = early_stopping_rounds
+
+    def __call__(self, trial: optuna.trial.Trial) -> float:
+
+        val_len = int(self.valid_size * len(self.X))
+
+        train_X = self.X[:-val_len]
+        val_X = self.X[-val_len:]
+
+        train_y = self.y[:-val_len]
+        val_y = self.y[-val_len:]
+
+        params = {
+            'max_depth':
+                trial.suggest_categorical(
+                    'max_depth',
+                    self._max_depth_choices
+                ),
+            'num_leaves':
+                trial.suggest_int(
+                    'num_leaves',
+                    self._num_leaves_low,
+                    self._num_leaves_high
+                ),
+            'feature_fraction':
+                trial.suggest_categorical(
+                    "feature_fraction",
+                    self._feature_fraction_choices,
+                ),
+            'bagging_fraction':
+                trial.suggest_categorical(
+                    'bagging_fraction',
+                    self._bagging_fraction_choices,
+                ),
+            'bagging_freq':
+                trial.suggest_categorical(
+                    'bagging_freq',
+                    self._bagging_freq_choices,
+                ),
+            'reg_alpha':
+                trial.suggest_loguniform(
+                    'reg_alpha',
+                    self._reg_alpha_low,
+                    self._reg_alpha_high
+                ),
+            'reg_lambda':
+                trial.suggest_loguniform(
+                    'reg_lambda',
+                    self._reg_lambda_low,
+                    self._reg_lambda_high
+                ),
+            'min_child_weight':
+                    trial.suggest_loguniform(
+                    'min_child_weight',
+                    self._min_child_weight_low,
+                    self._min_child_weight_high
+                ),
+        }
+
+        params.update(self.params)
+
+        train_data = lgb.Dataset(
+            train_X,
+            label=train_y,
+            params=params,
+        )
+
+        val_data = lgb.Dataset(
+            val_X,
+            label=val_y,
+            params=params,
+            reference = train_data,
+        )
+
+        hyperopt_model = lgb.train(
+            params,
+            train_data,
+            num_boost_round=self.num_boost_round,
+            early_stopping_rounds=self.early_stopping_rounds,
+            valid_sets=val_data
+        )
+
+        best_iteration = hyperopt_model.best_iteration
+        trial.set_user_attr('best_iteration', best_iteration)
+
+        score = hyperopt_model.best_score["valid_0"][params["metric"]]
+
+        return score
+
+
 class FeatureSelector(BaseSelector):
 
     def __init__(
@@ -339,10 +459,29 @@ class FeatureSelector(BaseSelector):
             'metric': 'binary_logloss',
         }
 
+        objective = Objective(
+            tuning_X,
+            tuning_y,
+            params,
+            valid_size=self.valid_size,
+            num_boost_round=self.num_boost_round,
+            early_stopping_rounds=self.early_stopping_rounds,
+        )
+
+        self.study_ = optuna.create_study()
+
+        self.study_.optimize(
+            objective,
+            n_trials=self.n_trials,
+        )
+
+        self.best_iteration_ = self.study_.best_trial.user_attrs['best_iteration']
+        self.best_params_ = {**params, **self.study_.best_params}
+
         self.model_ = lgb.train(
-            params = params,
+            params = self.best_params_,
             train_set = lgb.Dataset(train_X, train_y),
-            num_boost_round = 10,
+            num_boost_round = self.best_iteration_,
         )
 
         return self
