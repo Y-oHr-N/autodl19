@@ -4,6 +4,7 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
+import lightgbm as lgb
 import random
 
 from scipy.sparse import issparse
@@ -271,7 +272,7 @@ class NAProportionThreshold(BaseSelector):
 
     def _more_tags(self) -> Dict[str, Any]:
         return {'allow_nan': True, 'X_types': ['2darray', 'str']}
-        
+
 
 class FeatureSelector(BaseSelector):
 
@@ -330,3 +331,21 @@ class FeatureSelector(BaseSelector):
         else:
             tuning_X = train_X[:-tuning_len]
             tuning_y = train_y[:-tuning_len]
+
+        params = {
+            'objective': 'binary',
+            'learning_rate': self.learning_rate,
+            'verbose': 1,
+            'metric': 'binary_logloss',
+        }
+
+        self.model_ = lgb.train(
+            params = params,
+            train_set = lgb.Dataset(train_X, train_y),
+            num_boost_round = 10,
+        )
+
+        return self
+
+    def _get_support(self) -> ONE_DIM_ARRAYLIKE_TYPE:
+        return self.k
