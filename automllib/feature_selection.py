@@ -407,6 +407,7 @@ class FeatureSelector(BaseSelector):
         importance_type: str = 'split',
         k: int = 0,
         study: optuna.study.Study = None,
+        seed: int = 0,
         verbose: int = 0,
     ) -> None:
         super().__init__(verbose=verbose)
@@ -421,6 +422,7 @@ class FeatureSelector(BaseSelector):
         self.n_trials = n_trials
         self.importance_type = importance_type
         self.k = k
+        self.seed = seed
         self.study = study
 
     def _check_params(self) -> None:
@@ -463,6 +465,7 @@ class FeatureSelector(BaseSelector):
             'learning_rate': self.learning_rate,
             'verbose': 1,
             'metric': 'binary_logloss',
+            'seed': self.seed,
         }
 
         objective = Objective(
