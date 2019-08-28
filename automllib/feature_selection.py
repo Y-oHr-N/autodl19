@@ -402,7 +402,7 @@ class FeatureSelector(BaseSelector):
         early_stopping_rounds: int = 10,
         n_trials: int = 2,
         importance_type: str = 'split',
-        k: int = 0,
+        k: int = 10,
         study: optuna.study.Study = None,
         seed: int = 0,
         verbose: int = 0,
@@ -430,6 +430,9 @@ class FeatureSelector(BaseSelector):
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'SelectFeaturesLGBM':
+
+        if self.n_features_ <= self.k:
+            return self
 
         train_len = int(self.train_size * len(X))
         if train_len == 0:
@@ -505,10 +508,11 @@ class FeatureSelector(BaseSelector):
         return self
 
     def _get_support(self) -> ONE_DIM_ARRAYLIKE_TYPE:
+
+        if self.n_features_ <= self.k:
+            return np.ones(self.n_features_, dtype=bool)
+
         importance_array = self.model_.feature_importance(importance_type=self.importance_type)
         importance_index = np.argsort(importance_array)
 
-        if self.n_features_ < self.k:
-            return importance_index >= 0
-        else:
-            return importance_index > self.n_features_ - self.k
+        return importance_index > self.n_features_ - self.k
