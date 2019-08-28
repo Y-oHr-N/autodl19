@@ -281,8 +281,8 @@ class Objective(object):
     _max_depth_choices = (-1, 2, 3, 4, 5, 6, 7)
     _num_leaves_low = 10
     _num_leaves_high = 200
-    _feature_fraction_choices = (0.6, 0.7, 0.8, 0.9, 1.0)
-    _bagging_fraction_choices = (0.6, 0.7, 0.8, 0.9, 1.0)
+    #_feature_fraction_choices = (0.6, 0.7, 0.8, 0.9, 1.0)
+    #_bagging_fraction_choices = (0.6, 0.7, 0.8, 0.9, 1.0)
     _bagging_freq_choices = (0, 10, 20, 30, 40, 50)
     _reg_alpha_low = 1e-06
     _reg_alpha_high = 2.0
@@ -323,7 +323,7 @@ class Objective(object):
                     self._num_leaves_low,
                     self._num_leaves_high
                 ),
-            'feature_fraction':
+            """'feature_fraction':
                 trial.suggest_categorical(
                     "feature_fraction",
                     self._feature_fraction_choices,
@@ -332,7 +332,7 @@ class Objective(object):
                 trial.suggest_categorical(
                     'bagging_fraction',
                     self._bagging_fraction_choices,
-                ),
+                ),"""
             'bagging_freq':
                 trial.suggest_categorical(
                     'bagging_freq',
@@ -384,12 +384,9 @@ class Objective(object):
         best_iteration = hyperopt_model.best_iteration
         trial.set_user_attr('best_iteration', best_iteration)
 
-        preds = hyperopt_model.predict(self.val_X)
-        pred_label = np.rint(preds)
+        score = hyperopt_model.best_score["valid_0"][params["metric"]]
 
-        accuracy = sklearn.metrics.accuracy_score(self.val_y, pred_label)
-
-        return accuracy
+        return score
 
 
 class FeatureSelector(BaseSelector):
@@ -435,24 +432,30 @@ class FeatureSelector(BaseSelector):
     ) -> 'SelectFeaturesLGBM':
 
         train_len = int(self.train_size * len(X))
+        if train_len == 0:
+            train_len = 1
 
         if self.time_col is None:
-            train_X = X[random.sample(range(0,X.shape[0]),train_len),]
-            train_y = y[random.sample(range(0,X.shape[0]),train_len),]
+            train_X = X[random.sample(range(0,X.shape[0]),train_len)]
+            train_y = y[random.sample(range(0,X.shape[0]),train_len)]
         else:
             train_X = X[:-train_len]
             train_y = y[:-train_len]
 
         tuning_len = int(self.train_size_for_searching * len(train_X))
+        if tuning_len == 0:
+            tuning_len = 1
 
         if self.time_col is None:
-            tuning_X = train_X[random.sample(range(0,train_X.shape[0]),tuning_len),]
-            tuning_y = train_y[random.sample(range(0,train_X.shape[0]),tuning_len),]
+            tuning_X = train_X[random.sample(range(0,train_X.shape[0]),tuning_len)]
+            tuning_y = train_y[random.sample(range(0,train_X.shape[0]),tuning_len)]
         else:
             tuning_X = train_X[:-tuning_len]
             tuning_y = train_y[:-tuning_len]
 
         val_len = int(self.valid_size * len(tuning_X))
+        if val_len == 0:
+            val_len = 1
 
         tuning_train_X = tuning_X[:-val_len]
         tuning_val_X = tuning_X[-val_len:]
@@ -462,37 +465,48 @@ class FeatureSelector(BaseSelector):
 
         params = {
             'objective': 'binary',
-            'learning_rate': self.learning_rate,
-            'verbose': 1,
             'metric': 'binary_logloss',
+            'learning_rate': self.learning_rate,
             'seed': self.seed,
+            'verbose': 1,
         }
 
-        objective = Objective(
-            tuning_train_X,
-            tuning_train_y,
-            tuning_val_X,
-            tuning_val_y,
-            params,
-            num_boost_round=self.num_boost_round,
-            early_stopping_rounds=self.early_stopping_rounds,
-        )
+        if(len(tuning_X) != 1):
 
-        self.study_ = optuna.create_study()
+            objective = Objective(
+                tuning_train_X,
+                tuning_train_y,
+                tuning_val_X,
+                tuning_val_y,
+                params,
+                num_boost_round=self.num_boost_round,
+                early_stopping_rounds=self.early_stopping_rounds,
+            )
 
-        self.study_.optimize(
-            objective,
-            n_trials=self.n_trials,
-        )
+            self.study_ = optuna.create_study()
 
-        self.best_iteration_ = self.study_.best_trial.user_attrs['best_iteration']
-        self.best_params_ = {**params, **self.study_.best_params}
+            self.study_.optimize(
+                objective,
+                n_trials=self.n_trials,
+            )
 
-        self.model_ = lgb.train(
-            params = self.best_params_,
-            train_set = lgb.Dataset(train_X, train_y),
-            num_boost_round = self.best_iteration_,
-        )
+            self.best_iteration_ = self.study_.best_trial.user_attrs['best_iteration']
+            self.best_params_ = {**params, **self.study_.best_params}
+
+            train_data = lgb.Dataset(train_X, train_y)
+            self.model_ = lgb.train(
+                params = self.best_params_,
+                train_set = train_data,
+                num_boost_round = self.best_iteration_,
+            )
+
+        else:
+            train_data = lgb.Dataset(train_X, train_y)
+            self.model_ = lgb.train(
+                params = params,
+                train_set = train_data,
+                num_boost_round = self.num_boost_round,
+            )
 
         return self
 
