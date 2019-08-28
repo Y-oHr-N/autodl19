@@ -5,6 +5,7 @@ from typing import Union
 import numpy as np
 import pandas as pd
 import lightgbm as lgb
+import sklearn.metrics
 import random
 import optuna
 
@@ -383,9 +384,12 @@ class Objective(object):
         best_iteration = hyperopt_model.best_iteration
         trial.set_user_attr('best_iteration', best_iteration)
 
-        score = hyperopt_model.best_score["valid_0"][params["metric"]]
+        preds = hyperopt_model.predict(self.val_X)
+        pred_label = np.rint(preds)
 
-        return score
+        accuracy = sklearn.metrics.accuracy_score(self.val_y, pred_label)
+
+        return accuracy
 
 
 class FeatureSelector(BaseSelector):
