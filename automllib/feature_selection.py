@@ -323,16 +323,16 @@ class Objective(object):
                     self._num_leaves_low,
                     self._num_leaves_high
                 ),
-            """'feature_fraction':
-                trial.suggest_categorical(
-                    "feature_fraction",
-                    self._feature_fraction_choices,
-                ),
-            'bagging_fraction':
-                trial.suggest_categorical(
-                    'bagging_fraction',
-                    self._bagging_fraction_choices,
-                ),"""
+            #'feature_fraction':
+                #trial.suggest_categorical(
+                    #"feature_fraction",
+                    #self._feature_fraction_choices,
+                #),
+            #'bagging_fraction':
+                #trial.suggest_categorical(
+                    #'bagging_fraction',
+                    #self._bagging_fraction_choices,
+                #),
             'bagging_freq':
                 trial.suggest_categorical(
                     'bagging_freq',
