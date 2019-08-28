@@ -398,7 +398,7 @@ class FeatureSelector(BaseSelector):
         self,
         time_col: str = None,
         train_size: float = 0.8, # Use 80% data for training
-        train_sizefor_searching : float = 0.4, # Use 40% train data for tuning
+        train_size_for_searching : float = 0.4, # Use 40% train data for tuning
         valid_size: float = 0.2, # Use 20% tuning data for validation
         learning_rate: float = 0.01,
         num_boost_round: int = 100,
@@ -414,7 +414,7 @@ class FeatureSelector(BaseSelector):
 
         self.time_col = time_col
         self.train_size = train_size
-        self.train_sizefor_searching = train_sizefor_searching
+        self.train_size_for_searching = train_size_for_searching
         self.valid_size = valid_size
         self.learning_rate = learning_rate
         self.num_boost_round = num_boost_round
@@ -443,7 +443,7 @@ class FeatureSelector(BaseSelector):
             train_X = X[:-train_len]
             train_y = y[:-train_len]
 
-        tuning_len = int(self.train_sizefor_searching * len(train_X))
+        tuning_len = int(self.train_size_for_searching * len(train_X))
 
         if self.time_col is None:
             tuning_X = train_X[random.sample(range(0,train_X.shape[0]),tuning_len),]
