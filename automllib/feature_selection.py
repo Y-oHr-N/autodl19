@@ -471,42 +471,36 @@ class FeatureSelector(BaseSelector):
             'verbose': 1,
         }
 
+        objective = Objective(
+            tuning_train_X,
+            tuning_train_y,
+            tuning_val_X,
+            tuning_val_y,
+            params,
+            num_boost_round=self.num_boost_round,
+            early_stopping_rounds=self.early_stopping_rounds,
+        )
+
+        self.study_ = optuna.create_study()
+
+        self.study_.optimize(
+            objective,
+            n_trials=self.n_trials,
+        )
+
         if(len(tuning_X) != 1):
-
-            objective = Objective(
-                tuning_train_X,
-                tuning_train_y,
-                tuning_val_X,
-                tuning_val_y,
-                params,
-                num_boost_round=self.num_boost_round,
-                early_stopping_rounds=self.early_stopping_rounds,
-            )
-
-            self.study_ = optuna.create_study()
-
-            self.study_.optimize(
-                objective,
-                n_trials=self.n_trials,
-            )
-
             self.best_iteration_ = self.study_.best_trial.user_attrs['best_iteration']
             self.best_params_ = {**params, **self.study_.best_params}
-
-            train_data = lgb.Dataset(train_X, train_y)
-            self.model_ = lgb.train(
-                params = self.best_params_,
-                train_set = train_data,
-                num_boost_round = self.best_iteration_,
-            )
-
         else:
-            train_data = lgb.Dataset(train_X, train_y)
-            self.model_ = lgb.train(
-                params = params,
-                train_set = train_data,
-                num_boost_round = self.num_boost_round,
-            )
+            self.best_iteration_ = self.num_boost_round
+            self.best_params_ = params
+
+        train_data = lgb.Dataset(train_X, train_y)
+        self.model_ = lgb.train(
+            params = self.best_params_,
+            num_boost_round = self.best_iteration_,
+            train_set = train_data,
+        )
 
         return self
 
