@@ -434,6 +434,8 @@ class FeatureSelector(BaseSelector):
         if self.n_features_ <= self.k:
             return self
 
+        random.seed(self.seed)
+
         train_len = int(self.train_size * len(X))
         if train_len == 0:
             train_len = 1
