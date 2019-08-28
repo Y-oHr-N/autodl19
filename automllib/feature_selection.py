@@ -500,7 +500,7 @@ class FeatureSelector(BaseSelector):
         importance_array = self.model_.feature_importance(importance_type=self.importance_type)
         importance_index = np.argsort(importance_array)
 
-        if(len(importance_array) < self.k):
+        if self.n_features_ < self.k:
             return importance_index >= 0
         else:
-            return importance_index > self.k
+            return importance_index > self.n_features_ - self.k
