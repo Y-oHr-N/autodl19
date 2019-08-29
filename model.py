@@ -138,6 +138,7 @@ class Model(object):
         )
         self.model_ = lgb.LGBMClassifier(
             class_weight=self.class_weight,
+            colsample_bytree=self.n_components ** (-0.5),
             n_estimators=self.n_estimators,
             n_jobs=self.n_jobs,
             random_state=self.random_state
