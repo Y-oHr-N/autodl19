@@ -3,7 +3,7 @@ import os
 os.system('pip3 install -q colorlog')
 os.system('pip3 install -q imbalanced-learn')
 os.system('pip3 install -q jieba-fast')
-os.system('pip3 install -q optuna')
+os.system('pip3 install -q optuna<=0.14')
 
 import re
 
