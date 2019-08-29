@@ -137,12 +137,12 @@ class BaseAutoMLModel(BaseEstimator):
         X = self.joiner_.fit_transform(X, related_tables=related_tables)
         X = self.engineer_.fit_transform(X)
 
-        if self.sampler_ is not None:
-            X, y = self.sampler_.fit_resample(X, y)
-            sample_weight = safe_indexing(
-                sample_weight,
-                self.sampler_.sample_indices_
-            )
+        # if self.sampler_ is not None:
+        #     X, y = self.sampler_.fit_resample(X, y)
+        #     sample_weight = safe_indexing(
+        #         sample_weight,
+        #         self.sampler_.sample_indices_
+        #     )
 
         self.model_.fit(X, y, sample_weight=sample_weight)
 
