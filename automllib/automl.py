@@ -26,6 +26,7 @@ from .feature_extraction import TimeVectorizer
 from .feature_selection import DropCollinearFeatures
 from .feature_selection import FrequencyThreshold
 from .feature_selection import NAProportionThreshold
+from .feature_selection import FeatureSelector
 from .impute import ModifiedSimpleImputer
 from .preprocessing import ArithmeticalFeatures
 from .preprocessing import Clip
@@ -67,6 +68,13 @@ class BaseAutoMLModel(BaseEstimator):
         operand: Union[Sequence[str], str] = None,
         subsample: Union[float, int] = 1_000,
         threshold: float = 0.6,
+        # Parameters for a selector
+        train_size: float = 0.8,  # Use 80% data for training
+        train_size_for_searching: float = 0.4,  # Use 40% train data for tuning
+        valid_size: float = 0.2,  # Use 20% tuning data for validation
+        select_study: optuna.study.Study = None,
+        importance_type: str = 'split',
+        k: int = 100,
         # Parameters for a sampler
         sampling_strategy: Union[Dict[str, int], float, str] = 'auto',
         # Parameters for a model
@@ -103,6 +111,12 @@ class BaseAutoMLModel(BaseEstimator):
         self.threshold = threshold
         self.timeout = timeout
         self.time_col = time_col
+        self.train_size = train_size
+        self.train_size_for_searching = train_size_for_searching
+        self.valid_size = valid_size
+        self.select_study = select_study
+        self.importance_type = importance_type
+        self.k = k
 
     def _check_params(self) -> None:
         pass
@@ -131,11 +145,13 @@ class BaseAutoMLModel(BaseEstimator):
             verbose=self.verbose
         )
         self.engineer_ = self._make_mixed_transformer()
+        self.selector_ = self._make_selector()
         self.sampler_ = self._make_sampler()
         self.model_ = self._make_model()
 
         X = self.joiner_.fit_transform(X, related_tables=related_tables)
         X = self.engineer_.fit_transform(X)
+        X = self.selector_.fit_transform(X, y)
 
         # if self.sampler_ is not None:
         #     X, y = self.sampler_.fit_resample(X, y)
@@ -272,6 +288,23 @@ class BaseAutoMLModel(BaseEstimator):
             )
         )
 
+    def _make_selector(self) -> BaseEstimator:
+        return FeatureSelector(
+                time_col=self.time_col,
+                train_size=self.train_size,
+                train_size_for_searching=self.train_size_for_searching,
+                valid_size=self.valid_size,
+                learning_rate=self.learning_rate,
+                num_boost_round=self.n_iter_no_change,
+                early_stopping_rounds=self.n_estimators,
+                n_trials=self.n_trials,
+                study=self.select_study,
+                importance_type=self.importance_type,
+                random_state=self.random_state,
+                k=self.k,
+                verbose=-1
+            )
+
     def _make_sampler(self) -> BaseEstimator:
         if self._estimator_type == 'classifier':
             return ModifiedRandomUnderSampler(
@@ -339,6 +372,7 @@ class BaseAutoMLModel(BaseEstimator):
 
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
+        X = self.selector_.transform(X)
 
         return self.model_.predict(X)
 
@@ -379,6 +413,7 @@ class AutoMLClassifier(BaseAutoMLModel, ClassifierMixin):
 
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
+        X = self.selector_.transform(X)
 
         return self.model_.predict_proba(X)
 
