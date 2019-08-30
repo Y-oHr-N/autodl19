@@ -5,13 +5,13 @@ from typing import Union
 import numpy as np
 import pandas as pd
 import lightgbm as lgb
-import random
 import optuna
 
 from scipy.sparse import issparse
 from scipy.stats import ks_2samp
 from sklearn.utils import check_random_state
 from sklearn.utils import safe_indexing
+from sklearn.model_selection import train_test_split
 
 from .base import BaseSelector
 from .base import ONE_DIM_ARRAYLIKE_TYPE
@@ -280,8 +280,8 @@ class Objective(object):
     _max_depth_choices = (-1, 2, 3, 4, 5, 6, 7)
     _num_leaves_low = 10
     _num_leaves_high = 200
-    # _feature_fraction_choices = (0.6, 0.7, 0.8, 0.9, 1.0)
-    # _bagging_fraction_choices = (0.6, 0.7, 0.8, 0.9, 1.0)
+    _feature_fraction_choices = (0.6, 0.7, 0.8, 0.9, 1.0)
+    _bagging_fraction_choices = (0.6, 0.7, 0.8, 0.9, 1.0)
     _bagging_freq_choices = (0, 10, 20, 30, 40, 50)
     _reg_alpha_low = 1e-06
     _reg_alpha_high = 2.0
@@ -322,16 +322,16 @@ class Objective(object):
                     self._num_leaves_low,
                     self._num_leaves_high
                 ),
-            # 'feature_fraction':
-                # trial.suggest_categorical(
-                # 'feature_fraction',
-                # self._feature_fraction_choices
-                # ),
-            # 'bagging_fraction':
-                # trial.suggest_categorical(
-                # 'bagging_fraction',
-                # self._bagging_fraction_choices
-                # ),
+            'feature_fraction':
+                trial.suggest_categorical(
+                    'feature_fraction',
+                    self._feature_fraction_choices
+                ),
+            'bagging_fraction':
+                trial.suggest_categorical(
+                    'bagging_fraction',
+                    self._bagging_fraction_choices
+                ),
             'bagging_freq':
                 trial.suggest_categorical(
                     'bagging_freq',
@@ -401,10 +401,10 @@ class FeatureSelector(BaseSelector):
         early_stopping_rounds: int = 10,
         n_trials: int = 2,
         importance_type: str = 'split',
+        random_state: Union[int, np.random.RandomState] = None,
         k: int = 10,
         study: optuna.study.Study = None,
-        seed: int = 0,
-        verbose: int = 0,
+        verbose: int = -1,
     ) -> None:
         super().__init__(verbose=verbose)
 
@@ -417,8 +417,8 @@ class FeatureSelector(BaseSelector):
         self.early_stopping_rounds = early_stopping_rounds
         self.n_trials = n_trials
         self.importance_type = importance_type
+        self.random_state = random_state
         self.k = k
-        self.seed = seed
         self.study = study
 
     def _check_params(self) -> None:
@@ -433,33 +433,34 @@ class FeatureSelector(BaseSelector):
         if self.n_features_ <= self.k:
             return self
 
-        random.seed(self.seed)
+        random_state = check_random_state(self.random_state)
+        seed = random_state.randint(0, MAX_INT)
 
-        len_X = X.shape[0]
-        train_len = int(self.train_size * len_X)
+        train_len = int(self.train_size * X.shape[0])
         if train_len == 0:
             train_len = 1
 
         if self.time_col is None:
-            train_X = X[random.sample(range(0, len_X), train_len)]
-            train_y = y[random.sample(range(0, len_X), train_len)]
 
-            len_train_X = train_X.shape[0]
-            tuning_len = int(self.train_size_for_searching * len_train_X)
-            if tuning_len == 0:
-                tuning_len = 1
+            _, train_X, _, train_y = train_test_split(
+                                    X,
+                                    y,
+                                    test_size=self.train_size,
+                                    random_state=random_state,
+                                    )
 
-            tuning_X = \
-                train_X[random.sample(range(0, len_train_X), tuning_len)]
-            tuning_y = \
-                train_y[random.sample(range(0, len_train_X), tuning_len)]
+            _, tuning_X, _, tuning_y = train_test_split(
+                                    train_X,
+                                    train_y,
+                                    test_size=self.train_size_for_searching,
+                                    random_state=random_state,
+                                    )
 
         else:
             train_X = X[:-train_len]
             train_y = y[:-train_len]
 
-            len_train_X = train_X.shape[0]
-            tuning_len = int(self.train_size_for_searching * len_train_X)
+            tuning_len = int(self.train_size_for_searching * train_X.shape[0])
             if tuning_len == 0:
                 tuning_len = 1
 
@@ -470,8 +471,8 @@ class FeatureSelector(BaseSelector):
             'objective': 'binary',
             'metric': 'binary_logloss',
             'learning_rate': self.learning_rate,
-            'seed': self.seed,
-            'verbose': 1,
+            'seed': seed,
+            'verbose': -1,
         }
         num_boost_round = self.num_boost_round
 
@@ -496,7 +497,8 @@ class FeatureSelector(BaseSelector):
                 num_boost_round=self.num_boost_round,
                 early_stopping_rounds=self.early_stopping_rounds,
             )
-            self.study_ = optuna.create_study()
+            sampler = optuna.samplers.TPESampler(seed=seed)
+            self.study_ = optuna.create_study(sampler=sampler)
 
             self.study_.optimize(
                 objective,
@@ -528,4 +530,7 @@ class FeatureSelector(BaseSelector):
         )
         importance_index = np.argsort(importance_array)
 
-        return importance_index > self.n_features_ - self.k
+        return importance_index >= self.n_features_ - self.k
+
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'allow_nan': True}
