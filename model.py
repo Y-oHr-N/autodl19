@@ -21,7 +21,7 @@ F2H = str.maketrans(FULL_WIDTH_SYMBOLS, HALF_WIDTH_SYMBOLS)
 
 # EMAIL_ADDRESS_PATTERN = re.compile(r'[\w.+-]+@[\w-]+(\.[\w-]+)+')
 # URL_PATTERN = re.compile(r'http(s)?[^\s]+[\w]')
-# NUMBER_PATTERN = re.compile(r'[+-]?\d+(\.\d+)?')
+NUMBER_PATTERN = re.compile(r'[+-]?\d+(\.\d+)?')
 SYMBOL_PATTERN = re.compile(r'[!-/:-@[-`{-~]')
 OTHER_PATTERN = re.compile(r'[^\w\s]')
 
@@ -39,7 +39,7 @@ class EnglishPreprocessor(BasePreprocessor):
         doc = doc.lower()
         # doc = EMAIL_ADDRESS_PATTERN.sub('EMAILADDRESS', doc)
         # doc = URL_PATTERN.sub('URL', doc)
-        # doc = NUMBER_PATTERN.sub('NUMBER', doc)
+        doc = NUMBER_PATTERN.sub('NUMBER', doc)
         doc = SYMBOL_PATTERN.sub(' ', doc)
         doc = OTHER_PATTERN.sub('', doc)
 
@@ -52,7 +52,7 @@ class ChinesePreprocessor(BasePreprocessor):
         doc = doc.lower()
         # doc = EMAIL_ADDRESS_PATTERN.sub('EMAILADDRESS', doc)
         # doc = URL_PATTERN.sub('URL', doc)
-        # doc = NUMBER_PATTERN.sub('NUMBER', doc)
+        doc = NUMBER_PATTERN.sub('NUMBER', doc)
         doc = SYMBOL_PATTERN.sub(' ', doc)
 
         return doc.strip()
