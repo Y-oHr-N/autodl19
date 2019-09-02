@@ -70,6 +70,7 @@ class BaseAutoMLModel(BaseEstimator):
         # Parameters for a sampler
         sampling_strategy: Union[Dict[str, int], float, str] = 'auto',
         # Parameters for a model
+        class_weight: Union[str, Dict[str, float]] = 'balanced',
         cv: Union[BaseCrossValidator, int] = 5,
         enable_pruning: bool = True,
         learning_rate: float = 0.1,
@@ -84,6 +85,7 @@ class BaseAutoMLModel(BaseEstimator):
     ) -> None:
         super().__init__(verbose=verbose)
 
+        self.class_weight = class_weight
         self.cv = cv
         self.enable_pruning = enable_pruning
         self.learning_rate = learning_rate
@@ -294,6 +296,7 @@ class BaseAutoMLModel(BaseEstimator):
             cv = self.cv
 
         params = {
+            'class_weight': self.class_weight,
             'cv': cv,
             'enable_pruning': self.enable_pruning,
             'learning_rate': self.learning_rate,
