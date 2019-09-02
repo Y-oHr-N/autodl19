@@ -78,7 +78,6 @@ class BaseAutoMLModel(BaseEstimator):
         n_estimators: int = 1_000,
         n_iter_no_change: int = 10,
         n_trials: int = 10,
-        n_seeds: int = 10,
         objective: str = None,
         study: optuna.study.Study = None,
         timeout: float = None,
@@ -94,7 +93,6 @@ class BaseAutoMLModel(BaseEstimator):
         self.n_estimators = n_estimators
         self.n_iter_no_change = n_iter_no_change
         self.n_jobs = n_jobs
-        self.n_seeds = n_seeds
         self.n_trials = n_trials
         self.objective = objective
         self.operand = operand
@@ -290,7 +288,6 @@ class BaseAutoMLModel(BaseEstimator):
             'n_estimators': self.n_estimators,
             'n_iter_no_change': self.n_iter_no_change,
             'n_jobs': self.n_jobs,
-            'n_seeds': self.n_seeds,
             'n_trials': self.n_trials,
             'objective': self.objective,
             'random_state': self.random_state,
