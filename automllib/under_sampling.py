@@ -86,3 +86,64 @@ class ModifiedRandomUnderSampler(BaseSampler):
 
     def _more_tags(self) -> Dict[str, Any]:
         return {'non_deterministic': True, 'no_validation': True}
+
+
+class RandomUniformSampler(BaseSampler):
+    """
+    """
+
+    _sampling_type = 'uniform-sampling'
+
+    def __init__(
+        self,
+        random_state: Union[int, np.random.RandomState] = None,
+        shuffle: bool = True,
+        subsample: Union[float, int] = 1.0,
+        time_col: str = None,
+        verbose: int = 0
+    ) -> None:
+        super().__init__(verbose=verbose)
+
+        self.random_state = random_state
+        self.shuffle = shuffle
+        self.subsample = subsample
+        self.time_col = time_col
+
+    def _check_params(self) -> None:
+        pass
+
+    def _fit(
+        self,
+        X: TWO_DIM_ARRAYLIKE_TYPE,
+        y: ONE_DIM_ARRAYLIKE_TYPE,
+        **fit_params: Any
+    ) -> 'ModifiedRandomUnderSampler':
+        self._check_params()
+
+        random_state = check_random_state(self.random_state)
+        max_samples = self.subsample
+        n_samples = len(X)
+
+        if type(max_samples) is float:
+            max_samples = int(max_samples * n_samples)
+
+        self.sample_indices_ = np.arange(n_samples)
+
+        if max_samples < n_samples:
+            if self.time_col is None:
+                self.sample_indices_ = random_state.choice(
+                    self.sample_indices_,
+                    max_samples,
+                    replace=False
+                )
+
+                if not self.shuffle:
+                    self.sample_indices_.sort()
+
+            else:
+                self.sample_indices_ = self.sample_indices_[-max_samples:]
+
+        return self
+
+    def _more_tags(self) -> Dict[str, Any]:
+        return {'non_deterministic': True, 'no_validation': True}

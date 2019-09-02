@@ -37,7 +37,7 @@ from .table_join import get_multi_value_categorical_feature_names
 from .table_join import get_numerical_feature_names
 from .table_join import get_time_feature_names
 from .table_join import TableJoiner
-from .under_sampling import ModifiedRandomUnderSampler
+from .under_sampling import RandomUniformSampler
 
 
 class BaseAutoMLModel(BaseEstimator):
@@ -77,7 +77,9 @@ class BaseAutoMLModel(BaseEstimator):
         k: int = 100,
         # Parameters for a sampler
         sampling_strategy: Union[Dict[str, int], float, str] = 'auto',
+        max_samples: int = 100_000,
         # Parameters for a model
+        class_weight: Union[str, Dict[str, float]] = 'balanced',
         cv: Union[BaseCrossValidator, int] = 5,
         enable_pruning: bool = True,
         learning_rate: float = 0.1,
@@ -92,9 +94,11 @@ class BaseAutoMLModel(BaseEstimator):
     ) -> None:
         super().__init__(verbose=verbose)
 
+        self.class_weight = class_weight
         self.cv = cv
         self.enable_pruning = enable_pruning
         self.learning_rate = learning_rate
+        self.max_samples = max_samples
         self.n_estimators = n_estimators
         self.n_iter_no_change = n_iter_no_change
         self.n_jobs = n_jobs
@@ -125,18 +129,12 @@ class BaseAutoMLModel(BaseEstimator):
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE,
-        sample_weight: ONE_DIM_ARRAYLIKE_TYPE = None,
         related_tables: Dict[str, TWO_DIM_ARRAYLIKE_TYPE] = None
     ) -> 'BaseAutoMLModel':
-        if sample_weight is None:
-            n_samples, _ = X.shape
-            sample_weight = np.ones(n_samples)
-
         if self.time_col is not None:
             indices = np.argsort(X[self.time_col].values)
             X = safe_indexing(X, indices)
             y = safe_indexing(y, indices)
-            sample_weight = safe_indexing(sample_weight, indices)
 
         self.joiner_ = TableJoiner(
             relations=self.relations,
@@ -147,22 +145,25 @@ class BaseAutoMLModel(BaseEstimator):
         self.engineer_ = self._make_mixed_transformer()
         self.selector_ = self._make_selector()
         self.sampler_ = self._make_sampler()
+        self.engineer_ = self._make_mixed_transformer()
         self.model_ = self._make_model()
 
         X = self.joiner_.fit_transform(X, related_tables=related_tables)
+        X, y = self.sampler_.fit_resample(X, y)
         X = self.engineer_.fit_transform(X)
         X = self.selector_.fit_transform(X, y)
 
-        # if self.sampler_ is not None:
-        #     X, y = self.sampler_.fit_resample(X, y)
-        #     sample_weight = safe_indexing(
-        #         sample_weight,
-        #         self.sampler_.sample_indices_
-        #     )
-
-        self.model_.fit(X, y, sample_weight=sample_weight)
+        self.model_.fit(X, y)
 
         return self
+
+    def _make_joiner(self) -> BaseEstimator:
+        return TableJoiner(
+            relations=self.relations,
+            tables=self.tables,
+            time_col=self.time_col,
+            verbose=self.verbose
+        )
 
     def _make_categorical_transformer(self) -> BaseEstimator:
         return make_pipeline(
@@ -306,19 +307,13 @@ class BaseAutoMLModel(BaseEstimator):
             )
 
     def _make_sampler(self) -> BaseEstimator:
-        if self._estimator_type == 'classifier':
-            return ModifiedRandomUnderSampler(
-                random_state=self.random_state,
-                sampling_strategy=self.sampling_strategy,
-                shuffle=False,
-                verbose=self.verbose
-            )
-        elif self._estimator_type == 'regressor':
-            return None
-        else:
-            raise ValueError(
-                f'Unknown _estimator_type: {self._estimator_type}.'
-            )
+        return RandomUniformSampler(
+            random_state=self.random_state,
+            shuffle=False,
+            subsample=self.max_samples,
+            time_col=self.time_col,
+            verbose=self.verbose
+        )
 
     def _make_model(self) -> BaseEstimator:
         if isinstance(self.cv, int) and self.time_col is not None:
@@ -327,6 +322,7 @@ class BaseAutoMLModel(BaseEstimator):
             cv = self.cv
 
         params = {
+            'class_weight': self.class_weight,
             'cv': cv,
             'enable_pruning': self.enable_pruning,
             'learning_rate': self.learning_rate,
