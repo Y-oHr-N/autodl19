@@ -126,12 +126,7 @@ class BaseAutoMLModel(BaseEstimator):
             y = safe_indexing(y, indices)
             sample_weight = safe_indexing(sample_weight, indices)
 
-        self.joiner_ = TableJoiner(
-            relations=self.relations,
-            tables=self.tables,
-            time_col=self.time_col,
-            verbose=self.verbose
-        )
+        self.joiner_ = self._make_joiner()
         self.engineer_ = self._make_mixed_transformer()
         self.sampler_ = self._make_sampler()
         self.model_ = self._make_model()
@@ -149,6 +144,14 @@ class BaseAutoMLModel(BaseEstimator):
         self.model_.fit(X, y, sample_weight=sample_weight)
 
         return self
+
+    def _make_joiner(self) -> BaseEstimator:
+        return TableJoiner(
+            relations=self.relations,
+            tables=self.tables,
+            time_col=self.time_col,
+            verbose=self.verbose
+        )
 
     def _make_categorical_transformer(self) -> BaseEstimator:
         return make_pipeline(
