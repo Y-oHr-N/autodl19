@@ -117,17 +117,7 @@ class Objective(object):
 
     def __call__(self, trial: optuna.trial.Trial) -> float:
         params = self._get_params(trial)
-        extraction_callback = EnvExtractionCallback()
-        callbacks = [extraction_callback]
-
-        if self.enable_pruning:
-            pruning_callback = optuna.integration.LightGBMPruningCallback(
-                trial,
-                self.params['metric']
-            )
-
-            callbacks.append(pruning_callback)
-
+        callbacks = self._get_callbacks(trial)
         dataset = lgb.Dataset(
             self.X,
             categorical_feature=self.categorical_features,
@@ -144,9 +134,8 @@ class Objective(object):
             num_boost_round=self.n_estimators,
             seed=self.seed
         )
-
         value = eval_hist[f'{self.params["metric"]}-mean'][-1]
-        boosters = extraction_callback.model_.boosters
+        boosters = callbacks[0].model_.boosters
 
         try:
             if value < trial.study.best_value:
@@ -155,6 +144,20 @@ class Objective(object):
             trial.study.set_user_attr('boosters', boosters)
 
         return value
+
+    def _get_callbacks(self, trial: optuna.trial.Trial) -> Sequence[Callable]:
+        extraction_callback = EnvExtractionCallback()
+        callbacks = [extraction_callback]
+
+        if self.enable_pruning:
+            pruning_callback = optuna.integration.LightGBMPruningCallback(
+                trial,
+                self.params['metric']
+            )
+
+            callbacks.append(pruning_callback)
+
+        return callbacks
 
     def _get_params(self, trial: optuna.trial.Trial) -> Dict[str, Any]:
         params = {
