@@ -400,11 +400,12 @@ class FeatureSelector(BaseSelector):
         num_boost_round: int = 100,
         early_stopping_rounds: int = 10,
         n_trials: int = 2,
-        importance_type: str = 'split',
+        importance_type: str = 'gain',
         random_state: Union[int, np.random.RandomState] = None,
         k: int = 10,
         study: optuna.study.Study = None,
-        verbose: int = -1,
+        gain_threshold: float = 0.0,
+        verbose: int = 0
     ) -> None:
         super().__init__(verbose=verbose)
 
@@ -419,6 +420,7 @@ class FeatureSelector(BaseSelector):
         self.importance_type = importance_type
         self.random_state = random_state
         self.k = k
+        self.gain_threshold = gain_threshold
         self.study = study
 
     def _check_params(self) -> None:
@@ -528,9 +530,8 @@ class FeatureSelector(BaseSelector):
         importance_array = self.model_.feature_importance(
             importance_type=self.importance_type
         )
-        importance_index = np.argsort(importance_array)
 
-        return importance_index >= self.n_features_ - self.k
+        return importance_array > self.gain_threshold
 
     def _more_tags(self) -> Dict[str, Any]:
         return {'allow_nan': True}
