@@ -280,7 +280,7 @@ class Objective(object):
     _max_depth_choices = (-1, 2, 3, 4, 5, 6, 7)
     _num_leaves_low = 10
     _num_leaves_high = 200
-    _feature_fraction_choices = (0.6, 0.7, 0.8, 0.9, 1.0)
+    # _feature_fraction_choices = (0.6, 0.7, 0.8, 0.9, 1.0)
     _bagging_fraction_choices = (0.6, 0.7, 0.8, 0.9, 1.0)
     _bagging_freq_choices = (0, 10, 20, 30, 40, 50)
     _reg_alpha_low = 1e-06
@@ -322,11 +322,11 @@ class Objective(object):
                     self._num_leaves_low,
                     self._num_leaves_high
                 ),
-            'feature_fraction':
-                trial.suggest_categorical(
-                    'feature_fraction',
-                    self._feature_fraction_choices
-                ),
+            # 'feature_fraction':
+            #     trial.suggest_categorical(
+            #         'feature_fraction',
+            #         self._feature_fraction_choices
+            #     ),
             'bagging_fraction':
                 trial.suggest_categorical(
                     'bagging_fraction',
