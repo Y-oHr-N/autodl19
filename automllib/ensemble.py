@@ -116,6 +116,47 @@ class Objective(object):
         self.y = y
 
     def __call__(self, trial: optuna.trial.Trial) -> float:
+        params = self._get_params(trial)
+        extraction_callback = EnvExtractionCallback()
+        callbacks = [extraction_callback]
+
+        if self.enable_pruning:
+            pruning_callback = optuna.integration.LightGBMPruningCallback(
+                trial,
+                self.params['metric']
+            )
+
+            callbacks.append(pruning_callback)
+
+        dataset = lgb.Dataset(
+            self.X,
+            categorical_feature=self.categorical_features,
+            label=self.y,
+            params=params,
+            weight=self.sample_weight
+        )
+        eval_hist = lgb.cv(
+            params,
+            dataset,
+            callbacks=callbacks,
+            early_stopping_rounds=self.n_iter_no_change,
+            folds=self.cv,
+            num_boost_round=self.n_estimators,
+            seed=self.seed
+        )
+
+        value = eval_hist[f'{self.params["metric"]}-mean'][-1]
+        boosters = extraction_callback.model_.boosters
+
+        try:
+            if value < trial.study.best_value:
+                trial.study.set_user_attr('boosters', boosters)
+        except:
+            trial.study.set_user_attr('boosters', boosters)
+
+        return value
+
+    def _get_params(self, trial: optuna.trial.Trial) -> Dict[str, Any]:
         params = {
             'colsample_bytree':
                 trial.suggest_uniform(
@@ -171,46 +212,10 @@ class Objective(object):
                     self._subsample_freq_high
                 )
         }
-        extraction_callback = EnvExtractionCallback()
-        callbacks = [extraction_callback]
-
-        if self.enable_pruning:
-            pruning_callback = optuna.integration.LightGBMPruningCallback(
-                trial,
-                self.params['metric']
-            )
-
-            callbacks.append(pruning_callback)
 
         params.update(self.params)
 
-        dataset = lgb.Dataset(
-            self.X,
-            categorical_feature=self.categorical_features,
-            label=self.y,
-            params=params,
-            weight=self.sample_weight
-        )
-        eval_hist = lgb.cv(
-            params,
-            dataset,
-            callbacks=callbacks,
-            early_stopping_rounds=self.n_iter_no_change,
-            folds=self.cv,
-            num_boost_round=self.n_estimators,
-            seed=self.seed
-        )
-
-        value = eval_hist[f'{self.params["metric"]}-mean'][-1]
-        boosters = extraction_callback.model_.boosters
-
-        try:
-            if value < trial.study.best_value:
-                trial.study.set_user_attr('boosters', boosters)
-        except:
-            trial.study.set_user_attr('boosters', boosters)
-
-        return value
+        return params
 
 
 class BaseLGBMModelCV(BaseEstimator):
