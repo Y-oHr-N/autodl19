@@ -402,7 +402,6 @@ class FeatureSelector(BaseSelector):
         n_trials: int = 2,
         importance_type: str = 'gain',
         random_state: Union[int, np.random.RandomState] = None,
-        k: int = 10,
         study: optuna.study.Study = None,
         gain_threshold: float = 0.0,
         verbose: int = 0
@@ -419,7 +418,6 @@ class FeatureSelector(BaseSelector):
         self.n_trials = n_trials
         self.importance_type = importance_type
         self.random_state = random_state
-        self.k = k
         self.gain_threshold = gain_threshold
         self.study = study
 
@@ -431,9 +429,6 @@ class FeatureSelector(BaseSelector):
         X: TWO_DIM_ARRAYLIKE_TYPE,
         y: ONE_DIM_ARRAYLIKE_TYPE = None
     ) -> 'FeatureSelector':
-
-        if self.n_features_ <= self.k:
-            return self
 
         random_state = check_random_state(self.random_state)
         seed = random_state.randint(0, MAX_INT)
@@ -523,9 +518,6 @@ class FeatureSelector(BaseSelector):
         return self
 
     def _get_support(self) -> ONE_DIM_ARRAYLIKE_TYPE:
-
-        if self.n_features_ <= self.k:
-            return np.ones(self.n_features_, dtype=bool)
 
         importance_array = self.model_.feature_importance(
             importance_type=self.importance_type
