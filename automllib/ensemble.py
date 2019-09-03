@@ -356,7 +356,6 @@ class BaseLGBMModelCV(BaseEstimator):
         }
         is_classifier = self._estimator_type == 'classifier'
         cv = check_cv(self.cv, y, is_classifier)
-        n_jobs = effective_n_jobs(self.n_jobs)
         logger = self._get_logger()
 
         if is_classifier:
