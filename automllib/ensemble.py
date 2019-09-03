@@ -139,8 +139,15 @@ class Objective(object):
 
         try:
             if value < trial.study.best_value:
+                for b in boosters:
+                    b.free_dataset()
+
                 trial.study.set_user_attr('boosters', boosters)
-        except:
+
+        except ValueError:
+            for b in boosters:
+                b.free_dataset()
+
             trial.study.set_user_attr('boosters', boosters)
 
         return value
