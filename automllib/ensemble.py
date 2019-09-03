@@ -64,6 +64,10 @@ class EnvExtractionCallback(object):
     def best_iteration_(self) -> int:
         return self._env.iteration + 1
 
+    @property
+    def model_(self) -> lgb.engine._CVBooster:
+        return self._env.model
+
     def __call__(self, env: NamedTuple) -> None:
         self._env = env
 
@@ -204,7 +208,16 @@ class Objective(object):
 
         trial.set_user_attr('best_iteration', best_iteration)
 
-        return eval_hist[f'{self.params["metric"]}-mean'][-1]
+        value = eval_hist[f'{self.params["metric"]}-mean'][-1]
+        boosters = extraction_callback.model_.boosters
+
+        try:
+            if value < trial.study.best_value:
+                trial.study.set_user_attr('boosters', boosters)
+        except:
+            trial.study.set_user_attr('boosters', boosters)
+
+        return value
 
 
 class BaseLGBMModelCV(BaseEstimator):
@@ -220,6 +233,10 @@ class BaseLGBMModelCV(BaseEstimator):
             return 'auto'
 
         return self.categorical_features
+
+    @property
+    def boosters_(self) -> Sequence[lgb.Booster]:
+        return self.user_attrs_['boosters']
 
     @property
     def best_index_(self) -> int:
@@ -291,7 +308,6 @@ class BaseLGBMModelCV(BaseEstimator):
         n_estimators: int = 100,
         n_iter_no_change: int = None,
         n_jobs: int = 1,
-        n_seeds: int = 10,
         n_trials: int = 10,
         objective: str = None,
         random_state: Union[int, np.random.RandomState] = None,
@@ -310,7 +326,6 @@ class BaseLGBMModelCV(BaseEstimator):
         self.n_estimators = n_estimators
         self.n_iter_no_change = n_iter_no_change
         self.n_jobs = n_jobs
-        self.n_seeds = n_seeds
         self.n_trials = n_trials
         self.objective = objective
         self.random_state = random_state
@@ -334,8 +349,6 @@ class BaseLGBMModelCV(BaseEstimator):
         is_classifier = self._estimator_type == 'classifier'
         cv = check_cv(self.cv, y, is_classifier)
         n_jobs = effective_n_jobs(self.n_jobs)
-        parallel = Parallel(n_jobs=n_jobs)
-        func = delayed(self._parallel_fit_booster)
         logger = self._get_logger()
 
         if is_classifier:
@@ -406,55 +419,10 @@ class BaseLGBMModelCV(BaseEstimator):
         logger.info(f'Best iteration: {self.best_iteration_}.')
         logger.info(f'Best {params["metric"]}: {self.best_score_:.3f}.')
 
-        if self.n_iter_no_change is None:
-            n_estimators = self.n_estimators
-        else:
-            n_estimators = self.best_iteration_
-
-        self.boosters_ = parallel(
-            func(
-                X,
-                y,
-                self.best_params_,
-                n_estimators,
-                sample_weight,
-                random_state.randint(0, MAX_INT)
-            ) for _ in range(self.n_seeds)
-        )
-
         return self
 
     def _more_tags(self) -> Dict[str, Any]:
         return {'non_deterministic': True, 'no_validation': True}
-
-    def _parallel_fit_booster(
-        self,
-        X: TWO_DIM_ARRAYLIKE_TYPE,
-        y: ONE_DIM_ARRAYLIKE_TYPE,
-        params: Dict[str, Any],
-        n_estimators: int,
-        sample_weight: ONE_DIM_ARRAYLIKE_TYPE,
-        seed: int
-    ) -> lgb.Booster:
-        params = params.copy()
-        params['seed'] = seed
-
-        dataset = lgb.Dataset(
-            X,
-            categorical_feature=self._categorical_features,
-            label=y,
-            params=params,
-            weight=sample_weight
-        )
-        booster = lgb.train(
-            params,
-            dataset,
-            num_boost_round=n_estimators
-        )
-
-        booster.free_dataset()
-
-        return booster
 
     @abstractmethod
     def predict(self, X: TWO_DIM_ARRAYLIKE_TYPE) -> ONE_DIM_ARRAYLIKE_TYPE:
