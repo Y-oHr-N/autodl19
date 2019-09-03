@@ -43,10 +43,6 @@ class BaseAutoMLModel(BaseEstimator):
     _dtype = 'float32'
 
     @property
-    def best_iteration_(self) -> int:
-        return self.model_.best_iteration_
-
-    @property
     def best_params_(self) -> Dict[str, Any]:
         return self.model_.best_params_
 

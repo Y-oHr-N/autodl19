@@ -201,13 +201,6 @@ class Objective(object):
             seed=self.seed
         )
 
-        if self.n_iter_no_change is None:
-            best_iteration = None
-        else:
-            best_iteration = extraction_callback.best_iteration_
-
-        trial.set_user_attr('best_iteration', best_iteration)
-
         value = eval_hist[f'{self.params["metric"]}-mean'][-1]
         boosters = extraction_callback.model_.boosters
 
@@ -410,13 +403,10 @@ class BaseLGBMModelCV(BaseEstimator):
             timeout=self.timeout
         )
 
-        self.best_iteration_ = \
-            self.study_.best_trial.user_attrs['best_iteration']
         self.best_params_ = {**params, **self.study_.best_params}
         self.best_score_ = self.study_.best_value
 
         logger.info(f'Shape of data: {X.shape}.')
-        logger.info(f'Best iteration: {self.best_iteration_}.')
         logger.info(f'Best {params["metric"]}: {self.best_score_:.3f}.')
 
         return self
