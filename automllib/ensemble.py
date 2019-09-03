@@ -56,6 +56,27 @@ REGRESSION_METRICS = {
 }
 METRICS = {**CLASSIFICATION_METRICS, **REGRESSION_METRICS}
 
+PARAM_DISTRIBUTIONS = {
+    'colsample_bytree':
+        optuna.distributions.UniformDistribution(0.1, 1.0),
+    'max_depth':
+        optuna.distributions.CategoricalDistribution([-1, 2, 3, 4, 5, 6]),
+    'min_child_samples':
+        optuna.distributions.IntUniformDistribution(1, 100),
+    'min_child_weight':
+        optuna.distributions.LogUniformDistribution(1e-03, 10.0),
+    'num_leaves':
+        optuna.distributions.IntUniformDistribution(2, 127),
+    'reg_alpha':
+        optuna.distributions.LogUniformDistribution(1e-06, 10.0),
+    'reg_lambda':
+        optuna.distributions.LogUniformDistribution(1e-6, 10.0),
+    'subsample': 
+        optuna.distributions.UniformDistribution(0.1, 1.0),
+    'subsample_freq':
+        optuna.distributions.IntUniformDistribution(1, 10)
+}
+
 MAX_INT = np.iinfo(np.int32).max
 
 
@@ -73,24 +94,6 @@ class EnvExtractionCallback(object):
 
 
 class Objective(object):
-    _colsample_bytree_low = 0.1
-    _colsample_bytree_high = 1.0
-    _max_depth_choices = (-1, 2, 3, 4, 5, 6)
-    _min_child_samples_low = 1
-    _min_child_samples_high = 100
-    _min_child_weight_low = 1e-03
-    _min_child_weight_high = 10.0
-    _num_leaves_low = 2
-    _num_leaves_high = 127
-    _reg_alpha_low = 1e-06
-    _reg_alpha_high = 10.0
-    _reg_lambda_low = 1e-06
-    _reg_lambda_high = 10.0
-    _subsample_low = 0.1
-    _subsample_high = 1.0
-    _subsample_freq_low = 1
-    _subsample_freq_high = 10
-
     def __init__(
         self,
         X: TWO_DIM_ARRAYLIKE_TYPE,
@@ -168,59 +171,9 @@ class Objective(object):
 
     def _get_params(self, trial: optuna.trial.Trial) -> Dict[str, Any]:
         params = {
-            'colsample_bytree':
-                trial.suggest_uniform(
-                    'colsample_bytree',
-                    self._colsample_bytree_low,
-                    self._colsample_bytree_high
-                ),
-            'max_depth':
-                trial.suggest_categorical(
-                    'max_depth',
-                    self._max_depth_choices
-                ),
-            'min_child_samples':
-                trial.suggest_int(
-                    'min_child_samples',
-                    self._min_child_samples_low,
-                    self._min_child_samples_high
-                ),
-            'min_child_weight':
-                trial.suggest_loguniform(
-                    'min_child_weight',
-                    self._min_child_weight_low,
-                    self._min_child_weight_high
-                ),
-            'num_leaves':
-                trial.suggest_int(
-                    'num_leaves',
-                    self._num_leaves_low,
-                    self._num_leaves_high
-                ),
-            'reg_alpha':
-                trial.suggest_loguniform(
-                    'reg_alpha',
-                    self._reg_alpha_low,
-                    self._reg_alpha_high
-                ),
-            'reg_lambda':
-                trial.suggest_loguniform(
-                    'reg_lambda',
-                    self._reg_lambda_low,
-                    self._reg_alpha_high
-                ),
-            'subsample':
-                trial.suggest_uniform(
-                    'subsample',
-                    self._subsample_low,
-                    self._subsample_high
-                ),
-            'subsample_freq':
-                trial.suggest_int(
-                    'subsample_freq',
-                    self._subsample_freq_low,
-                    self._subsample_freq_high
-                )
+            name: trial._suggest(
+                name, distribution
+            ) for name, distribution in PARAM_DISTRIBUTIONS.items()
         }
 
         params.update(self.params)
