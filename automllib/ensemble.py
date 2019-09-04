@@ -355,6 +355,10 @@ class BaseLGBMModelCV(BaseEstimator):
             sample_weight=sample_weight
         )
 
+        self.train_sample_counts_ = np.array([
+            len(train) for train, _ in cv.split(X, y)
+        ])
+
         if self.study is None:
             sampler = optuna.samplers.TPESampler(seed=seed)
 
@@ -448,7 +452,7 @@ class LGBMClassifierCV(BaseLGBMModelCV, ClassifierMixin):
         parallel = Parallel(n_jobs=n_jobs)
         func = delayed(lgb.Booster.predict)
         results = parallel(func(b, X) for b in self.boosters_)
-        result = np.average(results, axis=0)
+        result = np.average(results, axis=0, weights=self.train_sample_counts_)
 
         if self.n_classes_ > 2:
             return result
@@ -500,4 +504,4 @@ class LGBMRegressorCV(BaseLGBMModelCV, RegressorMixin):
         func = delayed(lgb.Booster.predict)
         results = parallel(func(b, X) for b in self.boosters_)
 
-        return np.average(results, axis=0)
+        return np.average(results, axis=0, weights=self.train_sample_counts_)
