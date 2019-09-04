@@ -65,16 +65,17 @@ class BaseAutoMLModel(BaseEstimator):
         tables: Dict[str, Dict[str, str]] = None,
         time_col: str = None,
         # Parameters for an engineer
-        operand: Union[Sequence[str], str] = None,
+        operand: Union[Sequence[str], str] = ['add', 'subtract', 'divide'],
         subsample: Union[float, int] = 1_000,
         threshold: float = 0.6,
+        max_n_combinations: int = 200,
         # Parameters for a selector
         train_size: float = 0.8,  # Use 80% data for training
         train_size_for_searching: float = 0.4,  # Use 40% train data for tuning
         valid_size: float = 0.2,  # Use 20% tuning data for validation
         select_study: optuna.study.Study = None,
-        importance_type: str = 'split',
-        k: int = 100,
+        importance_type: str = 'gain',
+        gain_threshold: float = 0.0,
         # Parameters for a sampler
         sampling_strategy: Union[Dict[str, int], float, str] = 'auto',
         max_samples: int = 100_000,
@@ -119,8 +120,9 @@ class BaseAutoMLModel(BaseEstimator):
         self.train_size_for_searching = train_size_for_searching
         self.valid_size = valid_size
         self.select_study = select_study
+        self.gain_threshold = gain_threshold
+        self.max_n_combinations = max_n_combinations
         self.importance_type = importance_type
-        self.k = k
 
     def _check_params(self) -> None:
         pass
@@ -147,11 +149,13 @@ class BaseAutoMLModel(BaseEstimator):
         self.sampler_ = self._make_sampler()
         self.engineer_ = self._make_mixed_transformer()
         self.model_ = self._make_model()
+        self.second_engineer_ = self._make_second_engineer_()
 
         X = self.joiner_.fit_transform(X, related_tables=related_tables)
         X, y = self.sampler_.fit_resample(X, y)
         X = self.engineer_.fit_transform(X)
         X = self.selector_.fit_transform(X, y)
+        X = self.second_engineer_.fit_transform(X)
 
         self.model_.fit(X, y)
 
@@ -237,12 +241,12 @@ class BaseAutoMLModel(BaseEstimator):
                 verbose=self.verbose
             ),
             make_union(
-                ArithmeticalFeatures(
-                    dtype=self._dtype,
-                    n_jobs=self.n_jobs,
-                    operand=self.operand,
-                    verbose=self.verbose
-                ),
+                # ArithmeticalFeatures(
+                    # dtype=self._dtype,
+                    # n_jobs=self.n_jobs,
+                    # operand=self.operand,
+                    # verbose=self.verbose
+                # ),
                 MissingIndicator(error_on_new=False)
             )
         )
@@ -264,6 +268,7 @@ class BaseAutoMLModel(BaseEstimator):
                     include_X=False,
                     n_jobs=self.n_jobs,
                     operand='subtract',
+                    max_n_combinations=self.max_n_combinations,
                     verbose=self.verbose
                 )
             )
@@ -302,9 +307,19 @@ class BaseAutoMLModel(BaseEstimator):
                 study=self.select_study,
                 importance_type=self.importance_type,
                 random_state=self.random_state,
-                k=self.k,
-                verbose=-1
+                gain_threshold=self.gain_threshold,
+                verbose=self.verbose,
             )
+
+    def _make_second_engineer_(self) -> BaseEstimator:
+        return ArithmeticalFeatures(
+            dtype=self._dtype,
+            include_X=False,
+            n_jobs=self.n_jobs,
+            operand=self.operand,
+            max_n_combinations=self.max_n_combinations,
+            verbose=self.verbose
+        )
 
     def _make_sampler(self) -> BaseEstimator:
         return RandomUniformSampler(
