@@ -71,7 +71,7 @@ PARAM_DISTRIBUTIONS = {
         optuna.distributions.LogUniformDistribution(1e-06, 10.0),
     'reg_lambda':
         optuna.distributions.LogUniformDistribution(1e-6, 10.0),
-    'subsample': 
+    'subsample':
         optuna.distributions.UniformDistribution(0.1, 1.0),
     'subsample_freq':
         optuna.distributions.IntUniformDistribution(1, 10)
@@ -121,17 +121,12 @@ class Objective(object):
     def __call__(self, trial: optuna.trial.Trial) -> float:
         params = self._get_params(trial)
         callbacks = self._get_callbacks(trial)
-        dataset = lgb.Dataset(
-            self.X,
-            categorical_feature=self.categorical_features,
-            label=self.y,
-            params=params,
-            weight=self.sample_weight
-        )
+        dataset = lgb.Dataset(self.X, label=self.y, weight=self.sample_weight)
         eval_hist = lgb.cv(
             params,
             dataset,
             callbacks=callbacks,
+            categorical_feature=self.categorical_features,
             early_stopping_rounds=self.n_iter_no_change,
             folds=self.cv,
             num_boost_round=self.n_estimators,
