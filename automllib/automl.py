@@ -29,6 +29,7 @@ from .feature_selection import NAProportionThreshold
 from .feature_selection import FeatureSelector
 from .impute import ModifiedSimpleImputer
 from .preprocessing import ArithmeticalFeatures
+from .preprocessing import ArithmeticalFeatures_1
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
 from .preprocessing import TextStatistics
@@ -65,10 +66,10 @@ class BaseAutoMLModel(BaseEstimator):
         tables: Dict[str, Dict[str, str]] = None,
         time_col: str = None,
         # Parameters for an engineer
-        operand: Union[Sequence[str], str] = ['add', 'subtract', 'divide'],
+        operand: Union[Sequence[str], str] = ['add', 'subtract', 'multiply'],
         subsample: Union[float, int] = 1_000,
         threshold: float = 0.6,
-        max_n_combinations: int = 200,
+        max_n_combinations: int = 300,
         # Parameters for a selector
         train_size: float = 0.8,  # Use 80% data for training
         train_size_for_searching: float = 0.4,  # Use 40% train data for tuning
@@ -144,12 +145,15 @@ class BaseAutoMLModel(BaseEstimator):
             time_col=self.time_col,
             verbose=self.verbose
         )
+
+        a = []
+
         self.engineer_ = self._make_mixed_transformer()
-        self.selector_ = self._make_selector()
+        self.selector_ = self._make_selector(a)
         self.sampler_ = self._make_sampler()
         self.engineer_ = self._make_mixed_transformer()
         self.model_ = self._make_model()
-        self.second_engineer_ = self._make_second_engineer_()
+        self.second_engineer_ = self._make_second_engineer_(a)
 
         X = self.joiner_.fit_transform(X, related_tables=related_tables)
         X, y = self.sampler_.fit_resample(X, y)
@@ -242,10 +246,10 @@ class BaseAutoMLModel(BaseEstimator):
             ),
             make_union(
                 # ArithmeticalFeatures(
-                    # dtype=self._dtype,
-                    # n_jobs=self.n_jobs,
-                    # operand=self.operand,
-                    # verbose=self.verbose
+                #     dtype=self._dtype,
+                #     n_jobs=self.n_jobs,
+                #     operand='subtract',
+                #     verbose=self.verbose
                 # ),
                 MissingIndicator(error_on_new=False)
             )
@@ -268,7 +272,6 @@ class BaseAutoMLModel(BaseEstimator):
                     include_X=False,
                     n_jobs=self.n_jobs,
                     operand='subtract',
-                    max_n_combinations=self.max_n_combinations,
                     verbose=self.verbose
                 )
             )
@@ -294,7 +297,7 @@ class BaseAutoMLModel(BaseEstimator):
             )
         )
 
-    def _make_selector(self) -> BaseEstimator:
+    def _make_selector(self,a) -> BaseEstimator:
         return FeatureSelector(
                 time_col=self.time_col,
                 train_size=self.train_size,
@@ -309,16 +312,18 @@ class BaseAutoMLModel(BaseEstimator):
                 random_state=self.random_state,
                 gain_threshold=self.gain_threshold,
                 verbose=self.verbose,
+                a=a
             )
 
-    def _make_second_engineer_(self) -> BaseEstimator:
-        return ArithmeticalFeatures(
+    def _make_second_engineer_(self,a) -> BaseEstimator:
+        return ArithmeticalFeatures_1(
             dtype=self._dtype,
             include_X=False,
             n_jobs=self.n_jobs,
             operand=self.operand,
             max_n_combinations=self.max_n_combinations,
-            verbose=self.verbose
+            verbose=self.verbose,
+            a=a
         )
 
     def _make_sampler(self) -> BaseEstimator:
@@ -384,6 +389,7 @@ class BaseAutoMLModel(BaseEstimator):
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
         X = self.selector_.transform(X)
+        X = self.second_engineer_.transform(X)
 
         return self.model_.predict(X)
 
@@ -425,6 +431,7 @@ class AutoMLClassifier(BaseAutoMLModel, ClassifierMixin):
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
         X = self.selector_.transform(X)
+        X = self.second_engineer_.transform(X)
 
         return self.model_.predict_proba(X)
 
