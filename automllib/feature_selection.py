@@ -377,7 +377,8 @@ class Objective(object):
             train_data,
             num_boost_round=self.num_boost_round,
             early_stopping_rounds=self.early_stopping_rounds,
-            valid_sets=val_data
+            valid_sets=val_data,
+            verbose_eval=False
         )
 
         best_iteration = hyperopt_model.best_iteration
@@ -404,7 +405,8 @@ class FeatureSelector(BaseSelector):
         random_state: Union[int, np.random.RandomState] = None,
         study: optuna.study.Study = None,
         gain_threshold: float = 0.0,
-        verbose: int = 0
+        verbose: int = 0,
+        a = None
     ) -> None:
         super().__init__(verbose=verbose)
 
@@ -420,6 +422,7 @@ class FeatureSelector(BaseSelector):
         self.random_state = random_state
         self.gain_threshold = gain_threshold
         self.study = study
+        self.a = a
 
     def _check_params(self) -> None:
         pass
@@ -514,6 +517,12 @@ class FeatureSelector(BaseSelector):
             num_boost_round=num_boost_round,
             train_set=train_data,
         )
+
+        out = self.a
+
+        out.append(self.model_.feature_importance(
+            importance_type=self.importance_type
+        ))
 
         return self
 
