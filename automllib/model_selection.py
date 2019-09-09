@@ -42,7 +42,13 @@ from optuna import storages  # NOQA
 from optuna import structs
 from optuna import study as study_module
 from optuna import trial as trial_module  # NOQA
-from optuna import types
+
+try:
+    from optuna import types
+except ImportError:
+    from optuna import type_checking
+
+    types = type_checking
 
 if types.TYPE_CHECKING:
     from typing import Any  # NOQA
