@@ -8,6 +8,8 @@ import numpy as np
 import optuna
 
 from imblearn.pipeline import make_pipeline
+from optgbm import OGBMClassifier
+from optgbm import OGBMRegressor
 from sklearn.base import ClassifierMixin
 from sklearn.base import RegressorMixin
 from sklearn.compose import make_column_transformer
@@ -20,8 +22,6 @@ from sklearn.utils import safe_indexing
 from .base import BaseEstimator
 from .base import ONE_DIM_ARRAYLIKE_TYPE
 from .base import TWO_DIM_ARRAYLIKE_TYPE
-from .ensemble import LGBMClassifierCV
-from .ensemble import LGBMRegressorCV
 from .feature_extraction import TimeVectorizer
 from .feature_selection import DropCollinearFeatures
 from .feature_selection import FrequencyThreshold
@@ -277,25 +277,26 @@ class BaseAutoMLModel(BaseEstimator):
             cv = self.cv
 
         params = {
-            'class_weight': self.class_weight,
             'cv': cv,
             'enable_pruning': self.enable_pruning,
             'learning_rate': self.learning_rate,
-            'n_estimators': self.n_estimators,
+            'max_iter': self.n_estimators,
             'n_iter_no_change': self.n_iter_no_change,
             'n_jobs': self.n_jobs,
             'n_trials': self.n_trials,
             'objective': self.objective,
             'random_state': self.random_state,
             'study': self.study,
-            'timeout': self.timeout,
-            'verbose': self.verbose
+            'timeout': self.timeout
         }
 
         if self._estimator_type == 'classifier':
-            return LGBMClassifierCV(**params)
+            params['class_weight'] = self.class_weight
+
+            return OGBMClassifier(**params)
+
         elif self._estimator_type == 'regressor':
-            return LGBMRegressorCV(**params)
+            return OGBMRegressor(**params)
         else:
             raise ValueError(
                 f'Unknown _estimator_type: {self._estimator_type}.'
