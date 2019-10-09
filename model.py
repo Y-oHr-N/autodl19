@@ -14,7 +14,11 @@ from tensorflow.python.keras.preprocessing import sequence
 
 from keras.backend.tensorflow_backend import set_session
 
-config = tf.ConfigProto()
+try:
+    config = tf.ConfigProto()
+except AttributeError:
+    config = tf.compat.v1.ConfigProto
+
 config.gpu_options.allow_growth = True
 config.log_device_placement = True
 sess = tf.Session(config=config)
