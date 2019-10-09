@@ -26,8 +26,10 @@ from .feature_extraction import TimeVectorizer
 from .feature_selection import DropCollinearFeatures
 from .feature_selection import FrequencyThreshold
 from .feature_selection import NAProportionThreshold
+from .feature_selection import FeatureSelector
 from .impute import ModifiedSimpleImputer
 from .preprocessing import ArithmeticalFeatures
+from .preprocessing import ArithmeticalFeatures_1
 from .preprocessing import Clip
 from .preprocessing import CountEncoder
 from .preprocessing import TextStatistics
@@ -60,12 +62,20 @@ class BaseAutoMLModel(BaseEstimator):
         tables: Dict[str, Dict[str, str]] = None,
         time_col: str = None,
         # Parameters for an engineer
-        operand: Union[Sequence[str], str] = None,
+        operand: Union[Sequence[str], str] = ['add', 'subtract', 'multiply'],
         subsample: Union[float, int] = 1_000,
         threshold: float = 0.6,
+        max_n_combinations: int = 300,
+        # Parameters for a selector
+        train_size: float = 0.8,  # Use 80% data for training
+        train_size_for_searching: float = 0.4,  # Use 40% train data for tuning
+        valid_size: float = 0.2,  # Use 20% tuning data for validation
+        select_study: optuna.study.Study = None,
+        importance_type: str = 'gain',
+        gain_threshold: float = 0.0,
         # Parameters for a sampler
         sampling_strategy: Union[Dict[str, int], float, str] = 'auto',
-        max_samples: int = 100_000, 
+        max_samples: int = 100_000,
         # Parameters for a model
         class_weight: Union[str, Dict[str, float]] = 'balanced',
         cv: Union[BaseCrossValidator, int] = 5,
@@ -101,6 +111,13 @@ class BaseAutoMLModel(BaseEstimator):
         self.threshold = threshold
         self.timeout = timeout
         self.time_col = time_col
+        self.train_size = train_size
+        self.train_size_for_searching = train_size_for_searching
+        self.valid_size = valid_size
+        self.select_study = select_study
+        self.gain_threshold = gain_threshold
+        self.max_n_combinations = max_n_combinations
+        self.importance_type = importance_type
 
     def _check_params(self) -> None:
         pass
@@ -116,14 +133,27 @@ class BaseAutoMLModel(BaseEstimator):
             X = safe_indexing(X, indices)
             y = safe_indexing(y, indices)
 
-        self.joiner_ = self._make_joiner()
+        self.joiner_ = TableJoiner(
+            relations=self.relations,
+            tables=self.tables,
+            time_col=self.time_col,
+            verbose=self.verbose
+        )
+
+        a = []
+
+        self.engineer_ = self._make_mixed_transformer()
+        self.selector_ = self._make_selector(a)
         self.sampler_ = self._make_sampler()
         self.engineer_ = self._make_mixed_transformer()
         self.model_ = self._make_model()
+        self.second_engineer_ = self._make_second_engineer_(a)
 
         X = self.joiner_.fit_transform(X, related_tables=related_tables)
         X, y = self.sampler_.fit_resample(X, y)
         X = self.engineer_.fit_transform(X)
+        X = self.selector_.fit_transform(X, y)
+        X = self.second_engineer_.fit_transform(X)
 
         self.model_.fit(X, y)
 
@@ -209,12 +239,12 @@ class BaseAutoMLModel(BaseEstimator):
                 verbose=self.verbose
             ),
             make_union(
-                ArithmeticalFeatures(
-                    dtype=self._dtype,
-                    n_jobs=self.n_jobs,
-                    operand=self.operand,
-                    verbose=self.verbose
-                ),
+                # ArithmeticalFeatures(
+                #     dtype=self._dtype,
+                #     n_jobs=self.n_jobs,
+                #     operand='subtract',
+                #     verbose=self.verbose
+                # ),
                 MissingIndicator(error_on_new=False)
             )
         )
@@ -259,6 +289,35 @@ class BaseAutoMLModel(BaseEstimator):
                 self._make_time_transformer(),
                 get_time_feature_names
             )
+        )
+
+    def _make_selector(self,a) -> BaseEstimator:
+        return FeatureSelector(
+                time_col=self.time_col,
+                train_size=self.train_size,
+                train_size_for_searching=self.train_size_for_searching,
+                valid_size=self.valid_size,
+                learning_rate=self.learning_rate,
+                num_boost_round=self.n_iter_no_change,
+                early_stopping_rounds=self.n_estimators,
+                n_trials=self.n_trials,
+                study=self.select_study,
+                importance_type=self.importance_type,
+                random_state=self.random_state,
+                gain_threshold=self.gain_threshold,
+                verbose=self.verbose,
+                a=a
+            )
+
+    def _make_second_engineer_(self,a) -> BaseEstimator:
+        return ArithmeticalFeatures_1(
+            dtype=self._dtype,
+            include_X=False,
+            n_jobs=self.n_jobs,
+            operand=self.operand,
+            max_n_combinations=self.max_n_combinations,
+            verbose=self.verbose,
+            a=a
         )
 
     def _make_sampler(self) -> BaseEstimator:
@@ -323,6 +382,8 @@ class BaseAutoMLModel(BaseEstimator):
 
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
+        X = self.selector_.transform(X)
+        X = self.second_engineer_.transform(X)
 
         return self.model_.predict(X)
 
@@ -363,6 +424,8 @@ class AutoMLClassifier(BaseAutoMLModel, ClassifierMixin):
 
         X = self.joiner_.transform(X)
         X = self.engineer_.transform(X)
+        X = self.selector_.transform(X)
+        X = self.second_engineer_.transform(X)
 
         return self.model_.predict_proba(X)
 
