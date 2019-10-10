@@ -1,3 +1,7 @@
+import os
+os.system('pip3 install -q dcase_util')
+
+import dcase_util
 import librosa
 import numpy as np
 import tensorflow as tf
@@ -32,6 +36,27 @@ def extract_mfcc(data, sr=16_000):
     for d in data:
         r = librosa.feature.mfcc(d, sr=sr, n_mfcc=24)
         r = r.transpose()
+
+        results.append(r)
+
+    return results
+
+
+def extract_logmel(data, sr=16_000):
+    results = []
+
+    mel_extractor = dcase_util.features.MelExtractor(
+        n_mels=64,
+        win_length_samples=2048,
+        hop_length_samples=512,
+        # win_length_seconds=0.04,
+        # hop_length_seconds=0.02,
+        fs=sr
+    )
+
+    for d in data:
+        r = mel_extractor(d)  # n_bin x len
+        r = r.transpose()  # len x n_bin
 
         results.append(r)
 
@@ -84,7 +109,7 @@ class Model(object):
     def train(self, train_dataset, remaining_time_budget=None):
         train_x, train_y = train_dataset
 
-        fea_x = extract_mfcc(train_x)
+        fea_x = extract_logmel(train_x)
         self.max_len = max([len(_) for _ in fea_x])
         fea_x = pad_seq(fea_x, self.max_len)
 
@@ -125,7 +150,7 @@ class Model(object):
         self.done_training = True
 
     def test(self, test_x, remaining_time_budget=None):
-        fea_x = extract_mfcc(test_x)
+        fea_x = extract_logmel(test_x)
         fea_x = pad_seq(fea_x, self.max_len)
         test_x = fea_x[:, :, :, np.newaxis]
 
