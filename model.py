@@ -14,6 +14,8 @@ from tensorflow.python.keras.preprocessing import sequence
 
 from keras.backend.tensorflow_backend import set_session
 
+from sklearn.model_selection import train_test_split
+
 try:
     config = tf.ConfigProto()
 except AttributeError:
@@ -81,16 +83,41 @@ class Model(object):
         self.done_training = False
         self.metadata = metadata
 
-    def train(self, train_dataset, remaining_time_budget=None):
-        train_x, train_y = train_dataset
+        self.model = None
+        self.max_len = None
 
-        fea_x = extract_mfcc(train_x)
-        self.max_len = max([len(_) for _ in fea_x])
-        fea_x = pad_seq(fea_x, self.max_len)
+        self.train_x = None
+        self.train_y = None
+        self.test_x = None
+
+        self.iter = 1
+        self.START = True
+        self.random_state=0
+
+    def train(self, train_dataset, remaining_time_budget=None):
+        if remaining_time_budget <= self.metadata['time_budget']*0.125:
+            self.done_training = True
+            return
+        if self.START:
+            train_x, train_y = train_dataset
+            fea_x = extract_mfcc(train_x)
+            self.max_len = max([len(_) for _ in fea_x])
+            fea_x = pad_seq(fea_x, self.max_len)
+            self.train_x = fea_x[:, :, :, np.newaxis]
+            self.train_y = train_y
 
         num_class = self.metadata['class_num']
-        X = fea_x[:, :, :, np.newaxis]
-        y = train_y
+        if self.iter < 10:
+            X, _, y, _ = train_test_split(
+                self.train_x,
+                self.train_y,
+                random_state=self.random_state,
+                train_size=0.1*self.iter,
+                shuffle=True
+            )
+        else:
+            X = self.train_x
+            y = self.train_y
 
         self.model = cnn_model(X.shape[1:], num_class)
 
@@ -102,7 +129,7 @@ class Model(object):
             metrics=['accuracy']
         )
 
-        self.model.summary()
+        #self.model.summary()
 
         callbacks = [
             tf.keras.callbacks.EarlyStopping(
@@ -114,7 +141,8 @@ class Model(object):
         self.model.fit(
             X,
             np.argmax(y, axis=1),
-            epochs=100,
+            epochs=self.iter,
+            initial_epoch=self.iter-1,
             callbacks=callbacks,
             validation_split=0.1,
             verbose=1,
@@ -122,11 +150,12 @@ class Model(object):
             shuffle=True
         )
 
-        self.done_training = True
 
     def test(self, test_x, remaining_time_budget=None):
-        fea_x = extract_mfcc(test_x)
-        fea_x = pad_seq(fea_x, self.max_len)
-        test_x = fea_x[:, :, :, np.newaxis]
-
-        return self.model.predict_proba(test_x)
+        if self.START:
+            fea_x = extract_mfcc(test_x)
+            fea_x = pad_seq(fea_x, self.max_len)
+            self.test_x = fea_x[:, :, :, np.newaxis]
+        self.iter += 1
+        self.START = False
+        return self.model.predict_proba(self.test_x)
