@@ -82,7 +82,7 @@ def cnn_model(input_shape, num_class, max_layer_num=5):
 
 def get_frequency_masking(p=0.5, F=0.2):
     def frequency_masking(input_img):
-        img_h, img_w, _ = input_img.shape
+        _, img_w, _ = input_img.shape
         p_1 = np.random.rand()
 
         if p_1 > p:
@@ -146,15 +146,16 @@ class Model(object):
         else:
             X = self.train_x
             y = self.train_y
-        self.model = cnn_model(X.shape[1:], num_class)
+        if self.START:
+            self.model = cnn_model(X.shape[1:], num_class)
 
-        optimizer = tf.keras.optimizers.SGD(lr=0.01, decay=1e-06)
+            optimizer = tf.keras.optimizers.SGD(lr=0.01, decay=1e-06)
 
-        self.model.compile(
-            loss='sparse_categorical_crossentropy',
-            optimizer=optimizer,
-            metrics=['accuracy']
-        )
+            self.model.compile(
+                loss='sparse_categorical_crossentropy',
+                optimizer=optimizer,
+                metrics=['accuracy']
+            )
 
         #self.model.summary()
 
@@ -169,7 +170,6 @@ class Model(object):
         )
         self.model.fit_generator(
             datagen.flow(X, np.argmax(y, axis=1), batch_size=32),
-            steps_per_epoch=X.shape[0] // 32,
             epochs=self.iter,
             initial_epoch=self.iter-1,
             callbacks=callbacks,
