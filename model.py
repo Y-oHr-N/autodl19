@@ -11,10 +11,13 @@ from tensorflow.python.keras.layers import Flatten
 from tensorflow.python.keras.layers import MaxPooling2D
 from tensorflow.python.keras.models import Sequential
 from tensorflow.python.keras.preprocessing import sequence
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 from keras.backend.tensorflow_backend import set_session
 
 from sklearn.model_selection import train_test_split
+
+import matplotlib.pyplot as plt
 
 try:
     config = tf.ConfigProto()
@@ -77,6 +80,22 @@ def cnn_model(input_shape, num_class, max_layer_num=5):
 
     return model
 
+def get_frequency_masking(p=0.5, F=0.2):
+    def frequency_masking(input_img):
+        img_h, img_w, _ = input_img.shape
+        p_1 = np.random.rand()
+
+        if p_1 > p:
+            return input_img
+
+        # frequency masking
+        f = np.random.randint(0, int(img_w*F))
+        f0 = np.random.randint(0, img_w-f)
+        c = input_img.mean()
+        input_img[:,f0:f0+f,:] = c
+        return input_img
+
+    return frequency_masking
 
 class Model(object):
     def __init__(self, metadata):
@@ -88,6 +107,8 @@ class Model(object):
 
         self.train_x = None
         self.train_y = None
+        self.val_x = None
+        self.val_y = None
         self.test_x = None
 
         self.iter = 1
@@ -105,6 +126,13 @@ class Model(object):
             fea_x = pad_seq(fea_x, self.max_len)
             self.train_x = fea_x[:, :, :, np.newaxis]
             self.train_y = train_y
+            self.train_x, self.val_x, self.train_y, self.val_y = train_test_split(
+                self.train_x,
+                self.train_y,
+                random_state=self.random_state,
+                train_size=0.9,
+                shuffle=True
+            )
 
         num_class = self.metadata['class_num']
         if self.iter < 10:
@@ -118,7 +146,6 @@ class Model(object):
         else:
             X = self.train_x
             y = self.train_y
-
         self.model = cnn_model(X.shape[1:], num_class)
 
         optimizer = tf.keras.optimizers.SGD(lr=0.01, decay=1e-06)
@@ -137,16 +164,17 @@ class Model(object):
                 patience=10
             )
         ]
-
-        self.model.fit(
-            X,
-            np.argmax(y, axis=1),
+        datagen = ImageDataGenerator(
+            preprocessing_function=get_frequency_masking()
+        )
+        self.model.fit_generator(
+            datagen.flow(X, np.argmax(y, axis=1), batch_size=32),
+            steps_per_epoch=X.shape[0] // 32,
             epochs=self.iter,
             initial_epoch=self.iter-1,
             callbacks=callbacks,
-            validation_split=0.1,
             verbose=1,
-            batch_size=32,
+            validation_data=(self.val_x, np.argmax(self.val_y, axis=1)),
             shuffle=True
         )
 
