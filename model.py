@@ -18,7 +18,7 @@ from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 try:
     config = tf.ConfigProto()
 except AttributeError:
-    config = tf.compat.v1.ConfigProto
+    config = tf.compat.v1.ConfigProto()
 
 config.gpu_options.allow_growth = True
 config.log_device_placement = False
@@ -96,23 +96,35 @@ def get_frequency_masking(p=0.5, F=0.2):
 
     return frequency_masking
 
-class MixupGenerator():
-    def __init__(self, X_train, y_train, batch_size=32, alpha=0.2, shuffle=True, datagen=None):
+
+class MixupGenerator(object):
+    def __init__(
+        self,
+        X_train,
+        y_train,
+        alpha=0.2,
+        batch_size=32,
+        datagen=None,
+        shuffle=True
+    ):
         self.X_train = X_train
         self.y_train = y_train
-        self.batch_size = batch_size
         self.alpha = alpha
-        self.shuffle = shuffle
-        self.sample_num = len(X_train)
+        self.batch_size = batch_size
         self.datagen = datagen
+        self.shuffle = shuffle
+
+        self.sample_num = len(X_train)
 
     def __call__(self):
         while True:
             indexes = self.__get_exploration_order()
-            itr_num = int(len(indexes) // (self.batch_size * 2))
+            itr_num = int(len(indexes) // (2 * self.batch_size))
 
             for i in range(itr_num):
-                batch_ids = indexes[i * self.batch_size * 2:(i + 1) * self.batch_size * 2]
+                batch_ids = indexes[
+                    2 * i * self.batch_size:2 * (i + 1) * self.batch_size
+                ]
                 X, y = self.__data_generation(batch_ids)
 
                 yield X, y
@@ -147,12 +159,14 @@ class MixupGenerator():
                 y1 = y_train_[batch_ids[:self.batch_size]]
                 y2 = y_train_[batch_ids[self.batch_size:]]
                 y.append(y1 * y_l + y2 * (1 - y_l))
+
         else:
             y1 = self.y_train[batch_ids[:self.batch_size]]
             y2 = self.y_train[batch_ids[self.batch_size:]]
             y = y1 * y_l + y2 * (1 - y_l)
 
         return X, y
+
 
 class Model(object):
     def __init__(self, metadata, random_state=0):
@@ -220,7 +234,14 @@ class Model(object):
         datagen = ImageDataGenerator(
             preprocessing_function=get_frequency_masking()
         )
-        training_generator = MixupGenerator(X, y, batch_size=32, alpha=0.2, datagen=datagen)()
+        training_generator = MixupGenerator(
+            X,
+            y,
+            alpha=0.2,
+            batch_size=32,
+            datagen=datagen
+        )()
+
         self.model.fit_generator(
             training_generator,
             steps_per_epoch=X.shape[0] // 32,
