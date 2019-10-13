@@ -225,6 +225,9 @@ class Model(object):
 
         if not hasattr(self, 'train_x'):
             train_x, train_y = train_dataset
+            
+            # Describe train data.
+            utils.describe(train_x, train_y)
             # fea_x = extract_mfcc(train_x)
             fea_x, train_y = utils.make_cropped_dataset_5sec(train_x, train_y)
 

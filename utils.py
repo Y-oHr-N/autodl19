@@ -1,5 +1,6 @@
 import librosa
 import numpy as np
+import pandas as pd
 
 # parameters
 SAMPLING_FREQ = 16000
@@ -87,31 +88,18 @@ def crop_time(
     # 最低限, min_sampleを確保
     if X.shape[1] <= n_frame * min_sample:
         n_sample = min_sample
-        X_new = np.zeros(
-            [X.shape[0], n_frame, n_sample],
-            np.float32
-        )
-        for i in range(n_sample):
-            X_new[:, :, i] = X_repeat[:, i * n_frame: (i + 1) * n_frame]
-    # hoge
-    # elif: (n_frame * min_sample < X.shape[1]) and (X.shape[1] <= n_frame * max_sample):
     elif (n_frame * min_sample) < X.shape[1] <= (n_frame * max_sample):
         n_sample = (X.shape[1] // n_frame).astype(int)
-        X_new = np.zeros(
-            [X.shape[0], n_frame, n_sample],
-            np.float32
-        )
-        for i in range(n_sample):
-            X_new[:, :, i] = X_repeat[:, i * n_frame: (i + 1) * n_frame]
-    # fuga
     else:
         n_sample = max_sample
-        X_new = np.zeros(
-            [X.shape[0], n_frame, n_sample],
-            np.float32
-        )
-        for i in range(n_sample):
-            X_new[:, :, i] = X_repeat[:, i * n_frame: (i + 1) * n_frame]
+
+    # Make New log-mel spectrogram
+    X_new = np.zeros(
+        [X.shape[0], n_frame, n_sample],
+        np.float32
+    )
+    for i in range(n_sample):
+        X_new[:, :, i] = X_repeat[:, i * n_frame: (i + 1) * n_frame]
 
     return X_new
 
@@ -145,31 +133,18 @@ def crop_logmel(
     # 最低限, min_sampleを確保
     if X.shape[1] <= n_frame * min_sample:
         n_sample = min_sample
-        X_new = np.zeros(
-            [X.shape[0], n_frame, n_sample],
-            np.float32
-        )
-        for i in range(n_sample):
-            X_new[:, :, i] = X_repeat[:, i * n_frame: (i + 1) * n_frame]
-    # hoge
-    # elif: (n_frame * min_sample < X.shape[1]) and (X.shape[1] <= n_frame * max_sample):
     elif (n_frame * min_sample) < X.shape[1] <= (n_frame * max_sample):
         n_sample = (X.shape[1] // n_frame).astype(int)
-        X_new = np.zeros(
-            [X.shape[0], n_frame, n_sample],
-            np.float32
-        )
-        for i in range(n_sample):
-            X_new[:, :, i] = X_repeat[:, i * n_frame: (i + 1) * n_frame]
-    # fuga
     else:
         n_sample = max_sample
-        X_new = np.zeros(
-            [X.shape[0], n_frame, n_sample],
-            np.float32
-        )
-        for i in range(n_sample):
-            X_new[:, :, i] = X_repeat[:, i * n_frame: (i + 1) * n_frame]
+
+    # Make New log-mel spectrogram
+    X_new = np.zeros(
+        [X.shape[0], n_frame, n_sample],
+        np.float32
+    )
+    for i in range(n_sample):
+        X_new[:, :, i] = X_repeat[:, i * n_frame: (i + 1) * n_frame]
 
     return X_new
 
@@ -208,3 +183,32 @@ def make_cropped_dataset_5sec(
 
     return X_results, y_results
 
+
+def describe(train_x, train_y):
+    """Descrive train data.
+    """
+    info = pd.DataFrame({
+        'len': list(map(lambda x: len(x), train_x)),
+        'label': np.argmax(train_y, axis=1)
+    })
+    
+    print('*' * 10, '全体','*' * 10)
+    print('クラス数:{}'.format(info['label'].max() + 1))
+    print('平均サンプル長: {} sample({} sec)'.format(info['len'].mean(), info['len'].mean() / SAMPLING_FREQ))
+    print('最大サンプル長: {} sample({} sec)'.format(info['len'].max(), info['len'].max() / SAMPLING_FREQ))
+    print('最小サンプル長: {} sample({} sec)'.format(info['len'].min(), info['len'].min() / SAMPLING_FREQ))
+    
+    print('*' * 10, 'ラベル単位','*' * 10)
+    df = info.groupby('label') \
+    .agg(['count', 'mean', 'max', 'min', 'sum']) \
+    .droplevel(0, axis=1) \
+    .rename({
+        'count': 'num_sample', 
+        'mean': 'len_mean[sec]',
+        'max': 'len_max[sec]',
+        'min': 'len_min[sec]',
+        'sum': 'len_total[sec]'
+    }, axis=1)
+    df.loc[:, ['len_mean[sec]', 'len_max[sec]', 'len_min[sec]', 'len_total[sec]']] = \
+        df.loc[:, ['len_mean[sec]', 'len_max[sec]', 'len_min[sec]', 'len_total[sec]']] / SAMPLING_FREQ
+    print(df)
