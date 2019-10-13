@@ -59,7 +59,9 @@ def test_model() -> None:
     model = Model(metadata)
 
     while not model.done_training:
-        model.train((X_train, y_train))
+        remaining_time = timer.get_remaining_time()
+
+        model.train((X_train, y_train), remaining_time_budget=remaining_time)
 
         probas = model.test(X_test)
 

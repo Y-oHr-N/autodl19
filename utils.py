@@ -176,7 +176,7 @@ def crop_logmel(
 
 def make_cropped_dataset_5sec(
     X_list,  # list(array):
-    y_list,  # array: n_sample x dim_label
+    y_list=None,  # array: n_sample x dim_label
     len_sample=5,   # 1サンプル当たりの長さ[sec]
     min_sample=1,   # 切り出すサンプル数の最小個数
     max_sample=1,  # 切り出すサンプルの最大個数
@@ -185,10 +185,11 @@ def make_cropped_dataset_5sec(
     # -> y_results.shape == (len(X_list), dim_label) かつ，len(X_results) == len(X_list)
     X_results = []
     # y_results = np.zeros_like(y_list)
-    y_results = np.zeros(
-        [len(X_list), y_list.shape[1]],
-        np.float32
-    )
+    if y_list is not None:
+        y_results = np.zeros(
+            [len(X_list), y_list.shape[1]],
+            np.float32
+        )
 
     for i in range(len(X_list)):
         # logmels: n_mel, n_frame x n_sample
@@ -199,6 +200,11 @@ def make_cropped_dataset_5sec(
             max_sample=max_sample
         )
         X_results.append(logmels[:, :, 0].transpose())
-        y_results[i, :] = y_list[i, :]
+        if y_list is not None:
+            y_results[i, :] = y_list[i, :]
+
+    if y_list is None:
+        y_results = None
 
     return X_results, y_results
+
