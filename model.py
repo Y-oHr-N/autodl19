@@ -112,7 +112,7 @@ class MixupGenerator(object):
         self,
         X_train,
         y_train,
-        sample_weight=None,
+        # sample_weight=None,
         alpha=0.2,
         batch_size=32,
         datagen=None,
@@ -120,7 +120,7 @@ class MixupGenerator(object):
     ):
         self.X_train = X_train
         self.y_train = y_train
-        self.sample_weight = sample_weight
+        # self.sample_weight = sample_weight
         self.alpha = alpha
         self.batch_size = batch_size
         self.datagen = datagen
@@ -164,16 +164,17 @@ class MixupGenerator(object):
         y2 = safe_indexing(self.y_train, indices_tail)
         y = y1 * y_l + y2 * (1.0 - y_l)
 
-        sample_weight1 = safe_indexing(self.sample_weight, indices_head)
-        sample_weight2 = safe_indexing(self.sample_weight, indices_tail)
-        sample_weight = sample_weight1 * l + sample_weight2 * (1.0 - l)
+        # sample_weight1 = safe_indexing(self.sample_weight, indices_head)
+        # sample_weight2 = safe_indexing(self.sample_weight, indices_tail)
+        # sample_weight = sample_weight1 * l + sample_weight2 * (1.0 - l)
 
         if self.datagen is not None:
             for i in range(self.batch_size):
                 X[i] = self.datagen.random_transform(X[i])
                 X[i] = self.datagen.standardize(X[i])
 
-        return X, y, sample_weight
+        # return X, y, sample_weight
+        return X, y
 
 
 class Model(object):
@@ -203,16 +204,16 @@ class Model(object):
 
             fea_x = pad_seq(fea_x, self.max_len)
             train_x = fea_x[:, :, :, np.newaxis]
-            sample_weight = compute_sample_weight('balanced', train_y)
+            # sample_weight = compute_sample_weight('balanced', train_y)
 
             logger.info(f'X.shape={train_x.shape}')
 
             self.train_x, self.val_x, \
-                self.train_y, self.val_y, \
-                self.sample_weight, _ = train_test_split(
+                self.train_y, self.val_y, = train_test_split(
+                # self.sample_weight, _ = train_test_split(
                     train_x,
                     train_y,
-                    sample_weight,
+                    # sample_weight,
                     random_state=self.random_state,
                     shuffle=True,
                     stratify=train_y,
@@ -237,7 +238,7 @@ class Model(object):
         training_generator = MixupGenerator(
             self.train_x,
             self.train_y,
-            self.sample_weight,
+            # self.sample_weight,
             alpha=0.2,
             batch_size=self.batch_size,
             datagen=datagen
