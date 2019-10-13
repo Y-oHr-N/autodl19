@@ -5,6 +5,7 @@ import tensorflow as tf
 
 from keras.backend.tensorflow_backend import set_session
 from sklearn.model_selection import train_test_split
+from sklearn.utils import safe_indexing
 from sklearn.utils.class_weight import compute_sample_weight
 from tensorflow.python.keras.layers import Activation
 from tensorflow.python.keras.layers import BatchNormalization
@@ -128,62 +129,56 @@ class MixupGenerator(object):
 
     def __call__(self):
         while True:
-            indexes = self.__get_exploration_order()
-            itr_num = int(len(indexes) // (2 * self.batch_size))
+            indices = self.__get_exploration_order()
+            itr_num = int(self.sample_num // (2 * self.batch_size))
 
             for i in range(itr_num):
-                batch_ids = indexes[
-                    2 * i * self.batch_size:2 * (i + 1) * self.batch_size
+                indices_head = indices[
+                    2 * i * self.batch_size:(2 * i + 1) * self.batch_size
+                ]
+                indices_tail = indices[
+                    (2 * i + 1) * self.batch_size:(2 * i + 2) * self.batch_size
                 ]
 
-                yield self.__data_generation(batch_ids)
+                yield self.__data_generation(indices_head, indices_tail)
 
     def __get_exploration_order(self):
-        indexes = np.arange(self.sample_num)
+        indices = np.arange(self.sample_num)
 
         if self.shuffle:
-            np.random.shuffle(indexes)
+            np.random.shuffle(indices)
 
-        return indexes
+        return indices
 
-    def __data_generation(self, batch_ids):
-        _, h, w, c = self.X_train.shape
+    def __data_generation(self, indices_head, indices_tail):
         l = np.random.beta(self.alpha, self.alpha, self.batch_size)
         X_l = l.reshape(self.batch_size, 1, 1, 1)
         y_l = l.reshape(self.batch_size, 1)
 
-        X1 = self.X_train[batch_ids[:self.batch_size]]
-        X2 = self.X_train[batch_ids[self.batch_size:]]
-        X = X1 * X_l + X2 * (1 - X_l)
+        X1 = safe_indexing(self.X_train, indices_head)
+        X2 = safe_indexing(self.X_train, indices_tail)
+        X = X1 * X_l + X2 * (1.0 - X_l)
 
-        if self.datagen:
+        y1 = safe_indexing(self.y_train, indices_head)
+        y2 = safe_indexing(self.y_train, indices_tail)
+        y = y1 * y_l + y2 * (1.0 - y_l)
+
+        sample_weight1 = safe_indexing(self.sample_weight, indices_head)
+        sample_weight2 = safe_indexing(self.sample_weight, indices_tail)
+        sample_weight = sample_weight1 * l + sample_weight2 * (1.0 - l)
+
+        if self.datagen is not None:
             for i in range(self.batch_size):
                 X[i] = self.datagen.random_transform(X[i])
                 X[i] = self.datagen.standardize(X[i])
-
-        if isinstance(self.y_train, list):
-            y = []
-
-            for y_train_ in self.y_train:
-                y1 = y_train_[batch_ids[:self.batch_size]]
-                y2 = y_train_[batch_ids[self.batch_size:]]
-                y.append(y1 * y_l + y2 * (1 - y_l))
-
-        else:
-            y1 = self.y_train[batch_ids[:self.batch_size]]
-            y2 = self.y_train[batch_ids[self.batch_size:]]
-            y = y1 * y_l + y2 * (1 - y_l)
-
-        sample_weight1 = self.sample_weight[batch_ids[:self.batch_size]]
-        sample_weight2 = self.sample_weight[batch_ids[self.batch_size:]]
-        sample_weight = sample_weight1 * l + sample_weight2 * (1 - l)
 
         return X, y, sample_weight
 
 
 class Model(object):
-    def __init__(self, metadata, random_state=0):
+    def __init__(self, metadata, batch_size=32, random_state=0):
         self.metadata = metadata
+        self.batch_size = batch_size
         self.random_state = random_state
 
         self.done_training = False
@@ -241,13 +236,13 @@ class Model(object):
             self.train_y,
             self.sample_weight,
             alpha=0.2,
-            batch_size=32,
+            batch_size=self.batch_size,
             datagen=datagen
         )()
 
         self.model.fit_generator(
             training_generator,
-            steps_per_epoch=self.train_x.shape[0] // 32,
+            steps_per_epoch=self.train_x.shape[0] // self.batch_size,
             callbacks=callbacks,
             epochs=self.n_iter + 1,
             initial_epoch=self.n_iter,
