@@ -18,12 +18,14 @@ from tensorflow.python.keras.preprocessing import sequence
 
 from keras.backend.tensorflow_backend import set_session
 
+import utils
+
 try:
     config = tf.ConfigProto()
 except AttributeError:
     config = tf.compat.v1.ConfigProto
 
-config.gpu_options.allow_growth = True
+config.gpu_options.allow_growth = False
 config.log_device_placement = True
 sess = tf.Session(config=config)
 
@@ -109,14 +111,15 @@ class Model(object):
     def train(self, train_dataset, remaining_time_budget=None):
         train_x, train_y = train_dataset
 
-        fea_x = extract_logmel(train_x)
+        # fea_x = extract_logmel(train_x)
+        fea_x, y = utils.make_cropped_dataset_5sec(train_x, train_y)
         self.max_len = max([len(_) for _ in fea_x])
+        print(self.max_len)
+        # padding不要だけど残しておく(sequenceへの変換のため？)
         fea_x = pad_seq(fea_x, self.max_len)
-
         num_class = self.metadata['class_num']
         X = fea_x[:, :, :, np.newaxis]
-        y = train_y
-
+        # y = train_y
         self.model = cnn_model(X.shape[1:], num_class)
 
         optimizer = tf.keras.optimizers.SGD(lr=0.01, decay=1e-06)
