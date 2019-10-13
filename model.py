@@ -1,9 +1,11 @@
 import librosa
+import logging
 import numpy as np
 import tensorflow as tf
 
 from keras.backend.tensorflow_backend import set_session
 from sklearn.model_selection import train_test_split
+from sklearn.utils.class_weight import compute_class_weight
 from tensorflow.python.keras.layers import Activation
 from tensorflow.python.keras.layers import BatchNormalization
 from tensorflow.python.keras.layers import Conv2D
@@ -19,6 +21,12 @@ try:
     config = tf.ConfigProto()
 except AttributeError:
     config = tf.compat.v1.ConfigProto
+
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
 config.gpu_options.allow_growth = True
 config.log_device_placement = False
@@ -119,6 +127,16 @@ class Model(object):
 
             fea_x = pad_seq(fea_x, self.max_len)
             train_x = fea_x[:, :, :, np.newaxis]
+            train_y = np.argmax(train_y, axis=1)
+
+            logger.info(f'X.shape={train_x.shape}')
+
+            classes = np.unique(train_y)
+            class_weight = compute_class_weight('balanced', classes, train_y)
+
+            self.class_weight = dict(zip(classes, class_weight))
+
+            logger.info(f'class_weight={self.class_weight}')
 
             self.train_x, self.val_x, self.train_y, self.val_y = \
                 train_test_split(
@@ -165,12 +183,13 @@ class Model(object):
         )
 
         self.model.fit_generator(
-            datagen.flow(X, np.argmax(y, axis=1), batch_size=32),
+            datagen.flow(X, y, batch_size=32),
             callbacks=callbacks,
+            class_weight=self.class_weight,
             epochs=self.n_iter + 1,
             initial_epoch=self.n_iter,
             shuffle=True,
-            validation_data=(self.val_x, np.argmax(self.val_y, axis=1)),
+            validation_data=(self.val_x, self.val_y),
             verbose=1
         )
 
