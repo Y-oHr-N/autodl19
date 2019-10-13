@@ -200,13 +200,9 @@ class Model(object):
                     train_size=0.9
                 )
 
-        X = self.train_x
-        y = self.train_y
-
-        if not hasattr(self, 'model'):
             num_class = self.metadata['class_num']
 
-            self.model = cnn_model(X.shape[1:], num_class)
+            self.model = cnn_model(self.train_x.shape[1:], num_class)
 
             optimizer = tf.keras.optimizers.SGD(lr=0.01, decay=1e-06)
 
@@ -216,8 +212,6 @@ class Model(object):
                 metrics=['accuracy']
             )
 
-        # self.model.summary()
-
         callbacks = [
             tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
         ]
@@ -225,8 +219,8 @@ class Model(object):
             preprocessing_function=get_frequency_masking()
         )
         training_generator = MixupGenerator(
-            X,
-            y,
+            self.train_x,
+            self.train_y,
             alpha=0.2,
             batch_size=32,
             datagen=datagen
@@ -234,7 +228,7 @@ class Model(object):
 
         self.model.fit_generator(
             training_generator,
-            steps_per_epoch=X.shape[0] // 32,
+            steps_per_epoch=self.train_x.shape[0] // 32,
             callbacks=callbacks,
             epochs=self.n_iter + 1,
             initial_epoch=self.n_iter,
