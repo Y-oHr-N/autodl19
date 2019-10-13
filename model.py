@@ -5,7 +5,7 @@ import tensorflow as tf
 
 from keras.backend.tensorflow_backend import set_session
 from sklearn.model_selection import train_test_split
-from sklearn.utils.class_weight import compute_class_weight
+from sklearn.utils.class_weight import compute_sample_weight
 from tensorflow.python.keras.layers import Activation
 from tensorflow.python.keras.layers import BatchNormalization
 from tensorflow.python.keras.layers import Conv2D
@@ -110,6 +110,7 @@ class MixupGenerator(object):
         self,
         X_train,
         y_train,
+        sample_weight=None,
         alpha=0.2,
         batch_size=32,
         datagen=None,
@@ -117,6 +118,7 @@ class MixupGenerator(object):
     ):
         self.X_train = X_train
         self.y_train = y_train
+        self.sample_weight = sample_weight
         self.alpha = alpha
         self.batch_size = batch_size
         self.datagen = datagen
@@ -133,9 +135,8 @@ class MixupGenerator(object):
                 batch_ids = indexes[
                     2 * i * self.batch_size:2 * (i + 1) * self.batch_size
                 ]
-                X, y = self.__data_generation(batch_ids)
 
-                yield X, y
+                yield self.__data_generation(batch_ids)
 
     def __get_exploration_order(self):
         indexes = np.arange(self.sample_num)
@@ -173,7 +174,11 @@ class MixupGenerator(object):
             y2 = self.y_train[batch_ids[self.batch_size:]]
             y = y1 * y_l + y2 * (1 - y_l)
 
-        return X, y
+        sample_weight1 = self.sample_weight[batch_ids[:self.batch_size]]
+        sample_weight2 = self.sample_weight[batch_ids[self.batch_size:]]
+        sample_weight = sample_weight1 * l + sample_weight2 * (1 - l)
+
+        return X, y, sample_weight
 
 
 class Model(object):
@@ -198,21 +203,16 @@ class Model(object):
 
             fea_x = pad_seq(fea_x, self.max_len)
             train_x = fea_x[:, :, :, np.newaxis]
-            train_y = np.argmax(train_y, axis=1)
+            sample_weight = compute_sample_weight('balanced', train_y)
 
             logger.info(f'X.shape={train_x.shape}')
 
-            classes = np.unique(train_y)
-            class_weight = compute_class_weight('balanced', classes, train_y)
-
-            self.class_weight = dict(zip(classes, class_weight))
-
-            logger.info(f'class_weight={self.class_weight}')
-
-            self.train_x, self.val_x, self.train_y, self.val_y = \
-                train_test_split(
+            self.train_x, self.val_x, \
+                self.train_y, self.val_y, \
+                self.sample_weight, _ = train_test_split(
                     train_x,
                     train_y,
+                    sample_weight,
                     random_state=self.random_state,
                     shuffle=True,
                     train_size=0.9
@@ -239,6 +239,7 @@ class Model(object):
         training_generator = MixupGenerator(
             self.train_x,
             self.train_y,
+            self.sample_weight,
             alpha=0.2,
             batch_size=32,
             datagen=datagen
@@ -248,7 +249,6 @@ class Model(object):
             training_generator,
             steps_per_epoch=self.train_x.shape[0] // 32,
             callbacks=callbacks,
-            class_weight=self.class_weight,
             epochs=self.n_iter + 1,
             initial_epoch=self.n_iter,
             shuffle=True,
