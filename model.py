@@ -188,8 +188,7 @@ class Model(object):
 
         X = self.train_x
         y = self.train_y
-
-        if self.n_iter < 9:
+        if self.n_iter < 9 and X.shape[0] > 1000:
             train_size = 0.1 * (self.n_iter + 1)
             X, _, y, _ = train_test_split(
                 X,
