@@ -4,9 +4,10 @@ import numpy as np
 import tensorflow as tf
 
 from keras.backend.tensorflow_backend import set_session
+from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
-from sklearn.utils import safe_indexing
 from sklearn.utils.class_weight import compute_sample_weight
+from sklearn.utils import safe_indexing
 from tensorflow.python.keras.layers import Activation
 from tensorflow.python.keras.layers import BatchNormalization
 from tensorflow.python.keras.layers import Conv2D
@@ -17,7 +18,6 @@ from tensorflow.python.keras.layers import MaxPooling2D
 from tensorflow.python.keras.models import Sequential
 from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.python.keras.preprocessing.sequence import pad_sequences
-from sklearn.metrics import roc_auc_score
 
 try:
     config = tf.ConfigProto()
@@ -177,18 +177,17 @@ class MixupGenerator(object):
 
 
 class Model(object):
-    def __init__(self, metadata, batch_size=32, random_state=0):
+    def __init__(self, metadata, batch_size=32, patience=100, random_state=0):
         self.metadata = metadata
         self.batch_size = batch_size
+        self.patience = patience
         self.random_state = random_state
 
         self.done_training = False
+        self.max_auc = 0
         self.n_iter = 0
-        self.patience = 50
-        self.max_auc = -1
         self.not_improve_learning_iter = 0
         self.val_res = None
-        self.test_res = None
 
     def train(self, train_dataset, remaining_time_budget=None):
         if remaining_time_budget <= 0.125 * self.metadata['time_budget']:
@@ -232,9 +231,6 @@ class Model(object):
                 metrics=['accuracy']
             )
 
-        callbacks = [
-            tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
-        ]
         datagen = ImageDataGenerator(
             preprocessing_function=get_frequency_masking()
         )
@@ -250,16 +246,20 @@ class Model(object):
         self.model.fit_generator(
             training_generator,
             steps_per_epoch=self.train_x.shape[0] // self.batch_size,
-            callbacks=callbacks,
             epochs=self.n_iter + 1,
             initial_epoch=self.n_iter,
             shuffle=True,
-            validation_data=(self.val_x, self.val_y),
             verbose=1
         )
 
+        self.n_iter += 1
+
         self.val_res = self.model.predict_proba(self.val_x)
-        val_auc = 2 * roc_auc_score(self.val_y, self.val_res, average='macro') -1
+
+        val_auc = roc_auc_score(self.val_y, self.val_res, average='macro')
+
+        logger.info(f'val_auc={val_auc:.3f}, max_auc={self.max_auc:.3f}')
+
         if self.max_auc < val_auc:
             self.not_improve_learning_iter = 0
             self.max_auc = val_auc
@@ -269,15 +269,14 @@ class Model(object):
         if self.not_improve_learning_iter >= self.patience:
             self.done_training = True
 
-        print(self.not_improve_learning_iter)
-        self.n_iter += 1
-
     def test(self, test_x, remaining_time_budget=None):
         if not hasattr(self, 'test_x'):
             fea_x = extract_mfcc(test_x)
             fea_x = pad_seq(fea_x, self.max_len)
 
             self.test_x = fea_x[:, :, :, np.newaxis]
+
         if self.not_improve_learning_iter == 0:
             self.test_res = self.model.predict_proba(self.test_x)
+
         return self.test_res
