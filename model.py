@@ -14,6 +14,7 @@ from tensorflow.python.keras.layers import MaxPooling2D
 from tensorflow.python.keras.models import Sequential
 from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.python.keras.preprocessing.sequence import pad_sequences
+from sklearn.metrics import roc_auc_score
 
 try:
     config = tf.ConfigProto()
@@ -175,6 +176,11 @@ class Model(object):
 
         self.done_training = False
         self.n_iter = 0
+        self.patience = 50
+        self.max_auc = -1
+        self.not_improve_learning_iter = 0
+        self.val_res = None
+        self.test_res = None
 
     def train(self, train_dataset, remaining_time_budget=None):
         if remaining_time_budget <= 0.125 * self.metadata['time_budget']:
@@ -197,6 +203,7 @@ class Model(object):
                     train_y,
                     random_state=self.random_state,
                     shuffle=True,
+                    stratify=train_y,
                     train_size=0.9
                 )
 
@@ -243,6 +250,18 @@ class Model(object):
             verbose=1
         )
 
+        self.val_res = self.model.predict_proba(self.val_x)
+        val_auc = 2 * roc_auc_score(self.val_y, self.val_res, average='macro') -1
+        if self.max_auc < val_auc:
+            self.not_improve_learning_iter = 0
+            self.max_auc = val_auc
+        else:
+            self.not_improve_learning_iter += 1
+
+        if self.not_improve_learning_iter >= self.patience:
+            self.done_training = True
+
+        print(self.not_improve_learning_iter)
         self.n_iter += 1
 
     def test(self, test_x, remaining_time_budget=None):
@@ -251,5 +270,6 @@ class Model(object):
             fea_x = pad_seq(fea_x, self.max_len)
 
             self.test_x = fea_x[:, :, :, np.newaxis]
-
-        return self.model.predict_proba(self.test_x)
+        if self.not_improve_learning_iter == 0:
+            self.test_res = self.model.predict_proba(self.test_x)
+        return self.test_res
