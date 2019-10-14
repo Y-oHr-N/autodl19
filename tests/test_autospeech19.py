@@ -66,3 +66,5 @@ def test_model() -> None:
         probas = model.test(X_test)
 
         timer.check_remaining_time()
+
+        assert probas.shape == (metadata['test_num'], metadata['class_num'])
