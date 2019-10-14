@@ -85,6 +85,13 @@ def pad_seq(data, pad_len):
         padding='post'
     )
 
+def get_crop_image(image):
+
+    time_dim, base_dim, _ = image.shape
+    crop = np.random.randint(0, time_dim - base_dim)
+    image = image[crop:crop+base_dim, :,:]
+
+    return image
 
 def cnn_model(input_shape, num_class, max_layer_num=5):
     model = Sequential()
@@ -133,6 +140,28 @@ def get_frequency_masking(p=0.5, F=0.2):
 
     return frequency_masking
 
+class TTAGenerator(object):
+    def __init__(
+        self,
+        X_test,
+        batch_size
+    ):
+        self.X_test = X_test
+        self.sample_num = X_test.shape[0]
+        self.batch_size = batch_size
+    def __call__(self):
+        while True:
+            for start in range(0, self.sample_num, self.batch_size):
+                end = min(start + self.batch_size, self.sample_num)
+                X_test_batch = self.X_test[start:end]
+                yield self.__data_generation(X_test_batch)
+
+    def __data_generation(self, X_test_batch):
+        d, _, w, _ = X_test_batch.shape
+        X = np.zeros((d, w, w, 1))
+        for i in range(d):
+            X[i] = get_crop_image(X_test_batch[i])
+        return X, None
 
 class MixupGenerator(object):
     def __init__(
@@ -183,8 +212,14 @@ class MixupGenerator(object):
         X_l = l.reshape(self.batch_size, 1, 1, 1)
         y_l = l.reshape(self.batch_size, 1)
 
-        X1 = safe_indexing(self.X_train, indices_head)
-        X2 = safe_indexing(self.X_train, indices_tail)
+        X1_tmp = safe_indexing(self.X_train, indices_head)
+        X2_tmp = safe_indexing(self.X_train, indices_tail)
+        d, _, w, _ = X1_tmp.shape
+        X1 = np.zeros((d, w, w, 1))
+        X2 = np.zeros((d, w, w, 1))
+        for i in range(self.batch_size):
+            X1[i] = get_crop_image(X1_tmp[i])
+            X2[i] = get_crop_image(X2_tmp[i])
         X = X1 * X_l + X2 * (1.0 - X_l)
 
         y1 = safe_indexing(self.y_train, indices_head)
@@ -216,6 +251,10 @@ class Model(object):
         self.n_iter = 0
         self.not_improve_learning_iter = 0
         self.val_res = None
+        self.train_size = 0
+        self.val_size = 0
+        self.test_size = 0
+
 
     def train(self, train_dataset, remaining_time_budget=None):
         if remaining_time_budget <= 0.125 * self.metadata['time_budget']:
@@ -225,14 +264,14 @@ class Model(object):
 
         if not hasattr(self, 'train_x'):
             train_x, train_y = train_dataset
-            
+
             # Describe train data.
             utils.describe(train_x, train_y)
             # fea_x = extract_mfcc(train_x)
             fea_x, train_y = utils.make_cropped_dataset_5sec(train_x, train_y)
 
             self.max_len = max([len(_) for _ in fea_x])
-
+            print(self.max_len)
             fea_x = pad_seq(fea_x, self.max_len)
             train_x = fea_x[:, :, :, np.newaxis]
             # sample_weight = compute_sample_weight('balanced', train_y)
@@ -250,10 +289,11 @@ class Model(object):
                     stratify=train_y,
                     train_size=0.9
                 )
-
+            self.train_size = self.train_x.shape[0]
+            self.val_size = self.val_x.shape[0]
             num_class = self.metadata['class_num']
 
-            self.model = cnn_model(self.train_x.shape[1:], num_class)
+            self.model = cnn_model((self.train_x.shape[2], self.train_x.shape[2], 1), num_class)
 
             optimizer = tf.keras.optimizers.SGD(lr=0.01, decay=1e-06)
 
@@ -277,7 +317,7 @@ class Model(object):
 
         self.model.fit_generator(
             training_generator,
-            steps_per_epoch=self.train_x.shape[0] // self.batch_size,
+            steps_per_epoch=self.train_size // self.batch_size,
             epochs=self.n_iter + 1,
             initial_epoch=self.n_iter,
             shuffle=True,
@@ -285,8 +325,8 @@ class Model(object):
         )
 
         self.n_iter += 1
-
-        self.val_res = self.model.predict_proba(self.val_x)
+        self.val_generator = TTAGenerator(self.val_x, batch_size=self.batch_size)()
+        self.val_res = self.model.predict_generator(self.val_generator, steps=np.ceil(self.val_size / self.batch_size))
 
         val_auc = roc_auc_score(self.val_y, self.val_res, average='macro')
 
@@ -308,8 +348,13 @@ class Model(object):
             fea_x = pad_seq(fea_x, self.max_len)
 
             self.test_x = fea_x[:, :, :, np.newaxis]
+            self.test_size = self.test_x.shape[0]
 
         if self.not_improve_learning_iter == 0:
-            self.test_res = self.model.predict_proba(self.test_x)
-
+            self.test_generator = TTAGenerator(self.test_x, batch_size=self.batch_size)()
+            self.test_res = self.model.predict_generator(self.test_generator, steps=np.ceil(self.test_size / self.batch_size))
+            for _ in range(9):
+                self.test_generator = TTAGenerator(self.test_x, batch_size=self.batch_size)()
+                self.test_res += self.model.predict_generator(self.test_generator, steps=np.ceil(self.test_size / self.batch_size))
+            self.test_res /= 10
         return self.test_res
