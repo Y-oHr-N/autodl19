@@ -1,5 +1,6 @@
-import librosa
 import logging
+
+import librosa
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -46,9 +47,7 @@ FMIN = 20
 FMAX = SAMPLING_FREQ // 2
 
 
-def logmelspectrogram(
-    X  # np.array: len
-):
+def logmelspectrogram(X):
     melspec = librosa.feature.melspectrogram(
         X,
         sr=SAMPLING_FREQ,
@@ -63,49 +62,43 @@ def logmelspectrogram(
 
 
 def get_num_frame(n_sample, n_fft, n_shift):
-    return np.floor(
-        (n_sample / n_fft) * 2 + 1
-    ).astype(np.int)
+    return np.floor(2.0 * (n_sample / n_fft) + 1.0).astype(np.int32)
 
 
 def crop_time(
     X,  # array: len
-    # X,  # n_mel, n_frame
-    len_sample=5,   # 1サンプル当たりの長さ[sec]
-    min_sample=5,   # 切り出すサンプル数の最小個数
+    len_sample=5,  # 1 サンプル当たりの長さ [sec]
+    min_sample=5,  # 切り出すサンプル数の最小個数
     max_sample=10,  # 切り出すサンプルの最大個数
 ):
     if len(X) < len_sample * max_sample * SAMPLING_FREQ:
         XX = X
     else:
-        # TODO: 本当はシフト幅分余分にとりたい
+        # TODO(Ishimura): 本当はシフト幅分余分にとりたい
         XX = X[:len_sample * max_sample * SAMPLING_FREQ]
 
     X = logmelspectrogram(XX)
+    n_samples, n_features = X.shape
 
-    # len_sampleに対応するframe長
+    # len_sample に対応する frame 長
     n_frame = get_num_frame(
         n_sample=len_sample * SAMPLING_FREQ,
         n_fft=N_FFT,
         n_shift=HOP_LENGTH
     )
 
-    n_samples, n_features = X.shape
-
-    # データのframe数(X.shape[1])がlen_sample * min_sampleに満たない場合のrepeat数
-    n_repeat = np.ceil(n_frame * min_sample / n_features).astype(int)
+    # データの frame 数（X.shape[1]）が len_sample * min_sample に満たない場合の repeat 数
+    n_repeat = np.ceil(n_frame * min_sample / n_features).astype(np.int32)
     X_repeat = np.zeros([n_samples, n_features * n_repeat], np.float32)
 
     for i in range(n_repeat):
-        # X_noisy = add_noise(X_noisy)
-        # X_repeat[:, i * n_frame: (i + 1) * n_frame] = X_noisy
         X_repeat[:, i * n_features: (i + 1) * n_features] = X
 
-    # 最低限, min_sampleを確保
+    # 最低限, min_sample を確保
     if n_features <= n_frame * min_sample:
         n_sample = min_sample
     elif (n_frame * min_sample) < n_features <= (n_frame * max_sample):
-        n_sample = (n_features // n_frame).astype(int)
+        n_sample = (n_features // n_frame).astype(np.int32)
     else:
         n_sample = max_sample
 
@@ -121,23 +114,18 @@ def crop_time(
 def make_cropped_dataset_5sec(
     X_list,  # list(array):
     y_list=None,  # array: n_sample x dim_label
-    len_sample=5,   # 1サンプル当たりの長さ[sec]
-    min_sample=1,   # 切り出すサンプル数の最小個数
+    len_sample=5,  # 1 サンプル当たりの長さ [sec]
+    min_sample=1,  # 切り出すサンプル数の最小個数
     max_sample=1,  # 切り出すサンプルの最大個数
 ):
-    # さしあたりmin_sample == max_sample == 1
+    # さしあたり min_sample == max_sample == 1
     # -> y_results.shape == (len(X_list), dim_label) かつ，len(X_results) == len(X_list)
     X_results = []
-    # y_results = np.zeros_like(y_list)
 
     if y_list is not None:
-        y_results = np.zeros(
-            [len(X_list), y_list.shape[1]],
-            np.float32
-        )
+        y_results = np.zeros([len(X_list), y_list.shape[1]], np.float32)
 
     for i in range(len(X_list)):
-        # logmels: n_mel, n_frame x n_sample
         logmels = crop_time(
             X_list[i],
             len_sample=len_sample,
@@ -156,55 +144,21 @@ def make_cropped_dataset_5sec(
     return X_results, y_results
 
 
-def describe(train_x, train_y):
-    """Descrive train data."""
-    info = pd.DataFrame({
-        'len': list(map(lambda x: len(x), train_x)),
-        'label': np.argmax(train_y, axis=1)
-    })
-
-    print('*' * 10, '全体', '*' * 10)
-    print('クラス数:{}'.format(info['label'].max() + 1))
-    print('平均サンプル長: {} sample({} sec)'.format(info['len'].mean(), info['len'].mean() / SAMPLING_FREQ))
-    print('最大サンプル長: {} sample({} sec)'.format(info['len'].max(), info['len'].max() / SAMPLING_FREQ))
-    print('最小サンプル長: {} sample({} sec)'.format(info['len'].min(), info['len'].min() / SAMPLING_FREQ))
-    print('*' * 10, 'ラベル単位', '*' * 10)
-
-    df = info.groupby('label') \
-        .agg(['count', 'mean', 'max', 'min', 'sum']) \
-        .droplevel(0, axis=1) \
-        .rename({
-            'count': 'num_sample',
-            'mean': 'len_mean[sec]',
-            'max': 'len_max[sec]',
-            'min': 'len_min[sec]',
-            'sum': 'len_total[sec]'
-        }, axis=1)
-    df.loc[:, ['len_mean[sec]', 'len_max[sec]', 'len_min[sec]', 'len_total[sec]']] = \
-        df.loc[:, ['len_mean[sec]', 'len_max[sec]', 'len_min[sec]', 'len_total[sec]']] / SAMPLING_FREQ
-
-    print(df)
-
-
-def extract_mfcc(data, n_mfcc=24, sr=16_000):
-    results = []
-
-    for d in data:
-        r = librosa.feature.mfcc(d, n_mfcc=n_mfcc, sr=sr)
-        r = r.T
-
-        results.append(r)
-
-    return results
-
-
 def pad_seq(data, pad_len):
     return pad_sequences(
         data,
+        dtype=np.float32,
         maxlen=pad_len,
-        dtype='float32',
         padding='post'
     )
+
+
+def get_crop_image(image):
+    time_dim, base_dim, _ = image.shape
+    crop = np.random.randint(0, time_dim - base_dim)
+    image = image[crop:crop+base_dim, :,:]
+
+    return image
 
 
 def cnn_model(input_shape, num_class, max_layer_num=5):
@@ -244,15 +198,40 @@ def get_frequency_masking(p=0.5, F=0.2):
         if p_1 > p:
             return input_img
 
-        # frequency masking
         f = np.random.randint(0, int(img_w * F))
         f0 = np.random.randint(0, img_w - f)
         c = input_img.mean()
+
         input_img[:, f0:f0 + f, :] = c
 
         return input_img
 
     return frequency_masking
+
+
+class TTAGenerator(object):
+    def __init__(self, X_test, batch_size):
+        self.X_test = X_test
+        self.batch_size = batch_size
+
+        self.n_samples = len(X_test)
+
+    def __call__(self):
+        while True:
+            for start in range(0, self.n_samples, self.batch_size):
+                end = min(start + self.batch_size, self.n_samples)
+                X_test_batch = self.X_test[start:end]
+
+                yield self.__data_generation(X_test_batch)
+
+    def __data_generation(self, X_test_batch):
+        d, _, w, _ = X_test_batch.shape
+        X = np.zeros((d, w, w, 1))
+
+        for i in range(d):
+            X[i] = get_crop_image(X_test_batch[i])
+
+        return X, None
 
 
 class MixupGenerator(object):
@@ -302,8 +281,16 @@ class MixupGenerator(object):
         X_l = l.reshape(self.batch_size, 1, 1, 1)
         y_l = l.reshape(self.batch_size, 1)
 
-        X1 = safe_indexing(self.X_train, indices_head)
-        X2 = safe_indexing(self.X_train, indices_tail)
+        X1_tmp = safe_indexing(self.X_train, indices_head)
+        X2_tmp = safe_indexing(self.X_train, indices_tail)
+        d, _, w, _ = X1_tmp.shape
+        X1 = np.zeros((d, w, w, 1))
+        X2 = np.zeros((d, w, w, 1))
+
+        for i in range(self.batch_size):
+            X1[i] = get_crop_image(X1_tmp[i])
+            X2[i] = get_crop_image(X2_tmp[i])
+
         X = X1 * X_l + X2 * (1.0 - X_l)
 
         y1 = safe_indexing(self.y_train, indices_head)
@@ -319,8 +306,16 @@ class MixupGenerator(object):
 
 
 class Model(object):
-    def __init__(self, metadata, batch_size=32, patience=100, random_state=0):
+    def __init__(
+        self,
+        metadata,
+        batch_size=32,
+        n_predictions=10,
+        patience=100,
+        random_state=0
+    ):
         self.metadata = metadata
+        self.n_predictions = n_predictions
         self.batch_size = batch_size
         self.patience = patience
         self.random_state = random_state
@@ -329,7 +324,6 @@ class Model(object):
         self.max_auc = 0
         self.n_iter = 0
         self.not_improve_learning_iter = 0
-        self.val_res = None
 
     def train(self, train_dataset, remaining_time_budget=None):
         if remaining_time_budget <= 0.125 * self.metadata['time_budget']:
@@ -338,12 +332,8 @@ class Model(object):
             return
 
         if not hasattr(self, 'train_x'):
+            n_classes = self.metadata['class_num']
             train_x, train_y = train_dataset
-
-            # Describe train data.
-            describe(train_x, train_y)
-
-            # fea_x = extract_mfcc(train_x)
             fea_x, train_y = make_cropped_dataset_5sec(train_x, train_y)
 
             self.max_len = max([len(_) for _ in fea_x])
@@ -351,10 +341,11 @@ class Model(object):
             fea_x = pad_seq(fea_x, self.max_len)
             train_x = fea_x[:, :, :, np.newaxis]
 
+            logger.info(f'max_len={self.max_len}')
             logger.info(f'X.shape={train_x.shape}')
 
-            self.train_x, self.val_x, \
-                self.train_y, self.val_y, = train_test_split(
+            self.train_x, self.valid_x, \
+                self.train_y, self.valid_y = train_test_split(
                     train_x,
                     train_y,
                     random_state=self.random_state,
@@ -362,10 +353,9 @@ class Model(object):
                     stratify=train_y,
                     train_size=0.9
                 )
-
-            num_class = self.metadata['class_num']
-
-            self.model = cnn_model(self.train_x.shape[1:], num_class)
+            self.train_size, _, w, _ = self.train_x.shape
+            self.valid_size, _, _, _ = self.valid_x.shape
+            self.model = cnn_model((w, w, 1), n_classes)
 
             optimizer = tf.keras.optimizers.SGD(lr=0.01, decay=1e-06)
 
@@ -377,14 +367,13 @@ class Model(object):
         training_generator = MixupGenerator(
             self.train_x,
             self.train_y,
-            alpha=0.2,
             batch_size=self.batch_size,
             datagen=datagen
         )()
 
         self.model.fit_generator(
             training_generator,
-            steps_per_epoch=self.train_x.shape[0] // self.batch_size,
+            steps_per_epoch=self.train_size // self.batch_size,
             epochs=self.n_iter + 1,
             initial_epoch=self.n_iter,
             shuffle=True,
@@ -393,15 +382,21 @@ class Model(object):
 
         self.n_iter += 1
 
-        self.val_res = self.model.predict_proba(self.val_x)
+        valid_generator = TTAGenerator(
+            self.valid_x,
+            batch_size=self.batch_size
+        )()
+        valid_res = self.model.predict_generator(
+            valid_generator,
+            steps=np.ceil(self.valid_size / self.batch_size)
+        )
+        valid_auc = roc_auc_score(self.valid_y, valid_res, average='macro')
 
-        val_auc = roc_auc_score(self.val_y, self.val_res, average='macro')
+        logger.info(f'valid_auc={valid_auc:.3f}, max_auc={self.max_auc:.3f}')
 
-        logger.info(f'val_auc={val_auc:.3f}, max_auc={self.max_auc:.3f}')
-
-        if self.max_auc < val_auc:
+        if self.max_auc < valid_auc:
             self.not_improve_learning_iter = 0
-            self.max_auc = val_auc
+            self.max_auc = valid_auc
         else:
             self.not_improve_learning_iter += 1
 
@@ -410,13 +405,28 @@ class Model(object):
 
     def test(self, test_x, remaining_time_budget=None):
         if not hasattr(self, 'test_x'):
-            # fea_x = extract_mfcc(test_x)
             fea_x, _ = make_cropped_dataset_5sec(test_x)
             fea_x = pad_seq(fea_x, self.max_len)
 
             self.test_x = fea_x[:, :, :, np.newaxis]
+            self.test_size, _, _, _ = self.test_x.shape
 
         if self.not_improve_learning_iter == 0:
-            self.probas = self.model.predict_proba(self.test_x)
+            test_generator = TTAGenerator(
+                self.test_x,
+                batch_size=self.batch_size
+            )()
+
+            self.probas = np.zeros(
+                (self.metadata['test_num'], self.metadata['class_num'])
+            )
+
+            for _ in range(self.n_predictions):
+                self.probas += self.model.predict_generator(
+                    test_generator,
+                    steps=np.ceil(self.test_size / self.batch_size)
+                )
+
+            self.probas /= self.n_predictions
 
         return self.probas
