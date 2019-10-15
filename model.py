@@ -358,7 +358,6 @@ class Model(object):
         self.done_training = False
         self.max_score = 0
         self.n_iter = 0
-        self.not_improve_learning_iter = 0
 
     def train(self, train_dataset, remaining_time_budget=None):
         if not hasattr(self, 'train_x'):
@@ -390,54 +389,51 @@ class Model(object):
 
             self.model.compile(optimizer, 'categorical_crossentropy')
 
-        if remaining_time_budget <= 0.125 * self.metadata['time_budget']:
-            self.done_training = True
-            return
+        while True:
+            if remaining_time_budget <= 0.125 * self.metadata['time_budget']:
+                self.done_training = True
 
-        datagen = ImageDataGenerator(
-            preprocessing_function=get_frequency_masking()
-        )
-        training_generator = MixupGenerator(
-            self.train_x,
-            self.train_y,
-            batch_size=self.batch_size,
-            datagen=datagen
-        )()
-        valid_generator = TTAGenerator(
-            self.valid_x,
-            batch_size=self.batch_size
-        )()
+                break
 
-        self.model.fit_generator(
-            training_generator,
-            steps_per_epoch=self.train_size // self.batch_size,
-            epochs=self.n_iter + 1,
-            initial_epoch=self.n_iter,
-            shuffle=True,
-            verbose=1
-        )
+            datagen = ImageDataGenerator(
+                preprocessing_function=get_frequency_masking()
+            )
+            training_generator = MixupGenerator(
+                self.train_x,
+                self.train_y,
+                batch_size=self.batch_size,
+                datagen=datagen
+            )()
+            valid_generator = TTAGenerator(
+                self.valid_x,
+                batch_size=self.batch_size
+            )()
 
-        probas = self.model.predict_generator(
-            valid_generator,
-            steps=np.ceil(self.valid_size / self.batch_size)
-        )
-        valid_score = roc_auc_score(self.valid_y, probas, average='macro')
+            self.model.fit_generator(
+                training_generator,
+                steps_per_epoch=self.train_size // self.batch_size,
+                epochs=self.n_iter + 1,
+                initial_epoch=self.n_iter,
+                shuffle=True,
+                verbose=1
+            )
 
-        self.n_iter += 1
+            probas = self.model.predict_generator(
+                valid_generator,
+                steps=np.ceil(self.valid_size / self.batch_size)
+            )
+            valid_score = roc_auc_score(self.valid_y, probas, average='macro')
 
-        logger.info(
-            f'valid_auc={valid_score:.3f}, max_valid_auc={self.max_score:.3f}'
-        )
+            self.n_iter += 1
 
-        if self.max_score < valid_score:
-            self.not_improve_learning_iter = 0
-            self.max_score = valid_score
+            logger.info(
+                f'valid_auc={valid_score:.3f}, max_valid_auc={self.max_score:.3f}'
+            )
 
-        else:
-            self.not_improve_learning_iter += 1
+            if self.max_score < valid_score:
+                self.max_score = valid_score
 
-        if self.not_improve_learning_iter >= self.patience:
-            self.done_training = True
+                break
 
     def test(self, test_x, remaining_time_budget=None):
         if not hasattr(self, 'test_x'):
@@ -450,22 +446,21 @@ class Model(object):
             self.test_x = (self.test_x - np.mean(self.test_x, axis=(1, 2, 3), keepdims=True)) / np.std(self.test_x, axis=(1, 2, 3), keepdims=True)
             self.test_size, _, _, _ = self.test_x.shape
 
+        probas = np.zeros(
+            (self.metadata['test_num'], self.metadata['class_num'])
+        )
 
-        if self.not_improve_learning_iter == 0:
-            self.probas = np.zeros(
-                (self.metadata['test_num'], self.metadata['class_num'])
+        for _ in range(self.n_predictions):
+            test_generator = TTAGenerator(
+                self.test_x,
+                batch_size=self.batch_size
+            )()
+
+            probas += self.model.predict_generator(
+                test_generator,
+                steps=np.ceil(self.test_size / self.batch_size)
             )
-            for _ in range(self.n_predictions):
-                test_generator = TTAGenerator(
-                    self.test_x,
-                    batch_size=self.batch_size
-                )()
 
-                self.probas += self.model.predict_generator(
-                    test_generator,
-                    steps=np.ceil(self.test_size / self.batch_size)
-                )
+        probas /= self.n_predictions
 
-            self.probas /= self.n_predictions
-
-        return self.probas
+        return probas
