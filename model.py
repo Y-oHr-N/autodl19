@@ -18,6 +18,10 @@ from tensorflow.python.keras.layers import MaxPooling2D
 from tensorflow.python.keras.models import Sequential
 from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
 
+import keras
+import kapre
+from kapre.time_frequency import Melspectrogram
+from kapre.utils import Normalization2D
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
 
@@ -146,6 +150,43 @@ def make_cropped_dataset_5sec(
 
     return X_results, y_results
 
+def logmel_model(input_shape):
+    model = keras.models.Sequential()
+    model.add(
+        Melspectrogram(
+            sr=SAMPLING_FREQ,
+            n_mels=N_MELS,
+            fmin=FMIN,
+            fmax=FMAX,
+            n_dft=N_FFT,
+            n_hop=HOP_LENGTH,
+            input_shape=input_shape,
+            return_decibel_melgram=True,
+            trainable_kernel=False,
+            image_data_format='channels_last',
+            power_melgram=2.0,
+            name='melgram'
+        )
+    )
+    return model
+
+def get_fixed_array(X_list, len_sample=5):
+    for i in range(len(X_list)):
+        if len(X_list[i]) < len_sample * SAMPLING_FREQ:
+            n_repeat = np.ceil(SAMPLING_FREQ*len_sample / X_list[i].shape[0]).astype(np.int32)
+            X_list[i] = np.repeat(X_list[i], n_repeat)
+        X_list[i] = X_list[i][:len_sample * SAMPLING_FREQ]
+
+    X = np.array(X_list)
+    X = X[:, :, np.newaxis]
+    X = X.transpose(0, 2, 1)
+    return X
+
+def get_kapre_logmel(X_list, len_sample=5, model=None):
+    X = get_fixed_array(X_list, len_sample=len_sample)
+    X = model.predict(X)
+    X =  X.transpose(0, 2, 1, 3)
+    return X
 
 def get_crop_image(image):
     time_dim, base_dim, _ = image.shape
@@ -194,9 +235,9 @@ def get_frequency_masking(p=0.5, F=0.2):
 
         f = np.random.randint(0, int(img_w * F))
         f0 = np.random.randint(0, img_w - f)
-        c = input_img.mean()
+        # c = input_img.mean()
 
-        input_img[:, f0:f0 + f, :] = c
+        input_img[:, f0:f0 + f, :] = 0
 
         return input_img
 
@@ -294,7 +335,7 @@ class MixupGenerator(object):
         if self.datagen is not None:
             for i in range(self.batch_size):
                 X[i] = self.datagen.random_transform(X[i])
-                X[i] = self.datagen.standardize(X[i])
+                # X[i] = self.datagen.standardize(X[i])
 
         return X, y
 
@@ -321,9 +362,13 @@ class Model(object):
     def train(self, train_dataset, remaining_time_budget=None):
         if not hasattr(self, 'train_x'):
             train_x, train_y = train_dataset
+            """
             train_x, train_y = make_cropped_dataset_5sec(train_x, train_y)
             train_x = train_x[:, :, :, np.newaxis]
-
+            """
+            self.logmel_model = logmel_model((1, SAMPLING_FREQ*5))
+            train_x = get_kapre_logmel(train_x, len_sample=5, model=self.logmel_model)
+            train_x = (train_x - np.mean(train_x, axis=(1, 2, 3), keepdims=True)) / np.std(train_x, axis=(1, 2, 3), keepdims=True)
             self.train_x, self.valid_x, \
                 self.train_y, self.valid_y = train_test_split(
                     train_x,
@@ -392,9 +437,13 @@ class Model(object):
 
     def test(self, test_x, remaining_time_budget=None):
         if not hasattr(self, 'test_x'):
+            """
             test_x, _ = make_cropped_dataset_5sec(test_x)
 
             self.test_x = test_x[:, :, :, np.newaxis]
+            """
+            self.test_x = get_kapre_logmel(test_x, len_sample=5, model=self.logmel_model)
+            self.test_x = (self.test_x - np.mean(self.test_x, axis=(1, 2, 3), keepdims=True)) / np.std(self.test_x, axis=(1, 2, 3), keepdims=True)
             self.test_size, _, _, _ = self.test_x.shape
 
         probas = np.zeros(
