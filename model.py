@@ -2,7 +2,6 @@ import logging
 
 import librosa
 import numpy as np
-import pandas as pd
 import tensorflow as tf
 
 from keras.backend.tensorflow_backend import set_session
@@ -18,12 +17,6 @@ from tensorflow.python.keras.layers import Flatten
 from tensorflow.python.keras.layers import MaxPooling2D
 from tensorflow.python.keras.models import Sequential
 from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.python.keras.preprocessing.sequence import pad_sequences
-
-try:
-    config = tf.ConfigProto()
-except AttributeError:
-    config = tf.compat.v1.ConfigProto()
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
@@ -31,10 +24,18 @@ handler = logging.StreamHandler()
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
+try:
+    config = tf.ConfigProto()
+except AttributeError:
+    config = tf.compat.v1.ConfigProto()
+
 config.gpu_options.allow_growth = True
 config.log_device_placement = False
 
-sess = tf.Session(config=config)
+try:
+    sess = tf.Session(config=config)
+except AttributeError:
+    sess = tf.compat.v1.Session(config=config)
 
 set_session(sess)
 
@@ -141,27 +142,20 @@ def make_cropped_dataset_5sec(
     if y_list is None:
         y_results = None
 
+    X_results = np.asarray(X_results)
+
     return X_results, y_results
-
-
-def pad_seq(data, pad_len):
-    return pad_sequences(
-        data,
-        dtype=np.float32,
-        maxlen=pad_len,
-        padding='post'
-    )
 
 
 def get_crop_image(image):
     time_dim, base_dim, _ = image.shape
     crop = np.random.randint(0, time_dim - base_dim)
-    image = image[crop:crop+base_dim, :,:]
+    image = image[crop:crop+base_dim, :, :]
 
     return image
 
 
-def cnn_model(input_shape, num_class, max_layer_num=5):
+def make_cnn_model(input_shape, n_classes, max_layer_num=5):
     model = Sequential()
     min_size = min(input_shape[:2])
 
@@ -184,7 +178,7 @@ def cnn_model(input_shape, num_class, max_layer_num=5):
     model.add(Dense(64))
     model.add(Dropout(rate=0.5))
     model.add(Activation('relu'))
-    model.add(Dense(num_class))
+    model.add(Dense(n_classes))
     model.add(Activation('softmax'))
 
     return model
@@ -321,28 +315,14 @@ class Model(object):
         self.random_state = random_state
 
         self.done_training = False
-        self.max_auc = 0
+        self.max_score = 0
         self.n_iter = 0
-        self.not_improve_learning_iter = 0
 
     def train(self, train_dataset, remaining_time_budget=None):
-        if remaining_time_budget <= 0.125 * self.metadata['time_budget']:
-            self.done_training = True
-
-            return
-
         if not hasattr(self, 'train_x'):
-            n_classes = self.metadata['class_num']
             train_x, train_y = train_dataset
-            fea_x, train_y = make_cropped_dataset_5sec(train_x, train_y)
-
-            self.max_len = max([len(_) for _ in fea_x])
-
-            fea_x = pad_seq(fea_x, self.max_len)
-            train_x = fea_x[:, :, :, np.newaxis]
-
-            logger.info(f'max_len={self.max_len}')
-            logger.info(f'X.shape={train_x.shape}')
+            train_x, train_y = make_cropped_dataset_5sec(train_x, train_y)
+            train_x = train_x[:, :, :, np.newaxis]
 
             self.train_x, self.valid_x, \
                 self.train_y, self.valid_y = train_test_split(
@@ -355,78 +335,83 @@ class Model(object):
                 )
             self.train_size, _, w, _ = self.train_x.shape
             self.valid_size, _, _, _ = self.valid_x.shape
-            self.model = cnn_model((w, w, 1), n_classes)
 
-            optimizer = tf.keras.optimizers.SGD(lr=0.01, decay=1e-06)
+            logger.info(f'X.shape={train_x.shape}')
+
+            self.model = make_cnn_model((w, w, 1), self.metadata['class_num'])
+
+            optimizer = tf.keras.optimizers.SGD(decay=1e-06)
 
             self.model.compile(optimizer, 'categorical_crossentropy')
 
-        datagen = ImageDataGenerator(
-            preprocessing_function=get_frequency_masking()
-        )
-        training_generator = MixupGenerator(
-            self.train_x,
-            self.train_y,
-            batch_size=self.batch_size,
-            datagen=datagen
-        )()
+        while True:
+            if remaining_time_budget <= 0.125 * self.metadata['time_budget']:
+                self.done_training = True
 
-        self.model.fit_generator(
-            training_generator,
-            steps_per_epoch=self.train_size // self.batch_size,
-            epochs=self.n_iter + 1,
-            initial_epoch=self.n_iter,
-            shuffle=True,
-            verbose=1
-        )
+                break
 
-        self.n_iter += 1
+            datagen = ImageDataGenerator(
+                preprocessing_function=get_frequency_masking()
+            )
+            training_generator = MixupGenerator(
+                self.train_x,
+                self.train_y,
+                batch_size=self.batch_size,
+                datagen=datagen
+            )()
+            valid_generator = TTAGenerator(
+                self.valid_x,
+                batch_size=self.batch_size
+            )()
 
-        valid_generator = TTAGenerator(
-            self.valid_x,
-            batch_size=self.batch_size
-        )()
-        valid_res = self.model.predict_generator(
-            valid_generator,
-            steps=np.ceil(self.valid_size / self.batch_size)
-        )
-        valid_auc = roc_auc_score(self.valid_y, valid_res, average='macro')
+            self.model.fit_generator(
+                training_generator,
+                steps_per_epoch=self.train_size // self.batch_size,
+                epochs=self.n_iter + 1,
+                initial_epoch=self.n_iter,
+                shuffle=True,
+                verbose=1
+            )
 
-        logger.info(f'valid_auc={valid_auc:.3f}, max_auc={self.max_auc:.3f}')
+            probas = self.model.predict_generator(
+                valid_generator,
+                steps=np.ceil(self.valid_size / self.batch_size)
+            )
+            valid_score = roc_auc_score(self.valid_y, probas, average='macro')
 
-        if self.max_auc < valid_auc:
-            self.not_improve_learning_iter = 0
-            self.max_auc = valid_auc
-        else:
-            self.not_improve_learning_iter += 1
+            self.n_iter += 1
 
-        if self.not_improve_learning_iter >= self.patience:
-            self.done_training = True
+            logger.info(
+                f'valid_auc={valid_score:.3f}, max_valid_auc={self.max_score:.3f}'
+            )
+
+            if self.max_score < valid_score:
+                self.max_score = valid_score
+
+                break
 
     def test(self, test_x, remaining_time_budget=None):
         if not hasattr(self, 'test_x'):
-            fea_x, _ = make_cropped_dataset_5sec(test_x)
-            fea_x = pad_seq(fea_x, self.max_len)
+            test_x, _ = make_cropped_dataset_5sec(test_x)
 
-            self.test_x = fea_x[:, :, :, np.newaxis]
+            self.test_x = test_x[:, :, :, np.newaxis]
             self.test_size, _, _, _ = self.test_x.shape
 
-        if self.not_improve_learning_iter == 0:
+        probas = np.zeros(
+            (self.metadata['test_num'], self.metadata['class_num'])
+        )
+
+        for _ in range(self.n_predictions):
             test_generator = TTAGenerator(
                 self.test_x,
                 batch_size=self.batch_size
             )()
 
-            self.probas = np.zeros(
-                (self.metadata['test_num'], self.metadata['class_num'])
+            probas += self.model.predict_generator(
+                test_generator,
+                steps=np.ceil(self.test_size / self.batch_size)
             )
 
-            for _ in range(self.n_predictions):
-                self.probas += self.model.predict_generator(
-                    test_generator,
-                    steps=np.ceil(self.test_size / self.batch_size)
-                )
+        probas /= self.n_predictions
 
-            self.probas /= self.n_predictions
-
-        return self.probas
+        return probas
