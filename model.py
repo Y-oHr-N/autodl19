@@ -305,9 +305,10 @@ class Model(object):
             self.model.compile(optimizer, 'categorical_crossentropy')
 
         while True:
-            remaining_time_budget -= time.perf_counter() - start_time
+            elapsed_time = time.perf_counter() - start_time
+            remaining_time = remaining_time_budget - elapsed_time
 
-            if remaining_time_budget <= 0.125 * self.metadata['time_budget']:
+            if remaining_time <= 0.125 * self.metadata['time_budget']:
                 self.done_training = True
 
                 break
