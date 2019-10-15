@@ -1,9 +1,14 @@
 import logging
+import os
+import time
 
-import librosa
+os.system('pip3 install -q kapre')
+
+import keras
 import numpy as np
 import tensorflow as tf
 
+from kapre.time_frequency import Melspectrogram
 from keras.backend.tensorflow_backend import set_session
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
@@ -18,28 +23,18 @@ from tensorflow.python.keras.layers import MaxPooling2D
 from tensorflow.python.keras.models import Sequential
 from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
 
-import keras
-import kapre
-from kapre.time_frequency import Melspectrogram
-from kapre.utils import Normalization2D
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
 
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
-try:
-    config = tf.ConfigProto()
-except AttributeError:
-    config = tf.compat.v1.ConfigProto()
+config = tf.compat.v1.ConfigProto()
 
 config.gpu_options.allow_growth = True
 config.log_device_placement = False
 
-try:
-    sess = tf.Session(config=config)
-except AttributeError:
-    sess = tf.compat.v1.Session(config=config)
+sess = tf.compat.v1.Session(config=config)
 
 set_session(sess)
 
@@ -52,146 +47,58 @@ FMIN = 20
 FMAX = SAMPLING_FREQ // 2
 
 
-def logmelspectrogram(X):
-    melspec = librosa.feature.melspectrogram(
-        X,
-        sr=SAMPLING_FREQ,
-        n_mels=N_MELS,
-        n_fft=N_FFT,
-        hop_length=HOP_LENGTH,
-        fmin=FMIN,
-        fmax=FMAX
-    ).astype(np.float32)
-
-    return librosa.power_to_db(melspec)
-
-
-def get_num_frame(n_sample, n_fft, n_shift):
-    return np.floor(2.0 * (n_sample / n_fft) + 1.0).astype(np.int32)
-
-
-def crop_time(
-    X,  # array: len
-    len_sample=5,  # 1 サンプル当たりの長さ [sec]
-    min_sample=5,  # 切り出すサンプル数の最小個数
-    max_sample=10,  # 切り出すサンプルの最大個数
-):
-    if len(X) < len_sample * max_sample * SAMPLING_FREQ:
-        XX = X
-    else:
-        # TODO(Ishimura): 本当はシフト幅分余分にとりたい
-        XX = X[:len_sample * max_sample * SAMPLING_FREQ]
-
-    X = logmelspectrogram(XX)
-    n_samples, n_features = X.shape
-
-    # len_sample に対応する frame 長
-    n_frame = get_num_frame(
-        n_sample=len_sample * SAMPLING_FREQ,
-        n_fft=N_FFT,
-        n_shift=HOP_LENGTH
-    )
-
-    # データの frame 数（X.shape[1]）が len_sample * min_sample に満たない場合の repeat 数
-    n_repeat = np.ceil(n_frame * min_sample / n_features).astype(np.int32)
-    X_repeat = np.zeros([n_samples, n_features * n_repeat], np.float32)
-
-    for i in range(n_repeat):
-        X_repeat[:, i * n_features: (i + 1) * n_features] = X
-
-    # 最低限, min_sample を確保
-    if n_features <= n_frame * min_sample:
-        n_sample = min_sample
-    elif (n_frame * min_sample) < n_features <= (n_frame * max_sample):
-        n_sample = (n_features // n_frame).astype(np.int32)
-    else:
-        n_sample = max_sample
-
-    # Make New log-mel spectrogram
-    X_new = np.zeros([n_samples, n_frame, n_sample], np.float32)
-
-    for i in range(n_sample):
-        X_new[:, :, i] = X_repeat[:, i * n_frame: (i + 1) * n_frame]
-
-    return X_new
-
-
-def make_cropped_dataset_5sec(
-    X_list,  # list(array):
-    y_list=None,  # array: n_sample x dim_label
-    len_sample=5,  # 1 サンプル当たりの長さ [sec]
-    min_sample=1,  # 切り出すサンプル数の最小個数
-    max_sample=1,  # 切り出すサンプルの最大個数
-):
-    # さしあたり min_sample == max_sample == 1
-    # -> y_results.shape == (len(X_list), dim_label) かつ，len(X_results) == len(X_list)
-    X_results = []
-
-    if y_list is not None:
-        y_results = np.zeros([len(X_list), y_list.shape[1]], np.float32)
-
-    for i in range(len(X_list)):
-        logmels = crop_time(
-            X_list[i],
-            len_sample=len_sample,
-            min_sample=min_sample,
-            max_sample=max_sample
-        )
-
-        X_results.append(logmels[:, :, 0].T)
-
-        if y_list is not None:
-            y_results[i, :] = y_list[i, :]
-
-    if y_list is None:
-        y_results = None
-
-    X_results = np.asarray(X_results)
-
-    return X_results, y_results
-
-def logmel_model(input_shape):
+def make_logmel_model(input_shape):
     model = keras.models.Sequential()
+
     model.add(
         Melspectrogram(
-            sr=SAMPLING_FREQ,
-            n_mels=N_MELS,
-            fmin=FMIN,
             fmax=FMAX,
+            fmin=FMIN,
             n_dft=N_FFT,
             n_hop=HOP_LENGTH,
+            n_mels=N_MELS,
+            name='melgram',
+            image_data_format='channels_last',
             input_shape=input_shape,
             return_decibel_melgram=True,
-            trainable_kernel=False,
-            image_data_format='channels_last',
             power_melgram=2.0,
-            name='melgram'
+            sr=SAMPLING_FREQ,
+            trainable_kernel=False
         )
     )
+
     return model
+
 
 def get_fixed_array(X_list, len_sample=5):
     for i in range(len(X_list)):
         if len(X_list[i]) < len_sample * SAMPLING_FREQ:
-            n_repeat = np.ceil(SAMPLING_FREQ*len_sample / X_list[i].shape[0]).astype(np.int32)
+            n_repeat = np.ceil(
+                SAMPLING_FREQ * len_sample / X_list[i].shape[0]
+            ).astype(np.int32)
             X_list[i] = np.repeat(X_list[i], n_repeat)
+
         X_list[i] = X_list[i][:len_sample * SAMPLING_FREQ]
 
-    X = np.array(X_list)
+    X = np.asarray(X_list)
     X = X[:, :, np.newaxis]
     X = X.transpose(0, 2, 1)
+
     return X
+
 
 def get_kapre_logmel(X_list, len_sample=5, model=None):
     X = get_fixed_array(X_list, len_sample=len_sample)
     X = model.predict(X)
-    X =  X.transpose(0, 2, 1, 3)
+    X = X.transpose(0, 2, 1, 3)
+
     return X
+
 
 def get_crop_image(image):
     time_dim, base_dim, _ = image.shape
     crop = np.random.randint(0, time_dim - base_dim)
-    image = image[crop:crop+base_dim, :, :]
+    image = image[crop:crop + base_dim, :, :]
 
     return image
 
@@ -235,7 +142,6 @@ def get_frequency_masking(p=0.5, F=0.2):
 
         f = np.random.randint(0, int(img_w * F))
         f0 = np.random.randint(0, img_w - f)
-        # c = input_img.mean()
 
         input_img[:, f0:f0 + f, :] = 0
 
@@ -335,7 +241,6 @@ class MixupGenerator(object):
         if self.datagen is not None:
             for i in range(self.batch_size):
                 X[i] = self.datagen.random_transform(X[i])
-                # X[i] = self.datagen.standardize(X[i])
 
         return X, y
 
@@ -360,15 +265,25 @@ class Model(object):
         self.n_iter = 0
 
     def train(self, train_dataset, remaining_time_budget=None):
+        start_time = time.perf_counter()
+
         if not hasattr(self, 'train_x'):
+            self.logmel_model = make_logmel_model((1, 5 * SAMPLING_FREQ))
+
             train_x, train_y = train_dataset
-            """
-            train_x, train_y = make_cropped_dataset_5sec(train_x, train_y)
-            train_x = train_x[:, :, :, np.newaxis]
-            """
-            self.logmel_model = logmel_model((1, SAMPLING_FREQ*5))
-            train_x = get_kapre_logmel(train_x, len_sample=5, model=self.logmel_model)
-            train_x = (train_x - np.mean(train_x, axis=(1, 2, 3), keepdims=True)) / np.std(train_x, axis=(1, 2, 3), keepdims=True)
+            train_x = get_kapre_logmel(
+                train_x,
+                len_sample=5,
+                model=self.logmel_model
+            )
+            train_x = (
+                train_x - np.mean(
+                    train_x,
+                    axis=(1, 2, 3),
+                    keepdims=True
+                )
+            ) / np.std(train_x, axis=(1, 2, 3), keepdims=True)
+
             self.train_x, self.valid_x, \
                 self.train_y, self.valid_y = train_test_split(
                     train_x,
@@ -390,6 +305,8 @@ class Model(object):
             self.model.compile(optimizer, 'categorical_crossentropy')
 
         while True:
+            remaining_time_budget -= time.perf_counter() - start_time
+
             if remaining_time_budget <= 0.125 * self.metadata['time_budget']:
                 self.done_training = True
 
@@ -427,7 +344,8 @@ class Model(object):
             self.n_iter += 1
 
             logger.info(
-                f'valid_auc={valid_score:.3f}, max_valid_auc={self.max_score:.3f}'
+                f'valid_auc={valid_score:.3f}, '
+                f'max_valid_auc={self.max_score:.3f}'
             )
 
             if self.max_score < valid_score:
@@ -437,13 +355,18 @@ class Model(object):
 
     def test(self, test_x, remaining_time_budget=None):
         if not hasattr(self, 'test_x'):
-            """
-            test_x, _ = make_cropped_dataset_5sec(test_x)
-
-            self.test_x = test_x[:, :, :, np.newaxis]
-            """
-            self.test_x = get_kapre_logmel(test_x, len_sample=5, model=self.logmel_model)
-            self.test_x = (self.test_x - np.mean(self.test_x, axis=(1, 2, 3), keepdims=True)) / np.std(self.test_x, axis=(1, 2, 3), keepdims=True)
+            self.test_x = get_kapre_logmel(
+                test_x,
+                len_sample=5,
+                model=self.logmel_model
+            )
+            self.test_x = (
+                self.test_x - np.mean(
+                    self.test_x,
+                    axis=(1, 2, 3),
+                    keepdims=True
+                )
+            ) / np.std(self.test_x, axis=(1, 2, 3), keepdims=True)
             self.test_size, _, _, _ = self.test_x.shape
 
         probas = np.zeros(
