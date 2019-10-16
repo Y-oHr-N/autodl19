@@ -64,7 +64,6 @@ def make_logmel_model(input_shape):
             return_decibel_melgram=True,
             power_melgram=2.0,
             sr=SAMPLING_FREQ,
-            trainable_kernel=False
         )
     )
 
@@ -281,7 +280,6 @@ class Model(object):
             X_train, y_train = train_dataset
             X_train = get_kapre_logmel(
                 X_train,
-                len_sample=5,
                 model=self.logmel_model
             )
             X_train = (
@@ -362,7 +360,6 @@ class Model(object):
         if not hasattr(self, 'X_test'):
             self.X_test = get_kapre_logmel(
                 X_test,
-                len_sample=5,
                 model=self.logmel_model
             )
             self.X_test = (
