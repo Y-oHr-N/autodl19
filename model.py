@@ -241,6 +241,7 @@ class MixupGenerator(object):
         if self.datagen is not None:
             for i in range(self.batch_size):
                 X[i] = self.datagen.random_transform(X[i])
+                X[i] = self.datagen.standardize(X[i])
 
         return X, y
 
