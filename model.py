@@ -13,15 +13,16 @@ from keras.backend.tensorflow_backend import set_session
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn.utils import safe_indexing
-from tensorflow.python.keras.layers import Activation
-from tensorflow.python.keras.layers import BatchNormalization
-from tensorflow.python.keras.layers import Conv2D
-from tensorflow.python.keras.layers import Dense
-from tensorflow.python.keras.layers import Dropout
-from tensorflow.python.keras.layers import Flatten
-from tensorflow.python.keras.layers import MaxPooling2D
-from tensorflow.python.keras.models import Sequential
-from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.layers import Activation
+from tensorflow.keras.layers import BatchNormalization
+from tensorflow.keras.layers import Conv2D
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Dropout
+from tensorflow.keras.layers import Flatten
+from tensorflow.keras.layers import MaxPooling2D
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.python.keras.utils.data_utils import Sequence
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
@@ -38,7 +39,6 @@ sess = tf.compat.v1.Session(config=config)
 
 set_session(sess)
 
-# parameters
 SAMPLING_FREQ = 16_000
 N_MELS = 64
 HOP_LENGTH = 512
@@ -47,7 +47,34 @@ FMIN = 20
 FMAX = SAMPLING_FREQ // 2
 
 
-def make_logmel_model(input_shape):
+def get_fixed_array(X_list, len_sample=5, sr=SAMPLING_FREQ):
+    n = len(X_list)
+
+    for i in range(n):
+        if n < len_sample * sr:
+            n_repeat = np.ceil(
+                sr * len_sample / X_list[i].shape[0]
+            ).astype(np.int32)
+            X_list[i] = np.tile(X_list[i], n_repeat)
+
+        X_list[i] = X_list[i][:len_sample * sr]
+
+    X = np.asarray(X_list)
+    X = X[:, :, np.newaxis]
+    X = X.transpose(0, 2, 1)
+
+    return X
+
+
+def get_features(X_list, model, len_sample=5, sr=SAMPLING_FREQ):
+    X = get_fixed_array(X_list, len_sample=len_sample, sr=sr)
+    X = model.predict(X)
+    X = X.transpose(0, 2, 1, 3)
+
+    return X
+
+
+def make_extractor(input_shape):
     model = keras.models.Sequential()
 
     model.add(
@@ -63,50 +90,16 @@ def make_logmel_model(input_shape):
             return_decibel_melgram=True,
             power_melgram=2.0,
             sr=SAMPLING_FREQ,
-            trainable_kernel=False
         )
     )
 
     return model
 
-
-def get_fixed_array(X_list, len_sample=5):
-    for i in range(len(X_list)):
-        if len(X_list[i]) < len_sample * SAMPLING_FREQ:
-            n_repeat = np.ceil(
-                SAMPLING_FREQ * len_sample / X_list[i].shape[0]
-            ).astype(np.int32)
-            X_list[i] = np.tile(X_list[i], n_repeat)
-
-        X_list[i] = X_list[i][:len_sample * SAMPLING_FREQ]
-
-    X = np.asarray(X_list)
-    X = X[:, :, np.newaxis]
-    X = X.transpose(0, 2, 1)
-
-    return X
-
-
-def get_kapre_logmel(X_list, len_sample=5, model=None):
-    X = get_fixed_array(X_list, len_sample=len_sample)
-    X = model.predict(X)
-    X = X.transpose(0, 2, 1, 3)
-
-    return X
-
-
-def get_crop_image(image):
-    time_dim, base_dim, _ = image.shape
-    crop = np.random.randint(0, time_dim - base_dim)
-    image = image[crop:crop + base_dim, :, :]
-
-    return image
-
 def make_cnn_model_restart(input_shape, n_classes, max_layer_num=5):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     filename = os.path.join(base_dir, 'ckpt/ckpt01/data01.ckpt')
     #[100,7,3,20,10]
-    model = make_cnn_model(input_shape, n_classes=100, max_layer_num=5)
+    model = make_model(input_shape, n_classes=100, max_layer_num=5)
     optimizer = tf.keras.optimizers.SGD(decay=1e-06)
 
     model.compile(optimizer, 'categorical_crossentropy')
@@ -118,9 +111,10 @@ def make_cnn_model_restart(input_shape, n_classes, max_layer_num=5):
 
     return model
 
-def make_cnn_model(input_shape, n_classes, max_layer_num=5):
+def make_model(input_shape, n_classes, max_layer_num=5):
     model = Sequential()
     min_size = min(input_shape[:2])
+    optimizer = tf.keras.optimizers.SGD(decay=1e-06)
 
     for i in range(max_layer_num):
         if i == 0:
@@ -143,65 +137,73 @@ def make_cnn_model(input_shape, n_classes, max_layer_num=5):
     model.add(Activation('relu'))
     model.add(Dense(n_classes))
     model.add(Activation('softmax'))
+    model.compile(optimizer, 'categorical_crossentropy')
 
     return model
 
 
-def get_frequency_masking(p=0.5, F=0.2):
-    def frequency_masking(input_img):
-        _, img_w, _ = input_img.shape
-        p_1 = np.random.rand()
+class CutOut(object):
+    def __init__(self, probability=0.5, F=0.2):
+        self.probability = probability
+        self.F = F
 
-        if p_1 > p:
-            return input_img
+    def __call__(self, image):
+        _, w, _ = image.shape
+        p = np.random.rand()
 
-        f = np.random.randint(0, int(img_w * F))
-        f0 = np.random.randint(0, img_w - f)
+        if p > self.probability:
+            return image
 
-        input_img[:, f0:f0 + f, :] = 0
+        f = np.random.randint(0, int(w * self.F))
+        f0 = np.random.randint(0, w - f)
 
-        return input_img
+        image[:, f0:f0 + f, :] = 0
 
-    return frequency_masking
+        return image
 
 
-class TTAGenerator(object):
-    def __init__(self, X_test, batch_size):
-        self.X_test = X_test
+class RandomCropGenerator(Sequence):
+    def __init__(self, X, y=None, batch_size=32):
+        self.X = X
+        self.y = y
         self.batch_size = batch_size
 
-        self.n_samples = len(X_test)
+    def __len__(self):
+        n, _, _, _ = self.X.shape
 
-    def __call__(self):
-        while True:
-            for start in range(0, self.n_samples, self.batch_size):
-                end = min(start + self.batch_size, self.n_samples)
-                X_test_batch = self.X_test[start:end]
+        return int(np.ceil(n / self.batch_size))
 
-                yield self.__data_generation(X_test_batch)
+    def __getitem__(self, i):
+        batch = slice(i * self.batch_size, (i + 1) * self.batch_size)
 
-    def __data_generation(self, X_test_batch):
-        d, _, w, _ = X_test_batch.shape
-        X = np.zeros((d, w, w, 1))
+        X = self.X[batch]
+        n, h, w, _ = X.shape
+        Xt = np.zeros((n, w, w, 1))
 
-        for i in range(d):
-            X[i] = get_crop_image(X_test_batch[i])
+        for i in range(n):
+            h0 = np.random.randint(0, h - w)
+            Xt[i] = X[i, h0:h0 + w, :, :]
 
-        return X, None
+        y = self.y
+
+        if y is not None:
+            y = self.y[batch]
+
+        return Xt, y
 
 
 class MixupGenerator(object):
     def __init__(
         self,
-        X_train,
-        y_train,
+        X,
+        y,
         alpha=0.2,
         batch_size=32,
         datagen=None,
         shuffle=True
     ):
-        self.X_train = X_train
-        self.y_train = y_train
+        self.X = X
+        self.y = y
         self.alpha = alpha
         self.batch_size = batch_size
         self.datagen = datagen
@@ -209,56 +211,36 @@ class MixupGenerator(object):
 
     def __call__(self):
         while True:
-            indices = self.__get_exploration_order()
-            n_samples = len(self.X_train)
-            itr_num = int(n_samples // (2 * self.batch_size))
+            n, _, _, _ = self.X.shape
+            indices = np.arange(n)
 
-            for i in range(itr_num):
-                indices_head = indices[
-                    2 * i * self.batch_size:(2 * i + 1) * self.batch_size
-                ]
-                indices_tail = indices[
-                    (2 * i + 1) * self.batch_size:(2 * i + 2) * self.batch_size
-                ]
+            if self.shuffle:
+                np.random.shuffle(indices)
 
-                yield self.__data_generation(indices_head, indices_tail)
+            for i in range(int(n / 2 / self.batch_size)):
+                # random crop
+                datagen = RandomCropGenerator(
+                    safe_indexing(self.X, indices),
+                    safe_indexing(self.y, indices),
+                    batch_size=self.batch_size
+                )
+                X1, y1 = datagen[2 * i]
+                X2, y2 = datagen[2 * i + 1]
 
-    def __get_exploration_order(self):
-        n_samples = len(self.X_train)
-        indices = np.arange(n_samples)
+                # mixup
+                l = np.random.beta(self.alpha, self.alpha, self.batch_size)
+                X_l = l.reshape(self.batch_size, 1, 1, 1)
+                y_l = l.reshape(self.batch_size, 1)
+                X = X1 * X_l + X2 * (1.0 - X_l)
+                y = y1 * y_l + y2 * (1.0 - y_l)
 
-        if self.shuffle:
-            np.random.shuffle(indices)
+                if self.datagen is not None:
+                    # cutout
+                    for i in range(self.batch_size):
+                        X[i] = self.datagen.random_transform(X[i])
+                        X[i] = self.datagen.standardize(X[i])
 
-        return indices
-
-    def __data_generation(self, indices_head, indices_tail):
-        l = np.random.beta(self.alpha, self.alpha, self.batch_size)
-        X_l = l.reshape(self.batch_size, 1, 1, 1)
-        y_l = l.reshape(self.batch_size, 1)
-
-        X1_tmp = safe_indexing(self.X_train, indices_head)
-        X2_tmp = safe_indexing(self.X_train, indices_tail)
-        d, _, w, _ = X1_tmp.shape
-        X1 = np.zeros((d, w, w, 1))
-        X2 = np.zeros((d, w, w, 1))
-
-        for i in range(self.batch_size):
-            X1[i] = get_crop_image(X1_tmp[i])
-            X2[i] = get_crop_image(X2_tmp[i])
-
-        X = X1 * X_l + X2 * (1.0 - X_l)
-
-        y1 = safe_indexing(self.y_train, indices_head)
-        y2 = safe_indexing(self.y_train, indices_tail)
-        y = y1 * y_l + y2 * (1.0 - y_l)
-
-        if self.datagen is not None:
-            for i in range(self.batch_size):
-                X[i] = self.datagen.random_transform(X[i])
-                X[i] = self.datagen.standardize(X[i])
-
-        return X, y
+                yield X, y
 
 
 class Model(object):
@@ -268,57 +250,68 @@ class Model(object):
         batch_size=32,
         n_predictions=10,
         patience=100,
-        random_state=0
+        random_state=0,
+        sr=SAMPLING_FREQ,
+        valid_size=0.9
     ):
+        self.batch_size = batch_size
         self.metadata = metadata
         self.n_predictions = n_predictions
-        self.batch_size = batch_size
         self.patience = patience
         self.random_state = random_state
+        self.sr = sr
+        self.valid_size = valid_size
 
         self.done_training = False
-        self.max_score = 0
-        self.n_iter = 0
 
     def train(self, train_dataset, remaining_time_budget=None):
         start_time = time.perf_counter()
 
-        if not hasattr(self, 'train_x'):
-            self.logmel_model = make_logmel_model((1, 5 * SAMPLING_FREQ))
+        if not hasattr(self, 'X_train'):
+            self.extractor = make_extractor((1, 5 * self.sr))
 
-            train_x, train_y = train_dataset
-            train_x = get_kapre_logmel(
-                train_x,
-                len_sample=5,
-                model=self.logmel_model
-            )
-            train_x = (
-                train_x - np.mean(
-                    train_x,
+            X_train, y_train = train_dataset
+            X_train = get_features(X_train, self.extractor, sr=self.sr)
+            X_train = (
+                X_train - np.mean(
+                    X_train,
                     axis=(1, 2, 3),
                     keepdims=True
                 )
-            ) / np.std(train_x, axis=(1, 2, 3), keepdims=True)
+            ) / np.std(X_train, axis=(1, 2, 3), keepdims=True)
 
-            self.train_x, self.valid_x, \
-                self.train_y, self.valid_y = train_test_split(
-                    train_x,
-                    train_y,
+            logger.info(f'X.shape={X_train.shape}')
+
+            self.X_train, self.X_valid, \
+                self.y_train, self.y_valid = train_test_split(
+                    X_train,
+                    y_train,
                     random_state=self.random_state,
                     shuffle=True,
-                    stratify=train_y,
-                    train_size=0.9
+                    stratify=y_train,
+                    train_size=self.valid_size
                 )
-            self.train_size, _, w, _ = self.train_x.shape
-            self.valid_size, _, _, _ = self.valid_x.shape
+            self.train_size, _, w, _ = self.X_train.shape
 
-            logger.info(f'X.shape={train_x.shape}')
+            self.model = make_cnn_model_restart(
+                (w, w, 1),
+                self.metadata['class_num']
+            )
+            self.max_score = 0
+            self.n_iter = 0
 
-            self.model = make_cnn_model_restart((w, w, 1), self.metadata['class_num'])
-
-            optimizer = tf.keras.optimizers.SGD(decay=1e-06)
-
-            self.model.compile(optimizer, 'categorical_crossentropy')
+        cut_out = CutOut()
+        cut_out_generator = ImageDataGenerator(preprocessing_function=cut_out)
+        training_generator = MixupGenerator(
+            self.X_train,
+            self.y_train,
+            batch_size=self.batch_size,
+            datagen=cut_out_generator
+        )()
+        valid_generator = RandomCropGenerator(
+            self.X_valid,
+            batch_size=self.batch_size
+        )
 
         while True:
             elapsed_time = time.perf_counter() - start_time
@@ -329,34 +322,17 @@ class Model(object):
 
                 break
 
-            datagen = ImageDataGenerator(
-                preprocessing_function=get_frequency_masking()
-            )
-            training_generator = MixupGenerator(
-                self.train_x,
-                self.train_y,
-                batch_size=self.batch_size,
-                datagen=datagen
-            )()
-            valid_generator = TTAGenerator(
-                self.valid_x,
-                batch_size=self.batch_size
-            )()
-
             self.model.fit_generator(
                 training_generator,
-                steps_per_epoch=self.train_size // self.batch_size,
                 epochs=self.n_iter + 1,
                 initial_epoch=self.n_iter,
                 shuffle=True,
+                steps_per_epoch=self.train_size // self.batch_size,
                 verbose=1
             )
 
-            probas = self.model.predict_generator(
-                valid_generator,
-                steps=np.ceil(self.valid_size / self.batch_size)
-            )
-            valid_score = roc_auc_score(self.valid_y, probas, average='macro')
+            probas = self.model.predict_generator(valid_generator)
+            valid_score = roc_auc_score(self.y_valid, probas, average='macro')
 
             self.n_iter += 1
 
@@ -370,36 +346,27 @@ class Model(object):
 
                 break
 
-    def test(self, test_x, remaining_time_budget=None):
-        if not hasattr(self, 'test_x'):
-            self.test_x = get_kapre_logmel(
-                test_x,
-                len_sample=5,
-                model=self.logmel_model
-            )
-            self.test_x = (
-                self.test_x - np.mean(
-                    self.test_x,
+    def test(self, X_test, remaining_time_budget=None):
+        if not hasattr(self, 'X_test'):
+            self.X_test = get_features(X_test, self.extractor, sr=self.sr)
+            self.X_test = (
+                self.X_test - np.mean(
+                    self.X_test,
                     axis=(1, 2, 3),
                     keepdims=True
                 )
-            ) / np.std(self.test_x, axis=(1, 2, 3), keepdims=True)
-            self.test_size, _, _, _ = self.test_x.shape
+            ) / np.std(self.X_test, axis=(1, 2, 3), keepdims=True)
 
+        test_generator = RandomCropGenerator(
+            self.X_test,
+            batch_size=self.batch_size
+        )
         probas = np.zeros(
             (self.metadata['test_num'], self.metadata['class_num'])
         )
 
         for _ in range(self.n_predictions):
-            test_generator = TTAGenerator(
-                self.test_x,
-                batch_size=self.batch_size
-            )()
-
-            probas += self.model.predict_generator(
-                test_generator,
-                steps=np.ceil(self.test_size / self.batch_size)
-            )
+            probas += self.model.predict_generator(test_generator)
 
         probas /= self.n_predictions
 
