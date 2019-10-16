@@ -133,22 +133,24 @@ def make_cnn_model(input_shape, n_classes, max_layer_num=5):
     return model
 
 
-def get_frequency_masking(p=0.5, F=0.2):
-    def frequency_masking(input_img):
-        _, img_w, _ = input_img.shape
-        p_1 = np.random.rand()
+class CutOut(object):
+    def __init__(self, probability=0.5, F=0.2):
+        self.probability = probability
+        self.F = F
 
-        if p_1 > p:
-            return input_img
+    def __call__(self, image):
+        _, w, _ = image.shape
+        p = np.random.rand()
 
-        f = np.random.randint(0, int(img_w * F))
-        f0 = np.random.randint(0, img_w - f)
+        if p > self.probability:
+            return image
 
-        input_img[:, f0:f0 + f, :] = 0
+        f = np.random.randint(0, int(w * self.F))
+        f0 = np.random.randint(0, w - f)
 
-        return input_img
+        image[:, f0:f0 + f, :] = 0
 
-    return frequency_masking
+        return image
 
 
 class RandomCropGenerator(Sequence):
@@ -320,7 +322,7 @@ class Model(object):
                 break
 
             datagen = ImageDataGenerator(
-                preprocessing_function=get_frequency_masking()
+                preprocessing_function=CutOut()
             )
             training_generator = MixupGenerator(
                 self.X_train,
