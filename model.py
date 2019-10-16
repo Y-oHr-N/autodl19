@@ -22,6 +22,7 @@ from tensorflow.python.keras.layers import Flatten
 from tensorflow.python.keras.layers import MaxPooling2D
 from tensorflow.python.keras.models import Sequential
 from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.python.keras.utils.data_utils import Sequence
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
@@ -150,29 +151,33 @@ def get_frequency_masking(p=0.5, F=0.2):
     return frequency_masking
 
 
-class TTAGenerator(object):
-    def __init__(self, X_test, batch_size):
-        self.X_test = X_test
+class RandomCropGenerator(Sequence):
+    def __init__(self, X, y=None, batch_size=32):
+        self.X = X
+        self.y = y
         self.batch_size = batch_size
 
-        self.n_samples = len(X_test)
+    def __len__(self):
+        n, _, _, _ = self.X.shape
 
-    def __call__(self):
-        while True:
-            for start in range(0, self.n_samples, self.batch_size):
-                end = min(start + self.batch_size, self.n_samples)
-                X_test_batch = self.X_test[start:end]
+        return int(np.ceil(n / self.batch_size))
 
-                yield self.__data_generation(X_test_batch)
+    def __getitem__(self, i):
+        batch = slice(i * self.batch_size, (i + 1) * self.batch_size)
 
-    def __data_generation(self, X_test_batch):
-        d, _, w, _ = X_test_batch.shape
-        X = np.zeros((d, w, w, 1))
+        X = self.X[batch]
+        n, _, w, _ = X.shape
+        Xt = np.zeros((n, w, w, 1))
 
-        for i in range(d):
-            X[i] = get_crop_image(X_test_batch[i])
+        for i in range(n):
+            Xt[i] = get_crop_image(X[i])
 
-        return X, None
+        y = self.y
+
+        if y is not None:
+            y = self.y[batch]
+
+        return Xt, y
 
 
 class MixupGenerator(object):
@@ -323,10 +328,10 @@ class Model(object):
                 batch_size=self.batch_size,
                 datagen=datagen
             )()
-            valid_generator = TTAGenerator(
+            valid_generator = RandomCropGenerator(
                 self.X_valid,
                 batch_size=self.batch_size
-            )()
+            )
 
             self.model.fit_generator(
                 training_generator,
@@ -376,10 +381,10 @@ class Model(object):
         )
 
         for _ in range(self.n_predictions):
-            test_generator = TTAGenerator(
+            test_generator = RandomCropGenerator(
                 self.X_test,
                 batch_size=self.batch_size
-            )()
+            )
 
             probas += self.model.predict_generator(
                 test_generator,
