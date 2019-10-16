@@ -76,7 +76,7 @@ def get_fixed_array(X_list, len_sample=5):
             n_repeat = np.ceil(
                 SAMPLING_FREQ * len_sample / X_list[i].shape[0]
             ).astype(np.int32)
-            X_list[i] = np.repeat(X_list[i], n_repeat)
+            X_list[i] = np.tile(X_list[i], n_repeat)
 
         X_list[i] = X_list[i][:len_sample * SAMPLING_FREQ]
 
@@ -241,6 +241,7 @@ class MixupGenerator(object):
         if self.datagen is not None:
             for i in range(self.batch_size):
                 X[i] = self.datagen.random_transform(X[i])
+                X[i] = self.datagen.standardize(X[i])
 
         return X, y
 
