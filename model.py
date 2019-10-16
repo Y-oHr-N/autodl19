@@ -96,14 +96,6 @@ def get_kapre_logmel(X_list, model, len_sample=5):
     return X
 
 
-def get_crop_image(image):
-    time_dim, base_dim, _ = image.shape
-    crop = np.random.randint(0, time_dim - base_dim)
-    image = image[crop:crop + base_dim, :, :]
-
-    return image
-
-
 def make_cnn_model(input_shape, n_classes, max_layer_num=5):
     model = Sequential()
     min_size = min(input_shape[:2])
@@ -170,11 +162,12 @@ class RandomCropGenerator(Sequence):
         batch = slice(i * self.batch_size, (i + 1) * self.batch_size)
 
         X = self.X[batch]
-        n, _, w, _ = X.shape
+        n, h, w, _ = X.shape
         Xt = np.zeros((n, w, w, 1))
 
         for i in range(n):
-            Xt[i] = get_crop_image(X[i])
+            h0 = np.random.randint(0, h - w)
+            Xt[i] = X[i, h0:h0 + w, :, :]
 
         y = self.y
 
@@ -187,15 +180,15 @@ class RandomCropGenerator(Sequence):
 class MixupGenerator(object):
     def __init__(
         self,
-        X_train,
-        y_train,
+        X,
+        y,
         alpha=0.2,
         batch_size=32,
         datagen=None,
         shuffle=True
     ):
-        self.X_train = X_train
-        self.y_train = y_train
+        self.X = X
+        self.y = y
         self.alpha = alpha
         self.batch_size = batch_size
         self.datagen = datagen
@@ -203,56 +196,36 @@ class MixupGenerator(object):
 
     def __call__(self):
         while True:
-            indices = self.__get_exploration_order()
-            n_samples = len(self.X_train)
-            itr_num = int(n_samples // (2 * self.batch_size))
+            n, _, _, _ = self.X.shape
+            indices = np.arange(n)
 
-            for i in range(itr_num):
-                indices_head = indices[
-                    2 * i * self.batch_size:(2 * i + 1) * self.batch_size
-                ]
-                indices_tail = indices[
-                    (2 * i + 1) * self.batch_size:(2 * i + 2) * self.batch_size
-                ]
+            if self.shuffle:
+                np.random.shuffle(indices)
 
-                yield self.__data_generation(indices_head, indices_tail)
+            for i in range(int(n / 2 / self.batch_size)):
+                # random crop
+                datagen = RandomCropGenerator(
+                    safe_indexing(self.X, indices),
+                    safe_indexing(self.y, indices),
+                    batch_size=self.batch_size
+                )
+                X1, y1 = datagen[2 * i]
+                X2, y2 = datagen[2 * i + 1]
 
-    def __get_exploration_order(self):
-        n_samples = len(self.X_train)
-        indices = np.arange(n_samples)
+                # mixup
+                l = np.random.beta(self.alpha, self.alpha, self.batch_size)
+                X_l = l.reshape(self.batch_size, 1, 1, 1)
+                y_l = l.reshape(self.batch_size, 1)
+                X = X1 * X_l + X2 * (1.0 - X_l)
+                y = y1 * y_l + y2 * (1.0 - y_l)
 
-        if self.shuffle:
-            np.random.shuffle(indices)
+                if self.datagen is not None:
+                    # cutout
+                    for i in range(self.batch_size):
+                        X[i] = self.datagen.random_transform(X[i])
+                        X[i] = self.datagen.standardize(X[i])
 
-        return indices
-
-    def __data_generation(self, indices_head, indices_tail):
-        l = np.random.beta(self.alpha, self.alpha, self.batch_size)
-        X_l = l.reshape(self.batch_size, 1, 1, 1)
-        y_l = l.reshape(self.batch_size, 1)
-
-        X1_tmp = safe_indexing(self.X_train, indices_head)
-        X2_tmp = safe_indexing(self.X_train, indices_tail)
-        d, _, w, _ = X1_tmp.shape
-        X1 = np.zeros((d, w, w, 1))
-        X2 = np.zeros((d, w, w, 1))
-
-        for i in range(self.batch_size):
-            X1[i] = get_crop_image(X1_tmp[i])
-            X2[i] = get_crop_image(X2_tmp[i])
-
-        X = X1 * X_l + X2 * (1.0 - X_l)
-
-        y1 = safe_indexing(self.y_train, indices_head)
-        y2 = safe_indexing(self.y_train, indices_tail)
-        y = y1 * y_l + y2 * (1.0 - y_l)
-
-        if self.datagen is not None:
-            for i in range(self.batch_size):
-                X[i] = self.datagen.random_transform(X[i])
-                X[i] = self.datagen.standardize(X[i])
-
-        return X, y
+                yield X, y
 
 
 class Model(object):
