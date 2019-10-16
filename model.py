@@ -70,15 +70,17 @@ def make_logmel_model(input_shape):
     return model
 
 
-def get_fixed_array(X_list, len_sample=5):
-    for i in range(len(X_list)):
-        if len(X_list[i]) < len_sample * SAMPLING_FREQ:
+def get_fixed_array(X_list, len_sample=5, sr=SAMPLING_FREQ):
+    n = len(X_list)
+
+    for i in range(n):
+        if n < len_sample * sr:
             n_repeat = np.ceil(
-                SAMPLING_FREQ * len_sample / X_list[i].shape[0]
+                sr * len_sample / X_list[i].shape[0]
             ).astype(np.int32)
             X_list[i] = np.tile(X_list[i], n_repeat)
 
-        X_list[i] = X_list[i][:len_sample * SAMPLING_FREQ]
+        X_list[i] = X_list[i][:len_sample * sr]
 
     X = np.asarray(X_list)
     X = X[:, :, np.newaxis]
