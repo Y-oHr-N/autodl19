@@ -106,7 +106,7 @@ def make_cnn_model_restart(input_shape, n_classes, max_layer_num=5):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     filename = os.path.join(base_dir, 'ckpt/ckpt01/data01.ckpt')
     #[100,7,3,20,10]
-    model = make_cnn_model(input_shape, n_classes=7, max_layer_num=5)
+    model = make_cnn_model(input_shape, n_classes=100, max_layer_num=5)
     optimizer = tf.keras.optimizers.SGD(decay=1e-06)
 
     model.compile(optimizer, 'categorical_crossentropy')
