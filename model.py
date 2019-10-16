@@ -284,12 +284,12 @@ class Model(object):
         start_time = time.perf_counter()
 
         if not hasattr(self, 'train_x'):
-            self.logmel_model = make_logmel_model((1, 5 * SAMPLING_FREQ))
+            self.logmel_model = make_logmel_model((1, 10 * SAMPLING_FREQ))
 
             train_x, train_y = train_dataset
             train_x = get_kapre_logmel(
                 train_x,
-                len_sample=5,
+                len_sample=10,
                 model=self.logmel_model
             )
             train_x = (
@@ -316,7 +316,7 @@ class Model(object):
 
             self.model = make_cnn_model_restart((w, w, 1), self.metadata['class_num'])
 
-            optimizer = tf.keras.optimizers.SGD(decay=1e-06)
+            optimizer = tf.keras.optimizers.SGD(decay=1e-06, momentum=0.9)
 
             self.model.compile(optimizer, 'categorical_crossentropy')
 
@@ -346,7 +346,7 @@ class Model(object):
             self.model.fit_generator(
                 training_generator,
                 steps_per_epoch=self.train_size // self.batch_size,
-                epochs=self.n_iter + 1,
+                epochs=self.n_iter + 5,
                 initial_epoch=self.n_iter,
                 shuffle=True,
                 verbose=1
@@ -358,7 +358,7 @@ class Model(object):
             )
             valid_score = roc_auc_score(self.valid_y, probas, average='macro')
 
-            self.n_iter += 1
+            self.n_iter += 5
 
             logger.info(
                 f'valid_auc={valid_score:.3f}, '
@@ -374,7 +374,7 @@ class Model(object):
         if not hasattr(self, 'test_x'):
             self.test_x = get_kapre_logmel(
                 test_x,
-                len_sample=5,
+                len_sample=10,
                 model=self.logmel_model
             )
             self.test_x = (
