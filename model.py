@@ -102,6 +102,21 @@ def get_crop_image(image):
 
     return image
 
+def make_cnn_model_restart(input_shape, n_classes, max_layer_num=5):
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    filename = os.path.join(base_dir, 'ckpt/ckpt01/data01.ckpt')
+    #[100,7,3,20,10]
+    model = make_cnn_model(input_shape, n_classes=7, max_layer_num=5)
+    optimizer = tf.keras.optimizers.SGD(decay=1e-06)
+
+    model.compile(optimizer, 'categorical_crossentropy')
+    model.load_weights(filename)
+    model.pop()
+    model.pop()
+    model.add(Dense(n_classes))
+    model.add(Activation('softmax'))
+
+    return model
 
 def make_cnn_model(input_shape, n_classes, max_layer_num=5):
     model = Sequential()
@@ -299,7 +314,7 @@ class Model(object):
 
             logger.info(f'X.shape={train_x.shape}')
 
-            self.model = make_cnn_model((w, w, 1), self.metadata['class_num'])
+            self.model = make_cnn_model_restart((w, w, 1), self.metadata['class_num'])
 
             optimizer = tf.keras.optimizers.SGD(decay=1e-06)
 
