@@ -13,15 +13,15 @@ from keras.backend.tensorflow_backend import set_session
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn.utils import safe_indexing
-from tensorflow.python.keras.layers import Activation
-from tensorflow.python.keras.layers import BatchNormalization
-from tensorflow.python.keras.layers import Conv2D
-from tensorflow.python.keras.layers import Dense
-from tensorflow.python.keras.layers import Dropout
-from tensorflow.python.keras.layers import Flatten
-from tensorflow.python.keras.layers import MaxPooling2D
-from tensorflow.python.keras.models import Sequential
-from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.layers import Activation
+from tensorflow.keras.layers import BatchNormalization
+from tensorflow.keras.layers import Conv2D
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Dropout
+from tensorflow.keras.layers import Flatten
+from tensorflow.keras.layers import MaxPooling2D
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.python.keras.utils.data_utils import Sequence
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,6 @@ sess = tf.compat.v1.Session(config=config)
 
 set_session(sess)
 
-# parameters
 SAMPLING_FREQ = 16_000
 N_MELS = 64
 HOP_LENGTH = 512
@@ -89,7 +88,7 @@ def get_fixed_array(X_list, len_sample=5, sr=SAMPLING_FREQ):
     return X
 
 
-def get_kapre_logmel(X_list, len_sample=5, model=None):
+def get_kapre_logmel(X_list, model, len_sample=5):
     X = get_fixed_array(X_list, len_sample=len_sample)
     X = model.predict(X)
     X = X.transpose(0, 2, 1, 3)
@@ -108,6 +107,7 @@ def get_crop_image(image):
 def make_cnn_model(input_shape, n_classes, max_layer_num=5):
     model = Sequential()
     min_size = min(input_shape[:2])
+    optimizer = tf.keras.optimizers.SGD(decay=1e-06)
 
     for i in range(max_layer_num):
         if i == 0:
@@ -130,6 +130,7 @@ def make_cnn_model(input_shape, n_classes, max_layer_num=5):
     model.add(Activation('relu'))
     model.add(Dense(n_classes))
     model.add(Activation('softmax'))
+    model.compile(optimizer, 'categorical_crossentropy')
 
     return model
 
@@ -263,9 +264,9 @@ class Model(object):
         patience=100,
         random_state=0
     ):
+        self.batch_size = batch_size
         self.metadata = metadata
         self.n_predictions = n_predictions
-        self.batch_size = batch_size
         self.patience = patience
         self.random_state = random_state
 
@@ -280,10 +281,7 @@ class Model(object):
             self.logmel_model = make_logmel_model((1, 5 * SAMPLING_FREQ))
 
             X_train, y_train = train_dataset
-            X_train = get_kapre_logmel(
-                X_train,
-                model=self.logmel_model
-            )
+            X_train = get_kapre_logmel(X_train, self.logmel_model)
             X_train = (
                 X_train - np.mean(
                     X_train,
@@ -307,9 +305,6 @@ class Model(object):
 
             self.model = make_cnn_model((w, w, 1), self.metadata['class_num'])
 
-            optimizer = tf.keras.optimizers.SGD(decay=1e-06)
-
-            self.model.compile(optimizer, 'categorical_crossentropy')
 
         while True:
             elapsed_time = time.perf_counter() - start_time
@@ -336,10 +331,10 @@ class Model(object):
 
             self.model.fit_generator(
                 training_generator,
-                steps_per_epoch=self.train_size // self.batch_size,
                 epochs=self.n_iter + 1,
                 initial_epoch=self.n_iter,
                 shuffle=True,
+                steps_per_epoch=self.train_size // self.batch_size,
                 verbose=1
             )
 
@@ -360,10 +355,7 @@ class Model(object):
 
     def test(self, X_test, remaining_time_budget=None):
         if not hasattr(self, 'X_test'):
-            self.X_test = get_kapre_logmel(
-                X_test,
-                model=self.logmel_model
-            )
+            self.X_test = get_kapre_logmel(X_test, self.logmel_model)
             self.X_test = (
                 self.X_test - np.mean(
                     self.X_test,
