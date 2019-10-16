@@ -47,7 +47,34 @@ FMIN = 20
 FMAX = SAMPLING_FREQ // 2
 
 
-def make_logmel_model(input_shape):
+def get_fixed_array(X_list, len_sample=5, sr=SAMPLING_FREQ):
+    n = len(X_list)
+
+    for i in range(n):
+        if n < len_sample * sr:
+            n_repeat = np.ceil(
+                sr * len_sample / X_list[i].shape[0]
+            ).astype(np.int32)
+            X_list[i] = np.tile(X_list[i], n_repeat)
+
+        X_list[i] = X_list[i][:len_sample * sr]
+
+    X = np.asarray(X_list)
+    X = X[:, :, np.newaxis]
+    X = X.transpose(0, 2, 1)
+
+    return X
+
+
+def get_features(X_list, model, len_sample=5, sr=SAMPLING_FREQ):
+    X = get_fixed_array(X_list, len_sample=len_sample, sr=sr)
+    X = model.predict(X)
+    X = X.transpose(0, 2, 1, 3)
+
+    return X
+
+
+def make_extractor(input_shape):
     model = keras.models.Sequential()
 
     model.add(
@@ -69,34 +96,7 @@ def make_logmel_model(input_shape):
     return model
 
 
-def get_fixed_array(X_list, len_sample=5, sr=SAMPLING_FREQ):
-    n = len(X_list)
-
-    for i in range(n):
-        if n < len_sample * sr:
-            n_repeat = np.ceil(
-                sr * len_sample / X_list[i].shape[0]
-            ).astype(np.int32)
-            X_list[i] = np.tile(X_list[i], n_repeat)
-
-        X_list[i] = X_list[i][:len_sample * sr]
-
-    X = np.asarray(X_list)
-    X = X[:, :, np.newaxis]
-    X = X.transpose(0, 2, 1)
-
-    return X
-
-
-def get_kapre_logmel(X_list, model, len_sample=5):
-    X = get_fixed_array(X_list, len_sample=len_sample)
-    X = model.predict(X)
-    X = X.transpose(0, 2, 1, 3)
-
-    return X
-
-
-def make_cnn_model(input_shape, n_classes, max_layer_num=5):
+def make_model(input_shape, n_classes, max_layer_num=5):
     model = Sequential()
     min_size = min(input_shape[:2])
     optimizer = tf.keras.optimizers.SGD(decay=1e-06)
@@ -235,26 +235,28 @@ class Model(object):
         batch_size=32,
         n_predictions=10,
         patience=100,
-        random_state=0
+        random_state=0,
+        sr=SAMPLING_FREQ,
+        valid_size=0.9
     ):
         self.batch_size = batch_size
         self.metadata = metadata
         self.n_predictions = n_predictions
         self.patience = patience
         self.random_state = random_state
+        self.sr = sr
+        self.valid_size = valid_size
 
         self.done_training = False
-        self.max_score = 0
-        self.n_iter = 0
 
     def train(self, train_dataset, remaining_time_budget=None):
         start_time = time.perf_counter()
 
         if not hasattr(self, 'X_train'):
-            self.logmel_model = make_logmel_model((1, 5 * SAMPLING_FREQ))
+            self.extractor = make_extractor((1, 5 * self.sr))
 
             X_train, y_train = train_dataset
-            X_train = get_kapre_logmel(X_train, self.logmel_model)
+            X_train = get_features(X_train, self.extractor, sr=self.sr)
             X_train = (
                 X_train - np.mean(
                     X_train,
@@ -270,13 +272,15 @@ class Model(object):
                     random_state=self.random_state,
                     shuffle=True,
                     stratify=y_train,
-                    train_size=0.9
+                    train_size=self.valid_size
                 )
             self.train_size, _, w, _ = self.X_train.shape
 
             logger.info(f'X.shape={X_train.shape}')
 
-            self.model = make_cnn_model((w, w, 1), self.metadata['class_num'])
+            self.model = make_model((w, w, 1), self.metadata['class_num'])
+            self.max_score = 0
+            self.n_iter = 0
 
         cut_out = CutOut()
         cut_out_generator = ImageDataGenerator(preprocessing_function=cut_out)
@@ -326,7 +330,7 @@ class Model(object):
 
     def test(self, X_test, remaining_time_budget=None):
         if not hasattr(self, 'X_test'):
-            self.X_test = get_kapre_logmel(X_test, self.logmel_model)
+            self.X_test = get_features(X_test, self.extractor, sr=self.sr)
             self.X_test = (
                 self.X_test - np.mean(
                     self.X_test,
