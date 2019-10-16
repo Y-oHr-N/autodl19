@@ -268,36 +268,36 @@ class Model(object):
     def train(self, train_dataset, remaining_time_budget=None):
         start_time = time.perf_counter()
 
-        if not hasattr(self, 'train_x'):
+        if not hasattr(self, 'X_train'):
             self.logmel_model = make_logmel_model((1, 5 * SAMPLING_FREQ))
 
-            train_x, train_y = train_dataset
-            train_x = get_kapre_logmel(
-                train_x,
+            X_train, y_train = train_dataset
+            X_train = get_kapre_logmel(
+                X_train,
                 len_sample=5,
                 model=self.logmel_model
             )
-            train_x = (
-                train_x - np.mean(
-                    train_x,
+            X_train = (
+                X_train - np.mean(
+                    X_train,
                     axis=(1, 2, 3),
                     keepdims=True
                 )
-            ) / np.std(train_x, axis=(1, 2, 3), keepdims=True)
+            ) / np.std(X_train, axis=(1, 2, 3), keepdims=True)
 
-            self.train_x, self.valid_x, \
-                self.train_y, self.valid_y = train_test_split(
-                    train_x,
-                    train_y,
+            self.X_train, self.X_valid, \
+                self.y_train, self.y_valid = train_test_split(
+                    X_train,
+                    y_train,
                     random_state=self.random_state,
                     shuffle=True,
-                    stratify=train_y,
+                    stratify=y_train,
                     train_size=0.9
                 )
-            self.train_size, _, w, _ = self.train_x.shape
-            self.valid_size, _, _, _ = self.valid_x.shape
+            self.train_size, _, w, _ = self.X_train.shape
+            self.valid_size, _, _, _ = self.X_valid.shape
 
-            logger.info(f'X.shape={train_x.shape}')
+            logger.info(f'X.shape={X_train.shape}')
 
             self.model = make_cnn_model((w, w, 1), self.metadata['class_num'])
 
@@ -318,13 +318,13 @@ class Model(object):
                 preprocessing_function=get_frequency_masking()
             )
             training_generator = MixupGenerator(
-                self.train_x,
-                self.train_y,
+                self.X_train,
+                self.y_train,
                 batch_size=self.batch_size,
                 datagen=datagen
             )()
             valid_generator = TTAGenerator(
-                self.valid_x,
+                self.X_valid,
                 batch_size=self.batch_size
             )()
 
@@ -341,7 +341,7 @@ class Model(object):
                 valid_generator,
                 steps=np.ceil(self.valid_size / self.batch_size)
             )
-            valid_score = roc_auc_score(self.valid_y, probas, average='macro')
+            valid_score = roc_auc_score(self.y_valid, probas, average='macro')
 
             self.n_iter += 1
 
@@ -355,21 +355,21 @@ class Model(object):
 
                 break
 
-    def test(self, test_x, remaining_time_budget=None):
-        if not hasattr(self, 'test_x'):
-            self.test_x = get_kapre_logmel(
-                test_x,
+    def test(self, X_test, remaining_time_budget=None):
+        if not hasattr(self, 'X_test'):
+            self.X_test = get_kapre_logmel(
+                X_test,
                 len_sample=5,
                 model=self.logmel_model
             )
-            self.test_x = (
-                self.test_x - np.mean(
-                    self.test_x,
+            self.X_test = (
+                self.X_test - np.mean(
+                    self.X_test,
                     axis=(1, 2, 3),
                     keepdims=True
                 )
-            ) / np.std(self.test_x, axis=(1, 2, 3), keepdims=True)
-            self.test_size, _, _, _ = self.test_x.shape
+            ) / np.std(self.X_test, axis=(1, 2, 3), keepdims=True)
+            self.test_size, _, _, _ = self.X_test.shape
 
         probas = np.zeros(
             (self.metadata['test_num'], self.metadata['class_num'])
@@ -377,7 +377,7 @@ class Model(object):
 
         for _ in range(self.n_predictions):
             test_generator = TTAGenerator(
-                self.test_x,
+                self.X_test,
                 batch_size=self.batch_size
             )()
 
