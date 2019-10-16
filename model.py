@@ -302,7 +302,6 @@ class Model(object):
                     train_size=0.9
                 )
             self.train_size, _, w, _ = self.X_train.shape
-            self.valid_size, _, _, _ = self.X_valid.shape
 
             logger.info(f'X.shape={X_train.shape}')
 
@@ -344,10 +343,7 @@ class Model(object):
                 verbose=1
             )
 
-            probas = self.model.predict_generator(
-                valid_generator,
-                steps=np.ceil(self.valid_size / self.batch_size)
-            )
+            probas = self.model.predict_generator(valid_generator)
             valid_score = roc_auc_score(self.y_valid, probas, average='macro')
 
             self.n_iter += 1
@@ -376,7 +372,6 @@ class Model(object):
                     keepdims=True
                 )
             ) / np.std(self.X_test, axis=(1, 2, 3), keepdims=True)
-            self.test_size, _, _, _ = self.X_test.shape
 
         probas = np.zeros(
             (self.metadata['test_num'], self.metadata['class_num'])
@@ -388,10 +383,7 @@ class Model(object):
                 batch_size=self.batch_size
             )
 
-            probas += self.model.predict_generator(
-                test_generator,
-                steps=np.ceil(self.test_size / self.batch_size)
-            )
+            probas += self.model.predict_generator(test_generator)
 
         probas /= self.n_predictions
 
