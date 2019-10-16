@@ -159,20 +159,27 @@ class RandomCropGenerator(Sequence):
         return int(np.ceil(n / self.batch_size))
 
     def __getitem__(self, i):
-        batch = slice(i * self.batch_size, (i + 1) * self.batch_size)
+        left = i * self.batch_size
+        right = left + self.batch_size
+        batch = slice(left, right)
 
-        X = self.X[batch]
-        n, h, w, _ = X.shape
-        Xt = np.zeros((n, w, w, 1))
+        n, h, w, _ = self.X.shape
 
-        for i in range(n):
+        if right <= n:
+            nt = self.batch_size
+        else:
+            nt = n % self.batch_size
+
+        Xt = np.zeros((nt, w, w, 1))
+
+        for j in range(nt):
             h0 = np.random.randint(0, h - w)
-            Xt[i] = X[i, h0:h0 + w, :, :]
+            Xt[j] = self.X[left + j, h0:h0 + w, :, :]
 
         y = self.y
 
         if y is not None:
-            y = self.y[batch]
+            y = safe_indexing(self.y, batch)
 
         return Xt, y
 
@@ -203,14 +210,18 @@ class MixupGenerator(object):
                 np.random.shuffle(indices)
 
             for i in range(int(n / 2 / self.batch_size)):
+                batch = indices[
+                    2 * i * self.batch_size:2 * (i + 1) * self.batch_size
+                ]
+
                 # random crop
                 datagen = RandomCropGenerator(
-                    safe_indexing(self.X, indices),
-                    safe_indexing(self.y, indices),
+                    safe_indexing(self.X, batch),
+                    safe_indexing(self.y, batch),
                     batch_size=self.batch_size
                 )
-                X1, y1 = datagen[2 * i]
-                X2, y2 = datagen[2 * i + 1]
+                X1, y1 = datagen[0]
+                X2, y2 = datagen[1]
 
                 # mixup
                 l = np.random.beta(self.alpha, self.alpha, self.batch_size)
