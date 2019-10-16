@@ -278,6 +278,18 @@ class Model(object):
 
             self.model = make_cnn_model((w, w, 1), self.metadata['class_num'])
 
+        cut_out = CutOut()
+        cut_out_generator = ImageDataGenerator(preprocessing_function=cut_out)
+        training_generator = MixupGenerator(
+            self.X_train,
+            self.y_train,
+            batch_size=self.batch_size,
+            datagen=cut_out_generator
+        )()
+        valid_generator = RandomCropGenerator(
+            self.X_valid,
+            batch_size=self.batch_size
+        )
 
         while True:
             elapsed_time = time.perf_counter() - start_time
@@ -287,20 +299,6 @@ class Model(object):
                 self.done_training = True
 
                 break
-
-            datagen = ImageDataGenerator(
-                preprocessing_function=CutOut()
-            )
-            training_generator = MixupGenerator(
-                self.X_train,
-                self.y_train,
-                batch_size=self.batch_size,
-                datagen=datagen
-            )()
-            valid_generator = RandomCropGenerator(
-                self.X_valid,
-                batch_size=self.batch_size
-            )
 
             self.model.fit_generator(
                 training_generator,
@@ -337,16 +335,15 @@ class Model(object):
                 )
             ) / np.std(self.X_test, axis=(1, 2, 3), keepdims=True)
 
+        test_generator = RandomCropGenerator(
+            self.X_test,
+            batch_size=self.batch_size
+        )
         probas = np.zeros(
             (self.metadata['test_num'], self.metadata['class_num'])
         )
 
         for _ in range(self.n_predictions):
-            test_generator = RandomCropGenerator(
-                self.X_test,
-                batch_size=self.batch_size
-            )
-
             probas += self.model.predict_generator(test_generator)
 
         probas /= self.n_predictions
