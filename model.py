@@ -379,7 +379,7 @@ class Model:
         self.model = None
         self.task = info['task']
         self.train_time_budget = info['time_budget']
-        # self.pred_time_budget = info.get('pred_time_budget')
+        self.pred_time_budget = info.get('pred_time_budget')
         self.cols_dtype = info['schema']
 
         self.dtype_cols = {'cat': [], 'num': [], 'time': []}
