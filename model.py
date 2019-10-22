@@ -25,6 +25,41 @@ logger = logging.getLogger(__name__)
 timeit = Timeit(logger=logger)
 
 
+def _hyperopt(X, y, params):
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.5, random_state=0)
+    train_data = lgb.Dataset(X_train, label=y_train)
+    valid_data = lgb.Dataset(X_val, label=y_val)
+
+    space = {
+        "learning_rate": hp.loguniform("learning_rate", np.log(0.01), np.log(0.5)),
+        "max_depth": hp.choice("max_depth", [-1, 2, 3, 4, 5, 6]),
+        "num_leaves": hp.choice("num_leaves", np.linspace(10, 200, 50, dtype=int)),
+        "feature_fraction": hp.quniform("feature_fraction", 0.8, 1.0, 0.1),
+        "reg_alpha": hp.uniform("reg_alpha", 0, 2),
+        "reg_lambda": hp.uniform("reg_lambda", 0, 2),
+        "min_child_weight": hp.uniform('min_child_weight', 0.5, 10),
+    }
+
+    def objective(hyperparams):
+        model = lgb.train({**params, **hyperparams}, train_data, 300,
+                            valid_data, early_stopping_rounds=30, verbose_eval=0)
+
+        score = model.best_score["valid_0"][params["metric"]]
+
+        return {'loss': -score, 'status': STATUS_OK}
+
+    trials = Trials()
+    best = fmin(fn=objective, space=space, trials=trials,
+                algo=tpe.suggest, max_evals=2, verbose=1,
+                rstate=np.random.RandomState(1))
+
+    hyperparams = space_eval(space, best)
+
+    logger.info(f"auc = {-trials.best_trial['result']['loss']:0.4f} {hyperparams}")
+
+    return hyperparams
+
+
 class AutoSSLClassifier:
     def __init__(self):
         self.iter = 5
@@ -49,7 +84,7 @@ class AutoSSLClassifier:
             if X_unlabeled.shape[0] < self.label_data:
                 break
 
-            hyperparams = self._hyperopt(X_label, y_label, params)
+            hyperparams = _hyperopt(X_label, y_label, params)
 
             X_train, X_val, y_train, y_val = train_test_split(
                 X,
@@ -95,40 +130,6 @@ class AutoSSLClassifier:
 
         return X_label, y_label, X_unlabeled, y_unlabeled
 
-    def _hyperopt(self, X, y, params):
-        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.5, random_state=0)
-        train_data = lgb.Dataset(X_train, label=y_train)
-        valid_data = lgb.Dataset(X_val, label=y_val)
-
-        space = {
-            "learning_rate": hp.loguniform("learning_rate", np.log(0.01), np.log(0.5)),
-            "max_depth": hp.choice("max_depth", [-1, 2, 3, 4, 5, 6]),
-            "num_leaves": hp.choice("num_leaves", np.linspace(10, 200, 50, dtype=int)),
-            "feature_fraction": hp.quniform("feature_fraction", 0.8, 1.0, 0.1),
-            "reg_alpha": hp.uniform("reg_alpha", 0, 2),
-            "reg_lambda": hp.uniform("reg_lambda", 0, 2),
-            "min_child_weight": hp.uniform('min_child_weight', 0.5, 10),
-        }
-
-        def objective(hyperparams):
-            model = lgb.train({**params, **hyperparams}, train_data, 300,
-                              valid_data, early_stopping_rounds=30, verbose_eval=0)
-
-            score = model.best_score["valid_0"][params["metric"]]
-
-            return {'loss': -score, 'status': STATUS_OK}
-
-        trials = Trials()
-        best = fmin(fn=objective, space=space, trials=trials,
-                    algo=tpe.suggest, max_evals=2, verbose=1,
-                    rstate=np.random.RandomState(1))
-
-        hyperparams = space_eval(space, best)
-
-        logger.info(f"auc = {-trials.best_trial['result']['loss']:0.4f} {hyperparams}")
-
-        return hyperparams
-
 
 class AutoPUClassifier:
     def __init__(self):
@@ -148,7 +149,7 @@ class AutoPUClassifier:
             x_sample, y_sample = self._negative_sample(X, y)
             X_sample, y_sample = sample(x_sample, y_sample, 30000)
 
-            hyperparams = self._hyperopt(X_sample, y_sample, params)
+            hyperparams = _hyperopt(X_sample, y_sample, params)
 
             X_train, X_val, y_train, y_val = train_test_split(
                 X_sample,
@@ -191,46 +192,6 @@ class AutoPUClassifier:
 
         return x_sample, y_sample
 
-    def _hyperopt(self, X, y, params):
-        X_train, X_val, y_train, y_val = train_test_split(
-            X,
-            y,
-            test_size=0.5,
-            random_state=1
-        )
-        train_data = lgb.Dataset(X_train, label=y_train)
-        valid_data = lgb.Dataset(X_val, label=y_val)
-
-        space = {
-            "learning_rate": hp.loguniform("learning_rate", np.log(0.01), np.log(0.5)),
-            "max_depth": hp.choice("max_depth", [-1, 2, 3, 4, 5, 6]),
-            "num_leaves": hp.choice("num_leaves", np.linspace(10, 200, 50, dtype=int)),
-            "feature_fraction": hp.quniform("feature_fraction", 0.5, 1.0, 0.1),
-            "bagging_fraction": hp.quniform("bagging_fraction", 0.5, 1.0, 0.1),
-            "bagging_freq": hp.choice("bagging_freq", np.linspace(0, 50, 10, dtype=int)),
-            "reg_alpha": hp.uniform("reg_alpha", 0, 2),
-            "reg_lambda": hp.uniform("reg_lambda", 0, 2),
-            "min_child_weight": hp.uniform('min_child_weight', 0.5, 10),
-        }
-
-        def objective(hyperparams):
-            model = lgb.train({**params, **hyperparams}, train_data, 300,
-                              valid_data, early_stopping_rounds=30, verbose_eval=0)
-
-            score = model.best_score["valid_0"][params["metric"]]
-
-            return {'loss': -score, 'status': STATUS_OK}
-
-        trials = Trials()
-        best = fmin(fn=objective, space=space, trials=trials,
-                    algo=tpe.suggest, max_evals=2, verbose=1,
-                    rstate=np.random.RandomState(1))
-        hyperparams = space_eval(space, best)
-
-        logger.info(f"auc = {-trials.best_trial['result']['loss']:0.4f} {hyperparams}")
-
-        return hyperparams
-
 
 class AutoNoisyClassifier:
     def __init__(self):
@@ -246,7 +207,7 @@ class AutoNoisyClassifier:
         }
 
         X_sample, y_sample = sample(X, y, 30000)
-        hyperparams = self._hyperopt(X_sample, y_sample, params)
+        hyperparams = _hyperopt(X_sample, y_sample, params)
 
         X_train, X_val, y_train, y_val = train_test_split(
             X,
@@ -270,44 +231,6 @@ class AutoNoisyClassifier:
 
     def predict(self, X):
         return self.model.predict(X)
-
-    def _hyperopt(self, X, y, params):
-        X_train, X_val, y_train, y_val = train_test_split(
-            X,
-            y,
-            test_size=0.5,
-            random_state=1
-        )
-        train_data = lgb.Dataset(X_train, label=y_train)
-        valid_data = lgb.Dataset(X_val, label=y_val)
-
-        space = {
-            "learning_rate": hp.loguniform("learning_rate", np.log(0.01), np.log(0.5)),
-            "max_depth": hp.choice("max_depth", [-1, 2, 3, 4, 5, 6]),
-            "num_leaves": hp.choice("num_leaves", np.linspace(10, 200, 50, dtype=int)),
-            "feature_fraction": hp.quniform("feature_fraction", 0.8, 1.0, 0.1),
-            "reg_alpha": hp.uniform("reg_alpha", 0, 2),
-            "reg_lambda": hp.uniform("reg_lambda", 0, 2),
-            "min_child_weight": hp.uniform('min_child_weight', 0.5, 10),
-        }
-
-        def objective(hyperparams):
-            model = lgb.train({**params, **hyperparams}, train_data, 300,
-                              valid_data, early_stopping_rounds=30, verbose_eval=0)
-            score = model.best_score["valid_0"][params["metric"]]
-
-            return {'loss': -score, 'status': STATUS_OK}
-
-        trials = Trials()
-        best = fmin(fn=objective, space=space, trials=trials,
-                    algo=tpe.suggest, max_evals=2, verbose=1,
-                    rstate=np.random.RandomState(1))
-
-        hyperparams = space_eval(space, best)
-
-        logger.info(f"auc = {-trials.best_trial['result']['loss']:0.4f} {hyperparams}")
-
-        return hyperparams
 
 
 NUMERICAL_TYPE = "num"
