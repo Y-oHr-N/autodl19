@@ -11,6 +11,7 @@ os.system('pip3 install -q optuna')
 os.system('pip3 install -q pandas==0.24.2')
 os.system('pip3 install -q scikit-learn>=0.21.0')
 
+import colorlog
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
@@ -21,6 +22,15 @@ from sklearn.model_selection import train_test_split
 from automllib.utils import Timeit
 
 logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+formatter = colorlog.ColoredFormatter(
+    '%(log_color)s[%(levelname)1.1s %(asctime)s]%(reset)s %(message)s'
+)
+
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+
 timeit = Timeit(logger=logger)
 
 
