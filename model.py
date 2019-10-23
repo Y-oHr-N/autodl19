@@ -1,4 +1,3 @@
-import datetime
 import logging
 import os
 import pickle
@@ -41,8 +40,14 @@ def _hyperopt(X, y, params):
     }
 
     def objective(hyperparams):
-        model = lgb.train({**params, **hyperparams}, train_data, 300,
-                            valid_data, early_stopping_rounds=30, verbose_eval=0)
+        model = lgb.train(
+            {**params, **hyperparams},
+            train_data,
+            300,
+            valid_data,
+            early_stopping_rounds=30,
+            verbose_eval=0
+        )
 
         score = model.best_score["valid_0"][params["metric"]]
 
@@ -67,43 +72,19 @@ class AutoSSLClassifier:
         self.model = None
 
     def fit(self, X, y):
-        params = {
-            "objective": "binary",
-            "metric": "auc",
-            "verbosity": -1,
-            "seed": 1,
-            "num_threads": 4
-        }
         X_label, y_label, X_unlabeled, y_unlabeled = self._split_by_label(X, y)
         y_n_cnt, y_p_cnt = y_label.value_counts()
 
-        y_n = max(int(self.label_data*(y_n_cnt*1.0/len(y_label))), 1)
-        y_p = max(int(self.label_data*(y_p_cnt*1.0/len(y_label))), 1)
+        y_n = max(int(self.label_data * (y_n_cnt * 1.0 / len(y_label))), 1)
+        y_p = max(int(self.label_data * (y_p_cnt * 1.0 / len(y_label))), 1)
 
         for _ in range(self.iter):
             if X_unlabeled.shape[0] < self.label_data:
                 break
 
-            hyperparams = _hyperopt(X_label, y_label, params)
+            self.model = AutoNoisyClassifier()
 
-            X_train, X_val, y_train, y_val = train_test_split(
-                X,
-                y,
-                test_size=0.1,
-                random_state=0
-            )
-
-            train_data = lgb.Dataset(X_train, label=y_train)
-            valid_data = lgb.Dataset(X_val, label=y_val)
-
-            self.model = lgb.train(
-                {**params, **hyperparams},
-                train_data,
-                500,
-                valid_data,
-                early_stopping_rounds=30,
-                verbose_eval=100
-            )
+            self.model.fit(X_label, y_label)
 
             y_hat = self.model.predict(X_unlabeled)
 
@@ -137,38 +118,12 @@ class AutoPUClassifier:
         self.models = []
 
     def fit(self, X, y):
-        params = {
-            "objective": "binary",
-            "metric": "auc",
-            "verbosity": -1,
-            "seed": 1,
-            "num_threads": 4
-        }
-
         for _ in range(self.iter):
-            x_sample, y_sample = self._negative_sample(X, y)
-            X_sample, y_sample = sample(x_sample, y_sample, 30000)
+            X_sample, y_sample = self._negative_sample(X, y)
 
-            hyperparams = _hyperopt(X_sample, y_sample, params)
+            model = AutoNoisyClassifier()
 
-            X_train, X_val, y_train, y_val = train_test_split(
-                X_sample,
-                y_sample,
-                test_size=0.1,
-                random_state=1
-            )
-
-            train_data = lgb.Dataset(X_train, label=y_train)
-            valid_data = lgb.Dataset(X_val, label=y_val)
-
-            model = lgb.train(
-                {**params, **hyperparams},
-                train_data,
-                500,
-                valid_data,
-                early_stopping_rounds=30,
-                verbose_eval=100
-            )
+            model.fit(X_sample, y_sample)
 
             self.models.append(model)
 
@@ -233,36 +188,9 @@ class AutoNoisyClassifier:
         return self.model.predict(X)
 
 
-NUMERICAL_TYPE = "num"
 NUMERICAL_PREFIX = "n_"
-
-CATEGORY_TYPE = "cat"
 CATEGORY_PREFIX = "c_"
-
-TIME_TYPE = "time"
 TIME_PREFIX = "t_"
-
-
-@timeit
-def clean_table(table):
-    clean_df(table)
-
-
-@timeit
-def clean_df(df):
-    fillna(df)
-
-
-@timeit
-def fillna(df):
-    for c in [c for c in df if c.startswith(NUMERICAL_PREFIX)]:
-        df[c].fillna(-1, inplace=True)
-
-    for c in [c for c in df if c.startswith(CATEGORY_PREFIX)]:
-        df[c].fillna("0", inplace=True)
-
-    for c in [c for c in df if c.startswith(TIME_PREFIX)]:
-        df[c].fillna(datetime.datetime(1970, 1, 1), inplace=True)
 
 
 @timeit
@@ -302,7 +230,7 @@ class Model:
         self.model = None
         self.task = info['task']
         self.train_time_budget = info['time_budget']
-        self.pred_time_budget = info.get('pred_time_budget')
+        # self.pred_time_budget = info.get('pred_time_budget')
         self.cols_dtype = info['schema']
 
         self.dtype_cols = {'cat': [], 'num': [], 'time': []}
@@ -319,8 +247,6 @@ class Model:
     def train(self, X: pd.DataFrame, y: pd.Series):
         start_time = time.time()
 
-        clean_table(X)
-        clean_df(X)
         feature_engineer(X)
 
         logger.info(f"Remain time: {self.train_time_budget - (time.time() - start_time)}")
@@ -336,13 +262,11 @@ class Model:
 
     @timeit
     def predict(self, X: pd.DataFrame):
-        start_time = time.time()
+        # start_time = time.time()
 
-        clean_table(X)
-        clean_df(X)
         feature_engineer(X)
 
-        logger.info(f"Remain time: {self.pred_time_budget - (time.time() - start_time)}")
+        # logger.info(f"Remain time: {self.pred_time_budget - (time.time() - start_time)}")
 
         prediction = self.model.predict(X)
 
