@@ -106,6 +106,7 @@ class AutoSSLClassifier:
             y_n_idx = idx[:y_n]
             X_label = pd.concat((X_label, X_unlabeled.iloc[list(y_p_idx) + list(y_n_idx), :]))
             y_label = pd.concat((y_label, pd.Series([1]*len(y_p_idx) + [-1]*len(y_n_idx))))
+            y_label.index = X_label.index
             X_unlabeled = X_unlabeled.iloc[idx[y_n:-y_p], :]
 
         return self
@@ -146,9 +147,9 @@ class AutoPUClassifier:
             if idx == 0:
                 prediction = p
             else:
-                prediction = np.vstack((prediction, p))
+                prediction += p
 
-        return np.mean(prediction, axis=0)
+        return prediction / len(self.models)
 
     def _negative_sample(self, X, y):
         y_n_cnt, y_p_cnt = y.value_counts()
