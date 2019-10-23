@@ -94,8 +94,8 @@ class AutoSSLClassifier:
             idx = np.argsort(y_hat)
             y_p_idx = idx[-y_p:]
             y_n_idx = idx[:y_n]
-            X_label = np.vstack((X_label, X_unlabeled.iloc[list(y_p_idx) + list(y_n_idx), :]))
-            y_label = np.hstack((y_label, np.array([1]*len(y_p_idx) + [-1]*len(y_n_idx))))
+            X_label = pd.concat((X_label, X_unlabeled.iloc[list(y_p_idx) + list(y_n_idx), :]))
+            y_label = pd.concat((y_label, pd.Series([1]*len(y_p_idx) + [-1]*len(y_n_idx))))
             X_unlabeled = X_unlabeled.iloc[idx[y_n:-y_p], :]
 
         return self
@@ -132,6 +132,7 @@ class AutoPUClassifier:
     def predict(self, X):
         for idx, model in enumerate(self.models):
             p = model.predict(X)
+
             if idx == 0:
                 prediction = p
             else:
@@ -181,6 +182,8 @@ class AutoNoisyClassifier:
             early_stopping_rounds=30,
             verbose_eval=100
         )
+
+        self.model.free_dataset()
 
         return self
 
