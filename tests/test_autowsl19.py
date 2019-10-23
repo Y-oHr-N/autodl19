@@ -28,7 +28,7 @@ def ls(filename):
 
 
 def get_solution(solution_dir):
-    solution_names = sorted(ls(os.path.join(solution_dir, '*.solution')))
+    solution_names = sorted(ls(os.path.join(solution_dir, '*.solution.gz')))
 
     solution_file = solution_names[0]
     solution = pd.read_csv(solution_file)
@@ -48,25 +48,25 @@ class AutoWSLDataset:
 
     def read_dataset(self):
         self.train_dataset = self._read_dataset(
-            os.path.join(self.dataset_dir_, "train.data"))
+            os.path.join(self.dataset_dir_, "train.data.gz"))
         self.train_label = self.read_label(
-            os.path.join(self.dataset_dir_, "train.solution"))
+            os.path.join(self.dataset_dir_, "train.solution.gz"))
         self.test_dataset = self._read_dataset(
-            os.path.join(self.dataset_dir_, "test.data"))
+            os.path.join(self.dataset_dir_, "test.data.gz"))
 
     def get_train(self):
         if self.train_dataset is None:
             self.train_dataset = self._read_dataset(
-                os.path.join(self.dataset_dir_, "train.data"))
+                os.path.join(self.dataset_dir_, "train.data.gz"))
             self.train_label = self.read_label(
-                os.path.join(self.dataset_dir_, "train.solution"))
+                os.path.join(self.dataset_dir_, "train.solution.gz"))
 
         return self.train_dataset, self.train_label
 
     def get_test(self):
         if self.test_dataset is None:
             self.test_dataset = self._read_dataset(
-                os.path.join(self.dataset_dir_, "test.data"))
+                os.path.join(self.dataset_dir_, "test.data.gz"))
 
         return self.test_dataset
 
