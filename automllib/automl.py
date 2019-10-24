@@ -8,8 +8,8 @@ import numpy as np
 import optuna
 
 from imblearn.pipeline import make_pipeline
-from optgbm import OGBMClassifier
-from optgbm import OGBMRegressor
+from optgbm.sklearn import OGBMClassifier
+from optgbm.sklearn import OGBMRegressor
 from sklearn.base import ClassifierMixin
 from sklearn.base import RegressorMixin
 from sklearn.compose import make_column_transformer
@@ -65,7 +65,7 @@ class BaseAutoMLModel(BaseEstimator):
         threshold: float = 0.6,
         # Parameters for a sampler
         sampling_strategy: Union[Dict[str, int], float, str] = 'auto',
-        max_samples: int = 100_000, 
+        max_samples: int = 100_000,
         # Parameters for a model
         class_weight: Union[str, Dict[str, float]] = 'balanced',
         cv: Union[BaseCrossValidator, int] = 5,
