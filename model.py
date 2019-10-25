@@ -153,7 +153,13 @@ class AutoNoisyClassifier:
     def fit(self, X, y):
         X_sample, y_sample = sample(X, y, 30_000)
 
-        self.model = OGBMClassifier(cv=3, n_jobs=4, random_state=0, timeout=self.tuning_time)
+        self.model = OGBMClassifier(
+            cv=3,
+            n_jobs=4,
+            n_trials=None,
+            random_state=0,
+            timeout=self.tuning_time
+        )
 
         self.model.fit(X_sample, y_sample, eval_metric='auc')
 
