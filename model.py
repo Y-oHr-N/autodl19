@@ -35,6 +35,7 @@ timeit = Timeit(logger=logger)
 NUMERICAL_PREFIX = "n_"
 CATEGORY_PREFIX = "c_"
 TIME_PREFIX = "t_"
+MULTI_VALUE_CATEGORICAL_PREFIX = "multi-cat"
 
 
 @timeit
@@ -95,6 +96,8 @@ class Feature_enginner():
                 X[c + "_" + time_properties] = getattr(X[c].dt, time_properties)
             X.drop(c, axis=1, inplace=True)
         for c in [c for c in X if c.startswith(CATEGORY_PREFIX)]:
+            X[c] = X[c].apply(lambda x: hash(x))
+        for c in [c for c in X if c.startswith(MULTI_VALUE_CATEGORICAL_PREFIX)]:
             X[c] = X[c].apply(lambda x: hash(x))
         for c in [c for c in X if c.startswith(NUMERICAL_PREFIX)]:
             X[c] = np.clip(X[c], self.numerical_percentile[c][0], self.numerical_percentile[c][1])
