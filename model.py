@@ -50,38 +50,8 @@ def feature_engineer(df):
 class Feature_enginner():
     def __init__(self):
         self.numerical_percentile = {}
-        self.time_extraction = {}
 
     def fit(self, X):
-        secondsinminute = 60.0
-        secondsinhour = 60.0 * secondsinminute
-        secondsinday = 24.0 * secondsinhour
-        secondsinweekday = 7.0 * secondsinday
-        secondsinyear = 365.0 * secondsinday
-        secondsinmonth = secondsinyear / 12.0
-        for c in [c for c in X if c.startswith(TIME_PREFIX)]:
-            time_properties = []
-            duration = (X[c].max() - X[c].min()).total_seconds()
-            if duration > 2*secondsinminute:
-                time_properties.append('second')
-            if duration > 2*secondsinhour \
-                    and len(pd.unique(X[c].dt.minute)) > 2:
-                time_properties.append('minute')
-            if duration > 2*secondsinday \
-                    and len(pd.unique(X[c].dt.hour)) > 2:
-                time_properties.append('hour')
-            if duration > 2*secondsinweekday \
-                    and len(pd.unique(X[c].dt.weekday)) > 2:
-                time_properties.append('weekday')
-            if duration > 2*secondsinmonth \
-                    and len(pd.unique(X[c].dt.day)) > 2:
-                time_properties.append('day')
-            if duration > 2*secondsinyear:
-                if len(pd.unique(X[c].dt.month)) > 2:
-                    time_properties.append('month')
-                if len(pd.unique(X[c].dt.quarter)) > 2:
-                    time_properties.append('quarter')
-            self.time_extraction[c] = time_properties
         for c in [c for c in X if c.startswith(NUMERICAL_PREFIX)]:
             data_min, data_max = np.nanpercentile(
                 X[c],
@@ -92,8 +62,6 @@ class Feature_enginner():
 
     def transform(self, X):
         for c in [c for c in X if c.startswith(TIME_PREFIX)]:
-            for time_properties in self.time_extraction[c]:
-                X[c + "_" + time_properties] = getattr(X[c].dt, time_properties)
             X.drop(c, axis=1, inplace=True)
         for c in [c for c in X if c.startswith(CATEGORY_PREFIX)]:
             X[c] = X[c].apply(lambda x: hash(x))
