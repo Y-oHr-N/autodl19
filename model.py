@@ -148,7 +148,7 @@ class AutoPUClassifier:
 
 class AutoNoisyClassifier:
     def __init__(self, max_samples=100_000, tuning_time=None):
-        self.max_smaples = max_samples
+        self.max_samples = max_samples
         self.tuning_time = tuning_time
 
     def fit(self, X, y):
