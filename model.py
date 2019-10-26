@@ -46,6 +46,32 @@ def feature_engineer(df):
         df[c] = df[c].apply(lambda x: hash(x))
 
 
+class Feature_enginner():
+    def __init__(self):
+        self.numerical_percentile = {}
+
+    def fit(self, X):
+        for c in [c for c in X if c.startswith(NUMERICAL_PREFIX)]:
+            data_min, data_max = np.nanpercentile(
+                X[c],
+                [1.0, 99.0],
+                axis=0
+            )
+            self.numerical_percentile[c] = [data_min, data_max]
+
+    def transform(self, X):
+        for c in [c for c in X if c.startswith(TIME_PREFIX)]:
+            X.drop(c, axis=1, inplace=True)
+        for c in [c for c in X if c.startswith(CATEGORY_PREFIX)]:
+            X[c] = X[c].apply(lambda x: hash(x))
+        for c in [c for c in X if c.startswith(NUMERICAL_PREFIX)]:
+            X[c] = np.clip(X[c], self.numerical_percentile[c][0], self.numerical_percentile[c][1])
+        return X
+
+    def fit_transform(self, X):
+        self.fit(X)
+        return self.transform(X)
+
 @timeit
 def sample(X, y, nrows):
     if len(X) > nrows:
@@ -160,11 +186,12 @@ class AutoNoisyClassifier:
 class Model:
     def __init__(self, info: dict):
         self.info = info
+        self.transformer = None
 
     @timeit
     def train(self, X: pd.DataFrame, y: pd.Series):
-        feature_engineer(X)
-
+        self.transformer = Feature_enginner()
+        X = self.transformer.fit_transform(X)
         if self.info['task'] == 'ssl':
             self.model = AutoSSLClassifier()
         elif self.info['task'] == 'pu':
@@ -176,7 +203,7 @@ class Model:
 
     @timeit
     def predict(self, X: pd.DataFrame):
-        feature_engineer(X)
+        X = self.transformer.transform(X)
 
         return self.model.predict(X)
 
