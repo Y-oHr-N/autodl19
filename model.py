@@ -6,7 +6,7 @@ import time
 os.system('pip3 install -q colorlog')
 os.system('pip3 install -q imbalanced-learn')
 os.system('pip3 install -q lightgbm')
-os.system('pip3 install -q optgbm')
+os.system('pip3 install -q git+https://github.com/Y-oHr-N/OptGBM.git')
 os.system('pip3 install -q optuna')
 os.system('pip3 install -q pandas==0.24.2')
 os.system('pip3 install -q scikit-learn>=0.21.0')
@@ -128,7 +128,7 @@ class AutoPUClassifier:
 
     def predict(self, X):
         for idx, model in enumerate(self.models):
-            p = model.predict(X)
+            p = model.set_params(n_jobs=1).predict(X)
 
             if idx == 0:
                 prediction = p
@@ -147,11 +147,12 @@ class AutoPUClassifier:
 
 
 class AutoNoisyClassifier:
-    def __init__(self, tuning_time=None):
+    def __init__(self, max_samples=100_000, tuning_time=None):
+        self.max_smaples = max_samples
         self.tuning_time = tuning_time
 
     def fit(self, X, y):
-        X_sample, y_sample = sample(X, y, 30_000)
+        X_sample, y_sample = sample(X, y, self.max_samples)
 
         self.model = OGBMClassifier(
             cv=3,
@@ -179,6 +180,8 @@ class Model:
     def train(self, X: pd.DataFrame, y: pd.Series):
         feature_engineer(X)
 
+        logger.info(f'X.shape = {X.shape}')
+
         tuning_time = 0.8 * self.info["time_budget"] - self.timer.get_elapsed_time()
         if self.info['task'] == 'ssl':
             self.model = AutoSSLClassifier(tuning_time=tuning_time)
@@ -192,6 +195,8 @@ class Model:
     @timeit
     def predict(self, X: pd.DataFrame):
         feature_engineer(X)
+
+        logger.info(f'X.shape = {X.shape}')
 
         return self.model.predict(X)
 
