@@ -17,6 +17,7 @@ import pandas as pd
 from optgbm.sklearn import OGBMClassifier
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.model_selection import train_test_split
+from sklearn.utils import check_random_state
 
 from automllib.utils import Timeit
 from automllib.utils import Timer
@@ -71,7 +72,7 @@ class AutoSSLClassifier(object):
         self.cv = cv
         self.max_samples = max_samples
         self.n_iter = n_iter
-        self.n_jobs =n_jobs
+        self.n_jobs = n_jobs
         self.n_trials = n_trials
         self.random_state = random_state
         self.timeout = timeout
@@ -137,7 +138,7 @@ class AutoPUClassifier(object):
         self.cv = cv
         self.max_samples = max_samples
         self.n_iter = n_iter
-        self.n_jobs =n_jobs
+        self.n_jobs = n_jobs
         self.n_trials = n_trials
         self.random_state = random_state
         self.timeout = timeout
@@ -211,7 +212,7 @@ class AutoNoisyClassifier(object):
     ):
         self.cv = cv
         self.max_samples = max_samples
-        self.n_jobs =n_jobs
+        self.n_jobs = n_jobs
         self.n_trials = n_trials
         self.random_state = random_state
         self.timeout = timeout
@@ -244,8 +245,8 @@ class Model(object):
     def __init__(
         self,
         info: dict,
-        cv=3,
-        max_samples=100_000,
+        cv=5,
+        max_samples=30_000,
         n_trials=None,
         random_state=0,
         n_jobs=-1
