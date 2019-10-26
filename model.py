@@ -18,6 +18,7 @@ import pandas as pd
 from optgbm.sklearn import OGBMClassifier
 
 from automllib.utils import Timeit
+from automllib.utils import Timer
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
@@ -59,10 +60,11 @@ def sample(X, y, nrows):
 
 
 class AutoSSLClassifier:
-    def __init__(self):
+    def __init__(self, tuning_time=None):
         self.iter = 5
         self.label_data = 500
         self.model = None
+        self.tuning_time = tuning_time
 
     def fit(self, X, y):
         X_label, y_label, X_unlabeled, y_unlabeled = self._split_by_label(X, y)
@@ -75,7 +77,7 @@ class AutoSSLClassifier:
             if X_unlabeled.shape[0] < self.label_data:
                 break
 
-            self.model = AutoNoisyClassifier()
+            self.model = AutoNoisyClassifier(tuning_time=self.tuning_time/self.iter)
 
             self.model.fit(X_label, y_label)
 
@@ -107,15 +109,16 @@ class AutoSSLClassifier:
 
 
 class AutoPUClassifier:
-    def __init__(self):
+    def __init__(self, tuning_time=None):
         self.iter = 10
         self.models = []
+        self.tuning_time = tuning_time
 
     def fit(self, X, y):
         for _ in range(self.iter):
             X_sample, y_sample = self._negative_sample(X, y)
 
-            model = AutoNoisyClassifier()
+            model = AutoNoisyClassifier(tuning_time=self.tuning_time/self.iter)
 
             model.fit(X_sample, y_sample)
 
@@ -144,10 +147,19 @@ class AutoPUClassifier:
 
 
 class AutoNoisyClassifier:
+    def __init__(self, tuning_time=None):
+        self.tuning_time = tuning_time
+
     def fit(self, X, y):
         X_sample, y_sample = sample(X, y, 30_000)
 
-        self.model = OGBMClassifier(cv=3, n_jobs=4, random_state=0)
+        self.model = OGBMClassifier(
+            cv=3,
+            n_jobs=4,
+            n_trials=None,
+            random_state=0,
+            timeout=self.tuning_time
+        )
 
         self.model.fit(X_sample, y_sample, eval_metric='auc')
 
@@ -160,17 +172,20 @@ class AutoNoisyClassifier:
 class Model:
     def __init__(self, info: dict):
         self.info = info
+        self.timer = Timer(self.info['time_budget'])
+        self.timer.start()
 
     @timeit
     def train(self, X: pd.DataFrame, y: pd.Series):
         feature_engineer(X)
 
+        tuning_time = 0.8 * self.info["time_budget"] - self.timer.get_elapsed_time()
         if self.info['task'] == 'ssl':
-            self.model = AutoSSLClassifier()
+            self.model = AutoSSLClassifier(tuning_time=tuning_time)
         elif self.info['task'] == 'pu':
-            self.model = AutoPUClassifier()
+            self.model = AutoPUClassifier(tuning_time=tuning_time)
         elif self.info['task'] == 'noisy':
-            self.model = AutoNoisyClassifier()
+            self.model = AutoNoisyClassifier(tuning_time=tuning_time)
 
         self.model.fit(X, y)
 
