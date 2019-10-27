@@ -289,9 +289,9 @@ class Model(object):
         info: dict,
         cv=5,
         max_samples=30_000,
+        n_jobs=-1,
         n_trials=None,
-        random_state=0,
-        n_jobs=-1
+        random_state=0
     ):
         self.cv = cv
         self.info = info
@@ -300,24 +300,24 @@ class Model(object):
         self.n_trials = n_trials
         self.random_state = random_state
 
-        logger.info(f'info = {info}')
+        logger.info(f'info={info}')
 
-        self._timer = Timer(info['time_budget'])
+        self._timer = Timer()
 
         self._timer.start()
 
     @timeit
     def train(self, X: pd.DataFrame, y: pd.Series):
-        cv = self.cv
-        is_has_time_columns = False
+        time_features = [c for c in X if c.startswith(TIME_PREFIX)]
 
-        for c in [c for c in X if c.startswith(TIME_PREFIX)]:
+        if len(time_features) > 0:
+            cv = TimeSeriesSplit(self.cv)
+        else:
+            cv = self.cv
+
+        for c in time_features:
             X = X.sort_values(c)
             y = y.loc[X.index]
-            is_has_time_columns = True
-
-        if is_has_time_columns:
-            cv = TimeSeriesSplit(self.cv)
 
         self.engineer_ = Enginner()
 
@@ -325,7 +325,7 @@ class Model(object):
 
         X = self.engineer_.transform(X)
 
-        logger.info(f'X.shape = {X.shape}')
+        logger.info(f'X.shape={X.shape}')
 
         if self.info['task'] == 'ssl':
             klass = AutoSSLClassifier
@@ -355,7 +355,7 @@ class Model(object):
     def predict(self, X: pd.DataFrame):
         X = self.engineer_.transform(X)
 
-        logger.info(f'X.shape = {X.shape}')
+        logger.info(f'X.shape={X.shape}')
 
         probas = self.model_.predict_proba(X)
 
@@ -363,10 +363,16 @@ class Model(object):
 
     @timeit
     def save(self, directory: str):
+        with open(os.path.join(directory, 'engineer.pkl'), 'wb') as f:
+            pickle.dump(self.engineer_, f)
+
         with open(os.path.join(directory, 'model.pkl'), 'wb') as f:
             pickle.dump(self.model_, f)
 
     @timeit
     def load(self, directory: str):
+        with open(os.path.join(directory, 'engineer.pkl'), 'rb') as f:
+            self.engineer_ = pickle.load(f)
+
         with open(os.path.join(directory, 'model.pkl'), 'rb') as f:
             self.model_ = pickle.load(f)
