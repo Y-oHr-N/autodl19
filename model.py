@@ -259,6 +259,10 @@ class AutoNoisyClassifier(object):
         self.random_state = random_state
         self.timeout = timeout
 
+        self._timer = Timer(time_budget=timeout)
+
+        self._timer.start()
+
     def fit(self, X, y, **fit_params):
         n_samples, _ = X.shape
 
@@ -275,7 +279,7 @@ class AutoNoisyClassifier(object):
             n_jobs=self.n_jobs,
             n_trials=self.n_trials,
             random_state=self.random_state,
-            timeout=self.timeout
+            timeout=self._timer.get_remaining_time()
         )
 
         self.model_.fit(X, y, **fit_params)
