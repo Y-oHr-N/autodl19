@@ -234,8 +234,6 @@ class AutoPUClassifier(object):
 
     def predict_proba(self, X):
         for i, model in enumerate(self.models_):
-            model.model_.set_params(n_jobs=1)
-
             p = model.predict_proba(X)
 
             if i == 0:
