@@ -64,6 +64,8 @@ class Enginner(object):
                 axis=0
             )
 
+        self.frequency_ = X.nunique()
+
         return self
 
     @timeit
@@ -90,8 +92,12 @@ class Enginner(object):
             X[self.numerical_features_] = \
                 X[self.numerical_features_].astype('float32')
 
+        dropped_features = X.columns[self.frequency_ == 1]
+
         if len(self.time_features_) > 0:
-            X = X.drop(columns=self.time_features_)
+            dropped_features = dropped_features.union(self.time_features_)
+
+        X = X.drop(columns=dropped_features)
 
         return X
 
