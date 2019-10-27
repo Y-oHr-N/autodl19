@@ -350,11 +350,8 @@ class Model(object):
         elif self.info['task'] == 'noisy':
             klass = AutoNoisyClassifier
 
-        pred_time_budget = self.info.get(
-            'pred_time_budget',
-            0.25 * self.info['time_budget']
-        )
-        timeout = pred_time_budget - self._timer.get_elapsed_time()
+        timeout = \
+            0.8 * self.info['time_budget'] - self._timer.get_elapsed_time()
 
         self.model_ = klass(
             cv=cv,
