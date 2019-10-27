@@ -41,7 +41,8 @@ NUMERICAL_PREFIX = 'n_'
 TIME_PREFIX = 't_'
 
 
-class Enginner():
+
+class Enginner(object):
     def __init__(self, high=99.0, low=1.0):
         self.high = high
         self.low = low
@@ -56,11 +57,14 @@ class Enginner():
             [c for c in X if c.startswith(MULTI_VALUE_CATEGORICAL_PREFIX)]
         self.time_features_ = [c for c in X if c.startswith(TIME_PREFIX)]
 
-        self.data_min_, self.data_max_ = np.nanpercentile(
-            X[self.numerical_features_],
-            [self.low, self.high],
-            axis=0
-        )
+        if len(self.numerical_features_) > 0:
+            self.data_min_, self.data_max_ = np.nanpercentile(
+                X[self.numerical_features_],
+                [self.low, self.high],
+                axis=0
+            )
+
+        return self
 
     @timeit
     def transform(self, X):
@@ -70,7 +74,9 @@ class Enginner():
 
         if len(self.multi_value_categorical_features_) > 0:
             X[self.multi_value_categorical_features_] = \
-                X[self.multi_value_categorical_features_].apply(lambda x: hash(x))
+                X[self.multi_value_categorical_features_].apply(
+                    lambda x: np.nan if np.isnan(x) else hash(x)
+                )
             X[self.multi_value_categorical_features_] = \
                 X[self.multi_value_categorical_features_].astype('category')
 
@@ -81,10 +87,11 @@ class Enginner():
                     self.data_max_,
                     axis=1
                 )
-            X[self.numerical_features_] = X[self.numerical_features_].astype('float32')
+            X[self.numerical_features_] = \
+                X[self.numerical_features_].astype('float32')
 
         if len(self.time_features_) > 0:
-            X.drop(columns=self.time_features_, inplace=True)
+            X = X.drop(columns=self.time_features_)
 
         return X
 
