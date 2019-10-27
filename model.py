@@ -1,23 +1,26 @@
 import logging
 import os
 import pickle
-import time
 
 os.system('pip3 install -q colorlog')
 os.system('pip3 install -q imbalanced-learn')
 os.system('pip3 install -q lightgbm')
-os.system('pip3 install -q optgbm')
+os.system('pip3 install -q git+https://github.com/Y-oHr-N/OptGBM.git')
 os.system('pip3 install -q optuna')
-os.system('pip3 install -q pandas==0.24.2')
-os.system('pip3 install -q scikit-learn>=0.21.0')
+os.system('pip3 install -q pandas')
+os.system('pip3 install -q scikit-learn')
 
 import colorlog
 import numpy as np
 import pandas as pd
 
 from optgbm.sklearn import OGBMClassifier
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.model_selection import train_test_split
+from sklearn.utils import check_random_state
 
 from automllib.utils import Timeit
+from automllib.utils import Timer
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
@@ -32,83 +35,111 @@ logger.setLevel(logging.INFO)
 timeit = Timeit(logger=logger)
 
 
-NUMERICAL_PREFIX = "n_"
-CATEGORY_PREFIX = "c_"
-TIME_PREFIX = "t_"
-MULTI_VALUE_CATEGORICAL_PREFIX = "multi-cat"
+CATEGORICAL_PREFIX = 'c_'
+MULTI_VALUE_CATEGORICAL_PREFIX = 'm_'
+NUMERICAL_PREFIX = 'n_'
+TIME_PREFIX = 't_'
 
 
-@timeit
-def feature_engineer(df):
-    for c in [c for c in df if c.startswith(TIME_PREFIX)]:
-        df.drop(c, axis=1, inplace=True)
+class Enginner():
+    def __init__(self, high=99.0, low=1.0):
+        self.high = high
+        self.low = low
 
-    for c in [c for c in df if c.startswith(CATEGORY_PREFIX)]:
-        df[c] = df[c].apply(lambda x: hash(x))
-
-
-class Feature_enginner():
-    def __init__(self):
-        self.numerical_percentile = {}
-
+    @timeit
     def fit(self, X):
-        for c in [c for c in X if c.startswith(NUMERICAL_PREFIX)]:
-            data_min, data_max = np.nanpercentile(
-                X[c],
-                [1.0, 99.0],
-                axis=0
-            )
-            self.numerical_percentile[c] = [data_min, data_max]
+        self.numerical_features_ = \
+            [c for c in X if c.startswith(NUMERICAL_PREFIX)]
+        self.categorical_features_ = \
+            [c for c in X if c.startswith(CATEGORICAL_PREFIX)]
+        self.multi_value_categorical_features_ = \
+            [c for c in X if c.startswith(MULTI_VALUE_CATEGORICAL_PREFIX)]
+        self.time_features_ = [c for c in X if c.startswith(TIME_PREFIX)]
 
+        self.data_min_, self.data_max_ = np.nanpercentile(
+            X[self.numerical_features_],
+            [self.low, self.high],
+            axis=0
+        )
+
+    @timeit
     def transform(self, X):
-        for c in [c for c in X if c.startswith(TIME_PREFIX)]:
-            X.drop(c, axis=1, inplace=True)
-        for c in [c for c in X if c.startswith(CATEGORY_PREFIX)]:
-            X[c] = X[c].apply(lambda x: hash(x))
-        for c in [c for c in X if c.startswith(MULTI_VALUE_CATEGORICAL_PREFIX)]:
-            X[c] = X[c].apply(lambda x: hash(x))
-        for c in [c for c in X if c.startswith(NUMERICAL_PREFIX)]:
-            X[c] = np.clip(X[c], self.numerical_percentile[c][0], self.numerical_percentile[c][1])
+        if len(self.categorical_features_) > 0:
+            X[self.categorical_features_] = \
+                X[self.categorical_features_].astype('category')
+
+        if len(self.multi_value_categorical_features_) > 0:
+            X[self.multi_value_categorical_features_] = \
+                X[self.multi_value_categorical_features_].apply(lambda x: hash(x))
+            X[self.multi_value_categorical_features_] = \
+                X[self.multi_value_categorical_features_].astype('category')
+
+        if len(self.numerical_features_) > 0:
+            X[self.numerical_features_] = \
+                X[self.numerical_features_].clip(
+                    self.data_min_,
+                    self.data_max_,
+                    axis=1
+                )
+            X[self.numerical_features_] = X[self.numerical_features_].astype('float32')
+
+        if len(self.time_features_) > 0:
+            X.drop(columns=self.time_features_, inplace=True)
+
         return X
 
-    def fit_transform(self, X):
-        self.fit(X)
-        return self.transform(X)
 
-@timeit
-def sample(X, y, nrows):
-    if len(X) > nrows:
-        X_sample = X.sample(nrows, random_state=1)
-        y_sample = y[X_sample.index]
-    else:
-        X_sample = X
-        y_sample = y
+class AutoSSLClassifier(object):
+    @property
+    def predict_proba(self):
+        return self.model_.predict_proba
 
-    return X_sample, y_sample
+    def __init__(
+        self,
+        cv=5,
+        max_samples=100_000,
+        n_iter=5,
+        n_jobs=1,
+        n_trials=25,
+        random_state=None,
+        timeout=None
+    ):
+        self.cv = cv
+        self.max_samples = max_samples
+        self.n_iter = n_iter
+        self.n_jobs = n_jobs
+        self.n_trials = n_trials
+        self.random_state = random_state
+        self.timeout = timeout
 
-
-class AutoSSLClassifier:
-    def __init__(self):
-        self.iter = 5
         self.label_data = 500
-        self.model = None
 
-    def fit(self, X, y):
-        X_label, y_label, X_unlabeled, y_unlabeled = self._split_by_label(X, y)
+    def fit(self, X, y, **fit_params):
+        is_labeled = y != 0
+        X_label = X[is_labeled]
+        y_label = y[is_labeled]
+        X_unlabeled = X[~is_labeled]
         y_n_cnt, y_p_cnt = y_label.value_counts()
+        y_n = max(int(self.label_data * (y_n_cnt / len(y_label))), 1)
+        y_p = max(int(self.label_data * (y_p_cnt / len(y_label))), 1)
+        timeout = self.timeout / self.n_iter
 
-        y_n = max(int(self.label_data * (y_n_cnt * 1.0 / len(y_label))), 1)
-        y_p = max(int(self.label_data * (y_p_cnt * 1.0 / len(y_label))), 1)
-
-        for _ in range(self.iter):
+        for _ in range(self.n_iter):
             if X_unlabeled.shape[0] < self.label_data:
                 break
 
-            self.model = AutoNoisyClassifier()
+            self.model_ = AutoNoisyClassifier(
+                cv=self.cv,
+                max_samples=self.max_samples,
+                n_jobs=self.n_jobs,
+                n_trials=None,
+                random_state=self.random_state,
+                timeout=timeout
+            )
 
-            self.model.fit(X_label, y_label)
+            self.model_.fit(X_label, y_label, **fit_params)
 
-            y_hat = self.model.predict(X_unlabeled)
+            y_hat = self.model_.predict_proba(X_unlabeled)[:, 1]
 
             if len(set(y_hat)) == 1:
                 break
@@ -116,109 +147,219 @@ class AutoSSLClassifier:
             idx = np.argsort(y_hat)
             y_p_idx = idx[-y_p:]
             y_n_idx = idx[:y_n]
-            X_label = pd.concat((X_label, X_unlabeled.iloc[list(y_p_idx) + list(y_n_idx), :]))
-            y_label = pd.concat((y_label, pd.Series([1]*len(y_p_idx) + [-1]*len(y_n_idx))))
+            X_label = pd.concat(
+                (X_label, X_unlabeled.iloc[list(y_p_idx) + list(y_n_idx)])
+            )
+            y_label = pd.concat(
+                (y_label, pd.Series([1] * len(y_p_idx) + [-1] * len(y_n_idx)))
+            )
             y_label.index = X_label.index
-            X_unlabeled = X_unlabeled.iloc[idx[y_n:-y_p], :]
+            X_unlabeled = X_unlabeled.iloc[idx[y_n:-y_p]]
 
         return self
 
-    def predict(self, X):
-        return self.model.predict(X)
 
-    def _split_by_label(self, X, y):
-        y_label = pd.concat([y[y == -1], y[y == 1]])
-        X_label = X.loc[y_label.index, :]
-        y_unlabeled = y[y == 0]
-        X_unlabeled = X.loc[y_unlabeled.index, :]
+class AutoPUClassifier(object):
+    def __init__(
+        self,
+        cv=5,
+        max_samples=100_000,
+        n_iter=10,
+        n_jobs=1,
+        n_trials=25,
+        random_state=None,
+        timeout=None
+    ):
+        self.cv = cv
+        self.max_samples = max_samples
+        self.n_iter = n_iter
+        self.n_jobs = n_jobs
+        self.n_trials = n_trials
+        self.random_state = random_state
+        self.timeout = timeout
 
-        return X_label, y_label, X_unlabeled, y_unlabeled
+    def fit(self, X, y, **fit_params):
+        random_state = check_random_state(self.random_state)
+        n_samples, _ = X.shape
+        n_pos_samples = np.sum(y == 1)
+        sample_indices = np.arange(n_samples)
+        sample_indices_positive = sample_indices[y == 1]
+        timeout = self.timeout / self.n_iter
 
+        self.models_ = []
 
-class AutoPUClassifier:
-    def __init__(self):
-        self.iter = 10
-        self.models = []
+        for _ in range(self.n_iter):
+            sample_indices_unlabeled = random_state.choice(
+                sample_indices[y == 0],
+                n_pos_samples,
+                replace=False
+            )
+            sample_indices_selected = np.union1d(
+                sample_indices_positive,
+                sample_indices_unlabeled
+            )
+            model = AutoNoisyClassifier(
+                cv=self.cv,
+                max_samples=self.max_samples,
+                n_jobs=self.n_jobs,
+                n_trials=None,
+                random_state=self.random_state,
+                timeout=timeout
+            )
 
-    def fit(self, X, y):
-        for _ in range(self.iter):
-            X_sample, y_sample = self._negative_sample(X, y)
+            model.fit(
+                X.iloc[sample_indices_selected],
+                y.iloc[sample_indices_selected],
+                **fit_params
+            )
 
-            model = AutoNoisyClassifier()
-
-            model.fit(X_sample, y_sample)
-
-            self.models.append(model)
+            self.models_.append(model)
 
         return self
 
-    def predict(self, X):
-        for idx, model in enumerate(self.models):
-            p = model.predict(X)
+    def predict_proba(self, X):
+        for i, model in enumerate(self.models_):
+            model.model_.set_params(n_jobs=1)
 
-            if idx == 0:
-                prediction = p
+            p = model.predict_proba(X)
+
+            if i == 0:
+                probas = p
             else:
-                prediction += p
+                probas += p
 
-        return prediction / len(self.models)
-
-    def _negative_sample(self, X, y):
-        y_n_cnt, y_p_cnt = y.value_counts()
-        y_n_sample = y_p_cnt if y_n_cnt > y_p_cnt else y_n_cnt
-        y_sample = pd.concat([y[y == 0].sample(y_n_sample), y[y == 1]])
-        x_sample = X.loc[y_sample.index, :]
-
-        return x_sample, y_sample
+        return probas / self.n_iter
 
 
-class AutoNoisyClassifier:
-    def fit(self, X, y):
-        X_sample, y_sample = sample(X, y, 30_000)
+class AutoNoisyClassifier(object):
+    @property
+    def predict_proba(self):
+        return self.model_.predict_proba
 
-        self.model = OGBMClassifier(cv=3, n_jobs=4, random_state=0)
+    def __init__(
+        self,
+        cv=5,
+        max_samples=100_000,
+        n_jobs=1,
+        n_trials=25,
+        random_state=None,
+        timeout=None
+    ):
+        self.cv = cv
+        self.max_samples = max_samples
+        self.n_jobs = n_jobs
+        self.n_trials = n_trials
+        self.random_state = random_state
+        self.timeout = timeout
 
-        self.model.fit(X_sample, y_sample, eval_metric='auc')
+    def fit(self, X, y, **fit_params):
+        n_samples, _ = X.shape
+
+        if n_samples > self.max_samples:
+            X, _, y, _ = train_test_split(
+                X,
+                y,
+                train_size=self.max_samples,
+                random_state=self.random_state
+            )
+
+        self.model_ = OGBMClassifier(
+            cv=self.cv,
+            n_jobs=self.n_jobs,
+            n_trials=self.n_trials,
+            random_state=self.random_state,
+            timeout=self.timeout
+        )
+
+        self.model_.fit(X, y, **fit_params)
 
         return self
 
-    def predict(self, X):
-        return pd.Series(self.model.predict_proba(X)[:, 1])
 
-
-class Model:
-    def __init__(self, info: dict):
+class Model(object):
+    def __init__(
+        self,
+        info: dict,
+        cv=5,
+        max_samples=30_000,
+        n_trials=None,
+        random_state=0,
+        n_jobs=-1
+    ):
+        self.cv = cv
         self.info = info
-        self.transformer = None
+        self.max_samples = max_samples
+        self.n_jobs = n_jobs
+        self.n_trials = n_trials
+        self.random_state = random_state
+
+        logger.info(f'info = {info}')
+
+        self._timer = Timer(info['time_budget'])
+
+        self._timer.start()
 
     @timeit
     def train(self, X: pd.DataFrame, y: pd.Series):
-        self.transformer = Feature_enginner()
-        X = self.transformer.fit_transform(X)
-        if self.info['task'] == 'ssl':
-            self.model = AutoSSLClassifier()
-        elif self.info['task'] == 'pu':
-            self.model = AutoPUClassifier()
-        elif self.info['task'] == 'noisy':
-            self.model = AutoNoisyClassifier()
+        cv = self.cv
+        is_has_time_columns = False
 
-        self.model.fit(X, y)
+        for c in [c for c in X if c.startswith(TIME_PREFIX)]:
+            X = X.sort_values(c)
+            y = y.loc[X.index]
+            is_has_time_columns = True
+
+        if is_has_time_columns:
+            cv = TimeSeriesSplit(self.cv)
+
+        self.engineer_ = Enginner()
+
+        self.engineer_.fit(X)
+
+        X = self.engineer_.transform(X)
+
+        logger.info(f'X.shape = {X.shape}')
+
+        if self.info['task'] == 'ssl':
+            klass = AutoSSLClassifier
+        elif self.info['task'] == 'pu':
+            klass = AutoPUClassifier
+        elif self.info['task'] == 'noisy':
+            klass = AutoNoisyClassifier
+
+        pred_time_budget = self.info.get(
+            'pred_time_budget',
+            0.25 * self.info['time_budget']
+        )
+        timeout = pred_time_budget - self._timer.get_elapsed_time()
+
+        self.model_ = klass(
+            cv=cv,
+            max_samples=self.max_samples,
+            n_jobs=self.n_jobs,
+            n_trials=self.n_trials,
+            random_state=self.random_state,
+            timeout=timeout
+        )
+
+        self.model_.fit(X, y, eval_metric='auc')
 
     @timeit
     def predict(self, X: pd.DataFrame):
-        X = self.transformer.transform(X)
+        X = self.engineer_.transform(X)
 
-        return self.model.predict(X)
+        logger.info(f'X.shape = {X.shape}')
+
+        probas = self.model_.predict_proba(X)
+
+        return pd.Series(probas[:, 1])
 
     @timeit
     def save(self, directory: str):
-        pickle.dump(
-            self.model,
-            open(os.path.join(directory, 'model.pkl'), 'wb')
-        )
+        with open(os.path.join(directory, 'model.pkl'), 'wb') as f:
+            pickle.dump(self.model_, f)
 
     @timeit
     def load(self, directory: str):
-        self.model = pickle.load(
-            open(os.path.join(directory, 'model.pkl'), 'rb')
-        )
+        with open(os.path.join(directory, 'model.pkl'), 'rb') as f:
+            self.model_ = pickle.load(f)
