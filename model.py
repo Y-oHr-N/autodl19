@@ -121,6 +121,10 @@ class AutoSSLClassifier(object):
 
         self.label_data = 500
 
+        self._timer = Timer(time_budget=timeout)
+
+        self._timer.start()
+
     def fit(self, X, y, **fit_params):
         is_labeled = y != 0
         X_label = X[is_labeled]
@@ -129,7 +133,7 @@ class AutoSSLClassifier(object):
         y_n_cnt, y_p_cnt = y_label.value_counts()
         y_n = max(int(self.label_data * (y_n_cnt / len(y_label))), 1)
         y_p = max(int(self.label_data * (y_p_cnt / len(y_label))), 1)
-        timeout = self.timeout / self.n_iter
+        timeout = self._timer.get_remaining_time() / self.n_iter
 
         for _ in range(self.n_iter):
             if X_unlabeled.shape[0] < self.label_data:
