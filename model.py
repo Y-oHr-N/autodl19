@@ -270,21 +270,27 @@ class AutoNoisyClassifier(object):
         self._timer.start()
 
     def fit(self, X, y, **fit_params):
+        random_state = check_random_state(self.random_state)
         n_samples, _ = X.shape
 
         if n_samples > self.max_samples:
-            X, _, y, _ = train_test_split(
-                X,
-                y,
-                train_size=self.max_samples,
-                random_state=self.random_state
+            sample_indices = np.arange(n_samples)
+            sample_indices = random_state.choice(
+                sample_indices,
+                self.max_samples,
+                replace=False
             )
+
+            sample_indices.sort()
+
+            X = X.iloc[sample_indices]
+            y = y.iloc[sample_indices]
 
         self.model_ = OGBMClassifier(
             cv=self.cv,
             n_jobs=self.n_jobs,
             n_trials=self.n_trials,
-            random_state=self.random_state,
+            random_state=random_state,
             timeout=self._timer.get_remaining_time()
         )
 
