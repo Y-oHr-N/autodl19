@@ -41,17 +41,52 @@ NUMERICAL_PREFIX = 'n_'
 TIME_PREFIX = 't_'
 
 
-@timeit
-def feature_engineer(df):
-    for c in [c for c in df if c.startswith(MULTI_VALUE_CATEGORICAL_PREFIX)]:
-        df[c] = df[c].apply(lambda x: hash(x))
-        df[c] = df[c].astype('category')
+class Enginner():
+    def __init__(self, high=99.0, low=1.0):
+        self.high = high
+        self.low = low
 
-    for c in [c for c in df if c.startswith(CATEGORICAL_PREFIX)]:
-        df[c] = df[c].astype('category')
+    @timeit
+    def fit(self, X):
+        self.numerical_features_ = \
+            [c for c in X if c.startswith(NUMERICAL_PREFIX)]
+        self.categorical_features_ = \
+            [c for c in X if c.startswith(CATEGORICAL_PREFIX)]
+        self.multi_value_categorical_features_ = \
+            [c for c in X if c.startswith(MULTI_VALUE_CATEGORICAL_PREFIX)]
+        self.time_features_ = [c for c in X if c.startswith(TIME_PREFIX)]
 
-    for c in [c for c in df if c.startswith(TIME_PREFIX)]:
-        df.drop(c, axis=1, inplace=True)
+        self.data_min_, self.data_max_ = np.nanpercentile(
+            X[self.numerical_features_],
+            [self.low, self.high],
+            axis=0
+        )
+
+    @timeit
+    def transform(self, X):
+        if len(self.categorical_features_) > 0:
+            X[self.categorical_features_] = \
+                X[self.categorical_features_].astype('category')
+
+        if len(self.multi_value_categorical_features_) > 0:
+            X[self.multi_value_categorical_features_] = \
+                X[self.multi_value_categorical_features_].apply(lambda x: hash(x))
+            X[self.multi_value_categorical_features_] = \
+                X[self.multi_value_categorical_features_].astype('category')
+
+        if len(self.numerical_features_) > 0:
+            X[self.numerical_features_] = \
+                X[self.numerical_features_].clip(
+                    self.data_min_,
+                    self.data_max_,
+                    axis=1
+                )
+            X[self.numerical_features_] = X[self.numerical_features_].astype('float32')
+
+        if len(self.time_features_) > 0:
+            X.drop(columns=self.time_features_, inplace=True)
+
+        return X
 
 
 class AutoSSLClassifier(object):
@@ -277,7 +312,11 @@ class Model(object):
         if is_has_time_columns:
             cv = TimeSeriesSplit(self.cv)
 
-        feature_engineer(X)
+        self.engineer_ = Enginner()
+
+        self.engineer_.fit(X)
+
+        X = self.engineer_.transform(X)
 
         logger.info(f'X.shape = {X.shape}')
 
@@ -307,7 +346,7 @@ class Model(object):
 
     @timeit
     def predict(self, X: pd.DataFrame):
-        feature_engineer(X)
+        X = self.engineer_.transform(X)
 
         logger.info(f'X.shape = {X.shape}')
 
