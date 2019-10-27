@@ -184,7 +184,7 @@ class AutoPUClassifier(object):
 
     def predict_proba(self, X):
         for i, model in enumerate(self.models_):
-            model.model.set_params(n_jobs=1)
+            model.model_.set_params(n_jobs=1)
 
             p = model.predict_proba(X)
 
@@ -281,15 +281,18 @@ class Model(object):
 
         logger.info(f'X.shape = {X.shape}')
 
-        timeout = \
-            0.75 * self.info['time_budget'] - self._timer.get_elapsed_time()
-
         if self.info['task'] == 'ssl':
             klass = AutoSSLClassifier
         elif self.info['task'] == 'pu':
             klass = AutoPUClassifier
         elif self.info['task'] == 'noisy':
             klass = AutoNoisyClassifier
+
+        pred_time_budget = self.info.get(
+            'pred_time_budget',
+            0.25 * self.info['time_budget']
+        )
+        timeout = pred_time_budget - self._timer.get_elapsed_time()
 
         self.model_ = klass(
             cv=cv,
