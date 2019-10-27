@@ -185,13 +185,17 @@ class AutoPUClassifier(object):
         self.random_state = random_state
         self.timeout = timeout
 
+        self._timer = Timer(time_budget=timeout)
+
+        self._timer.start()
+
     def fit(self, X, y, **fit_params):
         random_state = check_random_state(self.random_state)
         n_samples, _ = X.shape
         n_pos_samples = np.sum(y == 1)
         sample_indices = np.arange(n_samples)
         sample_indices_positive = sample_indices[y == 1]
-        timeout = self.timeout / self.n_iter
+        timeout = self._timer.get_remaining_time() / self.n_iter
 
         self.models_ = []
 
