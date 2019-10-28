@@ -305,7 +305,7 @@ class AutoNoisyClassifier(object):
         if self.timeout is None:
             timeout = None
         else:
-            timeout = self._timer.get_remaning_time()
+            timeout = self._timer.get_remaining_time()
 
         self.model_ = OGBMClassifier(
             cv=cv,
