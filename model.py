@@ -1,3 +1,4 @@
+import itertools
 import logging
 import os
 import pickle
@@ -43,12 +44,27 @@ TIME_PREFIX = 't_'
 
 
 class Enginner(object):
-    def __init__(self, high=99.9, low=0.01):
+    def __init__(
+        self,
+        high=99.0,
+        low=1.0,
+        max_samples=100_000,
+        threshold=0.95,
+        random_state=None
+        ):
         self.high = high
         self.low = low
+        self.max_samples = max_samples
+        self.threshold = threshold
+        self.random_state = random_state
 
     @timeit
     def fit(self, X):
+        random_state = check_random_state(self.random_state)
+        frequency = X.nunique()
+
+        logger.info(frequency)
+
         self.categorical_features_ = \
             [c for c in X if c.startswith(CATEGORICAL_PREFIX)]
         self.multi_value_categorical_features_ = \
@@ -57,6 +73,20 @@ class Enginner(object):
             [c for c in X if c.startswith(NUMERICAL_PREFIX)]
         self.time_features_ = [c for c in X if c.startswith(TIME_PREFIX)]
 
+        self.n_samples_, _ = X.shape
+        self.dropped_features_ = X.columns[(frequency == 1)]
+
+        if len(self.categorical_features_) > 0:
+            self.dropped_features_ = self.dropped_features_.union(
+                list(
+                    itertools.compress(
+                        self.categorical_features_,
+                        frequency[self.categorical_features_] \
+                            == self.n_samples_
+                    )
+                )
+            )
+
         if len(self.numerical_features_) > 0:
             self.data_min_, self.data_max_ = np.nanpercentile(
                 X[self.numerical_features_],
@@ -64,15 +94,43 @@ class Enginner(object):
                 axis=0
             )
 
-        self.frequency_ = X.nunique()
+            if self.max_samples < self.n_samples_:
+                indices = random_state.choice(
+                    self.n_samples_,
+                    self.max_samples,
+                    replace=False
+                )
 
-        logger.info(self.frequency_)
+                corr = X[self.numerical_features_].iloc[indices].corr()
+
+            else:
+                corr = X[self.numerical_features_].corr()
+
+            triu = np.triu(corr, k=1)
+            triu = np.abs(triu)
+            triu = np.nan_to_num(triu)
+
+            self.dropped_features_ = self.dropped_features_.union(
+                list(
+                    itertools.compress(
+                        self.numerical_features_,
+                        np.any(triu > self.threshold, axis=0)
+                    )
+                )
+            )
+
+        if len(self.time_features_) > 0:
+            self.dropped_features_ = self.dropped_features_.union(
+                self.time_features_
+            )
+
+        logger.info(f'dropped_features={self.dropped_features_}')
 
         return self
 
     @timeit
     def transform(self, X):
-        dropped_features = X.columns[self.frequency_ == 1]
+        logger.info(f'before engineering: X.shape={X.shape}')
 
         if len(self.categorical_features_) > 0:
             X[self.categorical_features_] = \
@@ -96,10 +154,11 @@ class Enginner(object):
             X[self.numerical_features_] = \
                 X[self.numerical_features_].astype('float32')
 
-        if len(self.time_features_) > 0:
-            dropped_features = dropped_features.union(self.time_features_)
+        X = X.drop(columns=self.dropped_features_)
 
-        return X.drop(columns=dropped_features)
+        logger.info(f'after engineering: X.shape={X.shape}')
+
+        return X
 
 
 class AutoSSLClassifier(object):
@@ -323,13 +382,17 @@ class Model(object):
         self,
         info: dict,
         cv=4,
-        max_samples=100_000,
+        high=99.9,
+        low=0.1,
+        max_samples=30_000,
         n_jobs=-1,
         n_trials=None,
         random_state=0
     ):
         self.cv = cv
+        self.high = high
         self.info = info
+        self.low = low
         self.max_samples = max_samples
         self.n_jobs = n_jobs
         self.n_trials = n_trials
@@ -354,13 +417,15 @@ class Model(object):
             X = X.sort_values(c)
             y = y.loc[X.index]
 
-        self.engineer_ = Enginner()
+        self.engineer_ = Enginner(
+            high=self.high,
+            max_samples=self.max_samples,
+            low=self.low
+        )
 
         self.engineer_.fit(X)
 
         X = self.engineer_.transform(X)
-
-        logger.info(f'X.shape={X.shape}')
 
         if self.info['task'] == 'ssl':
             klass = AutoSSLClassifier
@@ -386,8 +451,6 @@ class Model(object):
     @timeit
     def predict(self, X: pd.DataFrame):
         X = self.engineer_.transform(X)
-
-        logger.info(f'X.shape={X.shape}')
 
         probas = self.model_.predict_proba(X)
 
