@@ -13,6 +13,7 @@ os.system('pip3 install -q scikit-learn')
 import colorlog
 import numpy as np
 import pandas as pd
+import itertools
 
 from optgbm.sklearn import OGBMClassifier
 from sklearn.model_selection import TimeSeriesSplit
@@ -43,12 +44,26 @@ TIME_PREFIX = 't_'
 
 
 class Enginner(object):
-    def __init__(self, high=99.0, low=1.0):
+    def __init__(
+        self,
+        high=99.0,
+        low=1.0,
+        max_samples=30_000,
+        corr_threshold=0.95,
+        random_state=None
+        ):
         self.high = high
         self.low = low
+        self.max_samples = max_samples
+        self.corr_threshold = corr_threshold
+        self.random_state = random_state
 
     @timeit
     def fit(self, X):
+        self.frequency_ = X.nunique()
+        self.n_samples_, _ = X.shape
+        random_state = check_random_state(self.random_state)
+
         self.numerical_features_ = \
             [c for c in X if c.startswith(NUMERICAL_PREFIX)]
         self.categorical_features_ = \
@@ -63,9 +78,15 @@ class Enginner(object):
                 [self.low, self.high],
                 axis=0
             )
-
-        self.frequency_ = X.nunique()
-        self.n_samples_, _ = X.shape
+            if self.max_samples < self.n_samples_:
+                indices = random_state.choice(
+                    self.n_samples_,
+                    self.max_samples,
+                    replace=False
+                )
+                self.corr_ = X.iloc[indices][self.numerical_features_].corr()
+            else:
+                self.corr_ = X[self.numerical_features_].corr()
 
         return self
 
@@ -93,11 +114,21 @@ class Enginner(object):
             X[self.numerical_features_] = \
                 X[self.numerical_features_].astype('float32')
 
+            triu = np.triu(self.corr_, k=1)
+            triu = np.abs(triu)
+            triu = np.nan_to_num(triu)
+            corr_features = list(itertools.compress(self.numerical_features_,
+                np.any(triu >self.corr_threshold, axis=0)))
+        else:
+            corr_features = []
+
         dropped_features = X.columns[(self.frequency_ == 1) & \
             (self.frequency_ == self.n_samples_)]
 
         if len(self.time_features_) > 0:
             dropped_features = dropped_features.union(self.time_features_)
+        if len(corr_features) > 0:
+            dropped_features = dropped_features.union(corr_features)
 
         X = X.drop(columns=dropped_features)
 
