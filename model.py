@@ -49,18 +49,21 @@ class Enginner(object):
         high=99.0,
         low=1.0,
         max_samples=100_000,
-        corr_threshold=0.95,
+        threshold=0.95,
         random_state=None
         ):
         self.high = high
         self.low = low
         self.max_samples = max_samples
-        self.corr_threshold = corr_threshold
+        self.threshold = threshold
         self.random_state = random_state
 
     @timeit
     def fit(self, X):
         random_state = check_random_state(self.random_state)
+        frequency = X.nunique()
+
+        logger.info(frequency)
 
         self.categorical_features_ = \
             [c for c in X if c.startswith(CATEGORICAL_PREFIX)]
@@ -71,7 +74,18 @@ class Enginner(object):
         self.time_features_ = [c for c in X if c.startswith(TIME_PREFIX)]
 
         self.n_samples_, _ = X.shape
-        self.frequency_ = X.nunique()
+        self.dropped_features_ = X.columns[(frequency == 1)]
+
+        if len(self.categorical_features_) > 0:
+            self.dropped_features_ = self.dropped_features_.union(
+                list(
+                    itertools.compress(
+                        self.categorical_features_,
+                        frequency[self.categorical_features_] \
+                            == self.n_samples_
+                    )
+                )
+            )
 
         if len(self.numerical_features_) > 0:
             self.data_min_, self.data_max_ = np.nanpercentile(
@@ -87,12 +101,30 @@ class Enginner(object):
                     replace=False
                 )
 
-                self.corr_ = X[self.numerical_features_].iloc[indices].corr()
+                corr = X[self.numerical_features_].iloc[indices].corr()
 
             else:
-                self.corr_ = X[self.numerical_features_].corr()
+                corr = X[self.numerical_features_].corr()
 
-        logger.info(self.frequency_)
+            triu = np.triu(corr, k=1)
+            triu = np.abs(triu)
+            triu = np.nan_to_num(triu)
+
+            self.dropped_features_ = self.dropped_features_.union(
+                list(
+                    itertools.compress(
+                        self.numerical_features_,
+                        np.any(triu > self.threshold, axis=0)
+                    )
+                )
+            )
+
+        if len(self.time_features_) > 0:
+            self.dropped_features_ = self.dropped_features_.union(
+                self.time_features_
+            )
+
+        logger.info(f'dropped_features={self.dropped_features_}')
 
         return self
 
@@ -100,21 +132,9 @@ class Enginner(object):
     def transform(self, X):
         logger.info(f'before engineering: X.shape={X.shape}')
 
-        dropped_features = X.columns[(self.frequency_ == 1)]
-
         if len(self.categorical_features_) > 0:
             X[self.categorical_features_] = \
                 X[self.categorical_features_].astype('category')
-
-            dropped_features = dropped_features.union(
-                list(
-                    itertools.compress(
-                        self.categorical_features_,
-                        self.frequency_[self.categorical_features_] \
-                            == self.n_samples_
-                    )
-                )
-            )
 
         if len(self.multi_value_categorical_features_) > 0:
             X[self.multi_value_categorical_features_] = \
@@ -134,25 +154,7 @@ class Enginner(object):
             X[self.numerical_features_] = \
                 X[self.numerical_features_].astype('float32')
 
-            triu = np.triu(self.corr_, k=1)
-            triu = np.abs(triu)
-            triu = np.nan_to_num(triu)
-
-            dropped_features = dropped_features.union(
-                list(
-                    itertools.compress(
-                        self.numerical_features_,
-                        np.any(triu > self.corr_threshold, axis=0)
-                    )
-                )
-            )
-
-        if len(self.time_features_) > 0:
-            dropped_features = dropped_features.union(self.time_features_)
-
-        logger.info(f'dropped_features={dropped_features}')
-
-        X = X.drop(columns=dropped_features)
+        X = X.drop(columns=self.dropped_features_)
 
         logger.info(f'after engineering: X.shape={X.shape}')
 
