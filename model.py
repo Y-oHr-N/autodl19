@@ -15,8 +15,8 @@ import numpy as np
 import pandas as pd
 
 from optgbm.sklearn import OGBMClassifier
+from sklearn.model_selection import check_cv
 from sklearn.model_selection import TimeSeriesSplit
-from sklearn.model_selection import train_test_split
 from sklearn.utils import check_random_state
 
 from automllib.utils import Timeit
@@ -277,27 +277,37 @@ class AutoNoisyClassifier(object):
 
     def fit(self, X, y, **fit_params):
         random_state = check_random_state(self.random_state)
+        cv = check_cv(self.cv, y=y, classifier=True)
         n_samples, _ = X.shape
 
         if n_samples > self.max_samples:
-            sample_indices = np.arange(n_samples)
-            sample_indices = random_state.choice(
-                sample_indices,
-                self.max_samples,
-                replace=False
-            )
+            if isinstance(cv, TimeSeriesSplit):
+                X = X.iloc[-self.max_samples:]
+                y = y.iloc[-self.max_samples:]
+            else:
+                sample_indices = np.arange(n_samples)
+                sample_indices = random_state.choice(
+                    sample_indices,
+                    self.max_samples,
+                    replace=False
+                )
 
-            sample_indices.sort()
+                sample_indices.sort()
 
-            X = X.iloc[sample_indices]
-            y = y.iloc[sample_indices]
+                X = X.iloc[sample_indices]
+                y = y.iloc[sample_indices]
+
+        if self.timeout is None:
+            timeout = None
+        else:
+            timeout = self._timer.get_remaning_time()
 
         self.model_ = OGBMClassifier(
-            cv=self.cv,
+            cv=cv,
             n_jobs=self.n_jobs,
             n_trials=self.n_trials,
             random_state=random_state,
-            timeout=self._timer.get_remaining_time()
+            timeout=timeout
         )
 
         self.model_.fit(X, y, **fit_params)
