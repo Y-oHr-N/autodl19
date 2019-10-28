@@ -65,6 +65,7 @@ class Enginner(object):
             )
 
         self.frequency_ = X.nunique()
+        self.n_samples_, _ = X.shape
 
         return self
 
@@ -92,7 +93,8 @@ class Enginner(object):
             X[self.numerical_features_] = \
                 X[self.numerical_features_].astype('float32')
 
-        dropped_features = X.columns[self.frequency_ == 1]
+        dropped_features = X.columns[(self.frequency_ == 1) & \
+            (self.frequency_ == self.n_samples_)]
 
         if len(self.time_features_) > 0:
             dropped_features = dropped_features.union(self.time_features_)
