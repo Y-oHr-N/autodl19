@@ -1,6 +1,7 @@
 import logging
 import os
 import pickle
+import time
 
 os.system('pip3 install -q colorlog')
 os.system('pip3 install -q imbalanced-learn')
@@ -16,8 +17,8 @@ import pandas as pd
 import itertools
 
 from optgbm.sklearn import OGBMClassifier
+from sklearn.model_selection import check_cv
 from sklearn.model_selection import TimeSeriesSplit
-from sklearn.model_selection import train_test_split
 from sklearn.utils import check_random_state
 
 from automllib.utils import Timeit
@@ -42,12 +43,11 @@ NUMERICAL_PREFIX = 'n_'
 TIME_PREFIX = 't_'
 
 
-
 class Enginner(object):
     def __init__(
         self,
-        high=99.0,
-        low=1.0,
+        high=99.9,
+        low=0.01,
         max_samples=30_000,
         corr_threshold=0.95,
         random_state=None
@@ -64,12 +64,12 @@ class Enginner(object):
         self.n_samples_, _ = X.shape
         random_state = check_random_state(self.random_state)
 
-        self.numerical_features_ = \
-            [c for c in X if c.startswith(NUMERICAL_PREFIX)]
         self.categorical_features_ = \
             [c for c in X if c.startswith(CATEGORICAL_PREFIX)]
         self.multi_value_categorical_features_ = \
             [c for c in X if c.startswith(MULTI_VALUE_CATEGORICAL_PREFIX)]
+        self.numerical_features_ = \
+            [c for c in X if c.startswith(NUMERICAL_PREFIX)]
         self.time_features_ = [c for c in X if c.startswith(TIME_PREFIX)]
 
         if len(self.numerical_features_) > 0:
@@ -88,10 +88,15 @@ class Enginner(object):
             else:
                 self.corr_ = X[self.numerical_features_].corr()
 
+        logger.info(self.frequency_)
+
         return self
 
     @timeit
     def transform(self, X):
+        dropped_features = X.columns[(self.frequency_ == 1) & \
+            (self.frequency_ == self.n_samples_)]
+
         if len(self.categorical_features_) > 0:
             X[self.categorical_features_] = \
                 X[self.categorical_features_].astype('category')
@@ -122,17 +127,12 @@ class Enginner(object):
         else:
             corr_features = []
 
-        dropped_features = X.columns[(self.frequency_ == 1) & \
-            (self.frequency_ == self.n_samples_)]
-
         if len(self.time_features_) > 0:
             dropped_features = dropped_features.union(self.time_features_)
         if len(corr_features) > 0:
             dropped_features = dropped_features.union(corr_features)
 
-        X = X.drop(columns=dropped_features)
-
-        return X
+        return X.drop(columns=dropped_features)
 
 
 class AutoSSLClassifier(object):
@@ -143,68 +143,70 @@ class AutoSSLClassifier(object):
     def __init__(
         self,
         cv=5,
+        high=95.0,
+        low=5.0,
         max_samples=100_000,
-        n_iter=5,
         n_jobs=1,
         n_trials=25,
         random_state=None,
         timeout=None
     ):
         self.cv = cv
+        self.high = high
+        self.low = low
         self.max_samples = max_samples
-        self.n_iter = n_iter
         self.n_jobs = n_jobs
         self.n_trials = n_trials
         self.random_state = random_state
         self.timeout = timeout
 
-        self.label_data = 500
-
-        self._timer = Timer(time_budget=timeout)
-
-        self._timer.start()
-
     def fit(self, X, y, **fit_params):
-        is_labeled = y != 0
-        X_label = X[is_labeled]
-        y_label = y[is_labeled]
-        X_unlabeled = X[~is_labeled]
-        y_n_cnt, y_p_cnt = y_label.value_counts()
-        y_n = max(int(self.label_data * (y_n_cnt / len(y_label))), 1)
-        y_p = max(int(self.label_data * (y_p_cnt / len(y_label))), 1)
-        timeout = self._timer.get_remaining_time() / self.n_iter
+        timer = Timer(time_budget=self.timeout)
 
-        for _ in range(self.n_iter):
-            if X_unlabeled.shape[0] < self.label_data:
-                break
+        timer.start()
+
+        n_samples, _ = X.shape
+        is_labeled = y != 0
+        X_labeled = X[is_labeled]
+        y_labeled = y[is_labeled]
+        iter_time = 0.0
+
+        while timer.get_remaining_time() - iter_time > 0:
+            start_time = time.perf_counter()
 
             self.model_ = AutoNoisyClassifier(
                 cv=self.cv,
                 max_samples=self.max_samples,
                 n_jobs=self.n_jobs,
-                n_trials=None,
-                random_state=self.random_state,
-                timeout=timeout
+                n_trials=100,
+                random_state=self.random_state
             )
 
-            self.model_.fit(X_label, y_label, **fit_params)
+            self.model_.fit(X_labeled, y_labeled, **fit_params)
 
-            y_hat = self.model_.predict_proba(X_unlabeled)[:, 1]
-
-            if len(set(y_hat)) == 1:
+            if is_labeled.sum() == n_samples:
                 break
 
-            idx = np.argsort(y_hat)
-            y_p_idx = idx[-y_p:]
-            y_n_idx = idx[:y_n]
-            X_label = pd.concat(
-                (X_label, X_unlabeled.iloc[list(y_p_idx) + list(y_n_idx)])
+            y_score = np.full(n_samples, np.nan)
+            y_score[~is_labeled] = self.model_.predict_proba(
+                X[~is_labeled]
+            )[:, 1]
+
+            low_value, high_value = np.nanpercentile(
+                y_score,
+                [self.low, self.high]
             )
-            y_label = pd.concat(
-                (y_label, pd.Series([1] * len(y_p_idx) + [-1] * len(y_n_idx)))
-            )
-            y_label.index = X_label.index
-            X_unlabeled = X_unlabeled.iloc[idx[y_n:-y_p]]
+            is_high = y_score >= high_value
+            is_low = y_score <= low_value
+            y[~is_labeled & is_high] = 1
+            y[~is_labeled & is_low] = -1
+            is_labeled |= is_high
+            is_labeled |= is_low
+
+            X_labeled = X[is_labeled]
+            y_labeled = y[is_labeled]
+
+            iter_time = time.perf_counter() - start_time
 
         return self
 
@@ -214,7 +216,6 @@ class AutoPUClassifier(object):
         self,
         cv=5,
         max_samples=100_000,
-        n_iter=10,
         n_jobs=1,
         n_trials=25,
         random_state=None,
@@ -222,52 +223,54 @@ class AutoPUClassifier(object):
     ):
         self.cv = cv
         self.max_samples = max_samples
-        self.n_iter = n_iter
         self.n_jobs = n_jobs
         self.n_trials = n_trials
         self.random_state = random_state
         self.timeout = timeout
 
-        self._timer = Timer(time_budget=timeout)
-
-        self._timer.start()
-
     def fit(self, X, y, **fit_params):
+        timer = Timer(time_budget=self.timeout)
+
+        timer.start()
+
         random_state = check_random_state(self.random_state)
         n_samples, _ = X.shape
         n_pos_samples = np.sum(y == 1)
         sample_indices = np.arange(n_samples)
+        sample_indices_unlabeled = sample_indices[y == 0]
         sample_indices_positive = sample_indices[y == 1]
-        timeout = self._timer.get_remaining_time() / self.n_iter
+        iter_time = 0.0
 
         self.models_ = []
 
-        for _ in range(self.n_iter):
-            sample_indices_unlabeled = random_state.choice(
-                sample_indices[y == 0],
-                n_pos_samples,
-                replace=False
-            )
-            sample_indices_selected = np.union1d(
-                sample_indices_positive,
-                sample_indices_unlabeled
+        while timer.get_remaining_time() - iter_time > 0:
+            start_time = time.perf_counter()
+
+            sample_indices_sampled = np.union1d(
+                random_state.choice(
+                    sample_indices_unlabeled,
+                    n_pos_samples,
+                    replace=False
+                ),
+                sample_indices_positive
             )
             model = AutoNoisyClassifier(
                 cv=self.cv,
                 max_samples=self.max_samples,
                 n_jobs=self.n_jobs,
-                n_trials=None,
-                random_state=self.random_state,
-                timeout=timeout
+                n_trials=100,
+                random_state=self.random_state
             )
 
             model.fit(
-                X.iloc[sample_indices_selected],
-                y.iloc[sample_indices_selected],
+                X.iloc[sample_indices_sampled],
+                y.iloc[sample_indices_sampled],
                 **fit_params
             )
 
             self.models_.append(model)
+
+            iter_time = time.perf_counter() - start_time
 
         return self
 
@@ -280,7 +283,7 @@ class AutoPUClassifier(object):
             else:
                 probas += p
 
-        return probas / self.n_iter
+        return probas / len(self.models_)
 
 
 class AutoNoisyClassifier(object):
@@ -304,33 +307,43 @@ class AutoNoisyClassifier(object):
         self.random_state = random_state
         self.timeout = timeout
 
-        self._timer = Timer(time_budget=timeout)
-
-        self._timer.start()
-
     def fit(self, X, y, **fit_params):
+        timer = Timer(time_budget=self.timeout)
+
+        timer.start()
+
+        cv = check_cv(self.cv, y=y, classifier=True)
         random_state = check_random_state(self.random_state)
         n_samples, _ = X.shape
 
         if n_samples > self.max_samples:
-            sample_indices = np.arange(n_samples)
-            sample_indices = random_state.choice(
-                sample_indices,
-                self.max_samples,
-                replace=False
-            )
+            if isinstance(cv, TimeSeriesSplit):
+                X = X.iloc[-self.max_samples:]
+                y = y.iloc[-self.max_samples:]
+            else:
+                sample_indices = np.arange(n_samples)
+                sample_indices = random_state.choice(
+                    sample_indices,
+                    self.max_samples,
+                    replace=False
+                )
 
-            sample_indices.sort()
+                sample_indices.sort()
 
-            X = X.iloc[sample_indices]
-            y = y.iloc[sample_indices]
+                X = X.iloc[sample_indices]
+                y = y.iloc[sample_indices]
+
+        if self.timeout is None:
+            timeout = None
+        else:
+            timeout = timer.get_remaining_time()
 
         self.model_ = OGBMClassifier(
-            cv=self.cv,
+            cv=cv,
             n_jobs=self.n_jobs,
             n_trials=self.n_trials,
             random_state=random_state,
-            timeout=self._timer.get_remaining_time()
+            timeout=timeout
         )
 
         self.model_.fit(X, y, **fit_params)
@@ -342,8 +355,8 @@ class Model(object):
     def __init__(
         self,
         info: dict,
-        cv=5,
-        max_samples=30_000,
+        cv=4,
+        max_samples=100_000,
         n_jobs=-1,
         n_trials=None,
         random_state=0
@@ -390,7 +403,7 @@ class Model(object):
             klass = AutoNoisyClassifier
 
         timeout = \
-            0.8 * self.info['time_budget'] - self._timer.get_elapsed_time()
+            0.75 * self.info['time_budget'] - self._timer.get_elapsed_time()
 
         self.model_ = klass(
             cv=cv,
