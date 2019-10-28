@@ -148,8 +148,7 @@ class AutoSSLClassifier(object):
                 max_samples=self.max_samples,
                 n_jobs=self.n_jobs,
                 n_trials=100,
-                random_state=self.random_state,
-                timeout=None
+                random_state=self.random_state
             )
 
             self.model_.fit(X_labeled, y_labeled, **fit_params)
