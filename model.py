@@ -185,7 +185,6 @@ class AutoPUClassifier(object):
         self,
         cv=5,
         max_samples=100_000,
-        n_iter=10,
         n_jobs=1,
         n_trials=25,
         random_state=None,
@@ -193,7 +192,6 @@ class AutoPUClassifier(object):
     ):
         self.cv = cv
         self.max_samples = max_samples
-        self.n_iter = n_iter
         self.n_jobs = n_jobs
         self.n_trials = n_trials
         self.random_state = random_state
@@ -209,11 +207,13 @@ class AutoPUClassifier(object):
         n_pos_samples = np.sum(y == 1)
         sample_indices = np.arange(n_samples)
         sample_indices_positive = sample_indices[y == 1]
-        timeout = self._timer.get_remaining_time() / self.n_iter
+        iter_time = 0.0
 
         self.models_ = []
 
-        for _ in range(self.n_iter):
+        while self._timer.get_remaining_time() - iter_time > 0:
+            start_time = time.perf_counter()
+
             sample_indices_unlabeled = random_state.choice(
                 sample_indices[y == 0],
                 n_pos_samples,
@@ -227,9 +227,8 @@ class AutoPUClassifier(object):
                 cv=self.cv,
                 max_samples=self.max_samples,
                 n_jobs=self.n_jobs,
-                n_trials=None,
-                random_state=self.random_state,
-                timeout=timeout
+                n_trials=100,
+                random_state=self.random_state
             )
 
             model.fit(
@@ -239,6 +238,8 @@ class AutoPUClassifier(object):
             )
 
             self.models_.append(model)
+
+            iter_time = time.perf_counter() - start_time
 
         return self
 
