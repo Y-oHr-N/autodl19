@@ -324,8 +324,8 @@ class Model(object):
     def __init__(
         self,
         info: dict,
-        cv=5,
-        max_samples=30_000,
+        cv=4,
+        max_samples=100_000,
         n_jobs=-1,
         n_trials=None,
         random_state=0
