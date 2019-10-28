@@ -1,6 +1,7 @@
 import logging
 import os
 import pickle
+import time
 
 os.system('pip3 install -q colorlog')
 os.system('pip3 install -q imbalanced-learn')
@@ -111,68 +112,71 @@ class AutoSSLClassifier(object):
     def __init__(
         self,
         cv=5,
+        high=95.0,
+        low=5.0,
         max_samples=100_000,
-        n_iter=5,
         n_jobs=1,
         n_trials=25,
         random_state=None,
         timeout=None
     ):
         self.cv = cv
+        self.high = high
+        self.low = low
         self.max_samples = max_samples
-        self.n_iter = n_iter
         self.n_jobs = n_jobs
         self.n_trials = n_trials
         self.random_state = random_state
         self.timeout = timeout
-
-        self.label_data = 500
 
         self._timer = Timer(time_budget=timeout)
 
         self._timer.start()
 
     def fit(self, X, y, **fit_params):
+        n_samples, _ = X.shape
         is_labeled = y != 0
-        X_label = X[is_labeled]
-        y_label = y[is_labeled]
-        X_unlabeled = X[~is_labeled]
-        y_n_cnt, y_p_cnt = y_label.value_counts()
-        y_n = max(int(self.label_data * (y_n_cnt / len(y_label))), 1)
-        y_p = max(int(self.label_data * (y_p_cnt / len(y_label))), 1)
-        timeout = self._timer.get_remaining_time() / self.n_iter
+        X_labeled = X[is_labeled]
+        y_labeled = y[is_labeled]
+        iter_time = 0.0
 
-        for _ in range(self.n_iter):
-            if X_unlabeled.shape[0] < self.label_data:
-                break
+        while self._timer.get_remaining_time() - iter_time > 0:
+            start_time = time.perf_counter()
 
             self.model_ = AutoNoisyClassifier(
                 cv=self.cv,
                 max_samples=self.max_samples,
                 n_jobs=self.n_jobs,
-                n_trials=None,
+                n_trials=100,
                 random_state=self.random_state,
-                timeout=timeout
+                timeout=None
             )
 
-            self.model_.fit(X_label, y_label, **fit_params)
+            self.model_.fit(X_labeled, y_labeled, **fit_params)
 
-            y_hat = self.model_.predict_proba(X_unlabeled)[:, 1]
-
-            if len(set(y_hat)) == 1:
+            if is_labeled.sum() == n_samples:
                 break
 
-            idx = np.argsort(y_hat)
-            y_p_idx = idx[-y_p:]
-            y_n_idx = idx[:y_n]
-            X_label = pd.concat(
-                (X_label, X_unlabeled.iloc[list(y_p_idx) + list(y_n_idx)])
+            y_score = np.full(n_samples, np.nan)
+            y_score[~is_labeled] = self.model_.predict_proba(
+                X[~is_labeled]
+            )[:, 1]
+
+            low_value, high_value = np.nanpercentile(
+                y_score,
+                [self.low, self.high]
             )
-            y_label = pd.concat(
-                (y_label, pd.Series([1] * len(y_p_idx) + [-1] * len(y_n_idx)))
-            )
-            y_label.index = X_label.index
-            X_unlabeled = X_unlabeled.iloc[idx[y_n:-y_p]]
+            is_high = y_score >= high_value
+            is_low = y_score <= low_value
+            y[~is_labeled & is_high] = 1
+            y[~is_labeled & is_low] = -1
+            is_labeled |= is_high
+            is_labeled |= is_low
+
+            X_labeled = X[is_labeled]
+            y_labeled = y[is_labeled]
+
+            iter_time = time.perf_counter() - start_time
 
         return self
 
