@@ -41,9 +41,8 @@ NUMERICAL_PREFIX = 'n_'
 TIME_PREFIX = 't_'
 
 
-
 class Enginner(object):
-    def __init__(self, high=99.0, low=1.0):
+    def __init__(self, high=99.9, low=0.01):
         self.high = high
         self.low = low
 
@@ -65,6 +64,8 @@ class Enginner(object):
             )
 
         self.frequency_ = X.nunique()
+
+        logger.info(self.frequency_)
 
         return self
 
