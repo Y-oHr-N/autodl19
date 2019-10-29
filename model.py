@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 
 from optgbm.sklearn import OGBMClassifier
+from sklearn.base import clone
 from sklearn.model_selection import check_cv
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.utils import check_random_state
@@ -168,6 +169,7 @@ class AutoSSLClassifier(object):
 
     def __init__(
         self,
+        class_weight=None,
         cv=5,
         high=95.0,
         low=5.0,
@@ -177,6 +179,7 @@ class AutoSSLClassifier(object):
         random_state=None,
         timeout=None
     ):
+        self.class_weight = class_weight
         self.cv = cv
         self.high = high
         self.low = low
@@ -197,16 +200,17 @@ class AutoSSLClassifier(object):
         y_labeled = y[is_labeled]
         iter_time = 0.0
 
+        self.model_ = AutoNoisyClassifier(
+            class_weight=self.class_weight,
+            cv=self.cv,
+            max_samples=self.max_samples,
+            n_jobs=self.n_jobs,
+            n_trials=100,
+            random_state=self.random_state
+        )
+
         while timer.get_remaining_time() - iter_time > 0:
             start_time = time.perf_counter()
-
-            self.model_ = AutoNoisyClassifier(
-                cv=self.cv,
-                max_samples=self.max_samples,
-                n_jobs=self.n_jobs,
-                n_trials=100,
-                random_state=self.random_state
-            )
 
             self.model_.fit(X_labeled, y_labeled, **fit_params)
 
@@ -240,6 +244,7 @@ class AutoSSLClassifier(object):
 class AutoPUClassifier(object):
     def __init__(
         self,
+        class_weight=None,
         cv=5,
         max_samples=100_000,
         n_jobs=1,
@@ -247,6 +252,7 @@ class AutoPUClassifier(object):
         random_state=None,
         timeout=None
     ):
+        self.class_weight = class_weight
         self.cv = cv
         self.max_samples = max_samples
         self.n_jobs = n_jobs
@@ -267,6 +273,15 @@ class AutoPUClassifier(object):
         sample_indices_positive = sample_indices[y == 1]
         iter_time = 0.0
 
+        model = AutoNoisyClassifier(
+            class_weight=self.class_weight,
+            cv=self.cv,
+            max_samples=self.max_samples,
+            n_jobs=self.n_jobs,
+            n_trials=100,
+            random_state=self.random_state
+        )
+
         self.models_ = []
 
         while timer.get_remaining_time() - iter_time > 0:
@@ -280,21 +295,16 @@ class AutoPUClassifier(object):
                 ),
                 sample_indices_positive
             )
-            model = AutoNoisyClassifier(
-                cv=self.cv,
-                max_samples=self.max_samples,
-                n_jobs=self.n_jobs,
-                n_trials=100,
-                random_state=self.random_state
-            )
 
-            model.fit(
+            m = clone(model)
+
+            m.fit(
                 X.iloc[sample_indices_sampled],
                 y.iloc[sample_indices_sampled],
                 **fit_params
             )
 
-            self.models_.append(model)
+            self.models_.append(m)
 
             iter_time = time.perf_counter() - start_time
 
@@ -319,6 +329,7 @@ class AutoNoisyClassifier(object):
 
     def __init__(
         self,
+        class_weight=None,
         cv=5,
         max_samples=100_000,
         n_jobs=1,
@@ -326,6 +337,7 @@ class AutoNoisyClassifier(object):
         random_state=None,
         timeout=None
     ):
+        self.class_weight = class_weight
         self.cv = cv
         self.max_samples = max_samples
         self.n_jobs = n_jobs
@@ -365,6 +377,7 @@ class AutoNoisyClassifier(object):
             timeout = timer.get_remaining_time()
 
         self.model_ = OGBMClassifier(
+            class_weight=self.class_weight,
             cv=cv,
             n_jobs=self.n_jobs,
             n_trials=self.n_trials,
@@ -381,6 +394,7 @@ class Model(object):
     def __init__(
         self,
         info: dict,
+        class_weight=None,
         cv=4,
         high=99.9,
         low=0.1,
@@ -389,6 +403,7 @@ class Model(object):
         n_trials=None,
         random_state=0
     ):
+        self.class_weight = class_weight
         self.cv = cv
         self.high = high
         self.info = info
@@ -438,6 +453,7 @@ class Model(object):
             0.75 * self.info['time_budget'] - self._timer.get_elapsed_time()
 
         self.model_ = klass(
+            class_weight=self.class_weight,
             cv=cv,
             max_samples=self.max_samples,
             n_jobs=self.n_jobs,
