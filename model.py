@@ -392,7 +392,7 @@ class Model(object):
     def __init__(
         self,
         info: dict,
-        class_weight=None,
+        class_weight='balanced',
         cv=4,
         high=99.9,
         low=0.1,
