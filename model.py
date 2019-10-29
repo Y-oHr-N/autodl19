@@ -218,9 +218,7 @@ class AutoSSLClassifier(object):
                 break
 
             y_score = np.full(n_samples, np.nan)
-            y_score[~is_labeled] = self.model_.predict_proba(
-                X[~is_labeled]
-            )[:, 1]
+            y_score[~is_labeled] = self.model_.predict_proba(X[~is_labeled])
 
             low_value, high_value = np.nanpercentile(
                 y_score,
@@ -323,10 +321,6 @@ class AutoPUClassifier(object):
 
 
 class AutoNoisyClassifier(object):
-    @property
-    def predict_proba(self):
-        return self.model_.predict_proba
-
     def __init__(
         self,
         class_weight=None,
@@ -388,6 +382,11 @@ class AutoNoisyClassifier(object):
         self.model_.fit(X, y, **fit_params)
 
         return self
+
+    def predict_proba(self, X):
+        probas = self.model_.predict_proba(X)
+
+        return probas[:, 1]
 
 
 class Model(object):
@@ -470,7 +469,7 @@ class Model(object):
 
         probas = self.model_.predict_proba(X)
 
-        return pd.Series(probas[:, 1])
+        return pd.Series(probas)
 
     @timeit
     def save(self, directory: str):
