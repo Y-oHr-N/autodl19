@@ -18,7 +18,6 @@ import pandas as pd
 
 from optgbm.sklearn import OGBMClassifier
 from sklearn.model_selection import check_cv
-from sklearn.model_selection import KFold
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.utils import check_random_state
 
@@ -412,7 +411,7 @@ class Model(object):
         if len(time_features) > 0:
             cv = TimeSeriesSplit(self.cv)
         else:
-            cv = KFold(self.cv)
+            cv = self.cv
 
         for c in time_features:
             X = X.sort_values(c)
