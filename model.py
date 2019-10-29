@@ -164,10 +164,6 @@ class Enginner(BaseEstimator):
 
 
 class AutoSSLClassifier(BaseEstimator):
-    @property
-    def predict_proba(self):
-        return self.model_.predict_proba
-
     def __init__(
         self,
         class_weight=None,
@@ -246,6 +242,9 @@ class AutoSSLClassifier(BaseEstimator):
 
         return self
 
+    def predict_proba(self, X, timeout=None):
+        return self.model_.predict_proba(X)
+
 
 class AutoPUClassifier(BaseEstimator):
     def __init__(
@@ -317,8 +316,14 @@ class AutoPUClassifier(BaseEstimator):
 
         return self
 
-    def predict_proba(self, X):
-        for i, model in enumerate(self.models_):
+    def predict_proba(self, X, timeout=None):
+        timer = Timer(time_budget=timeout)
+
+        timer.start()
+
+        i = 0
+
+        for i, model in self.models_:
             p = model.predict_proba(X)
 
             if i == 0:
@@ -326,7 +331,12 @@ class AutoPUClassifier(BaseEstimator):
             else:
                 probas += p
 
-        return probas / len(self.models_)
+            i += 1
+
+            if timeout is not None and timer.get_remaining_time() <= 0:
+                break
+
+        return probas / i
 
 
 class AutoNoisyClassifier(BaseEstimator):
@@ -392,7 +402,7 @@ class AutoNoisyClassifier(BaseEstimator):
 
         return self
 
-    def predict_proba(self, X):
+    def predict_proba(self, X, timeout=None):
         probas = self.model_.predict_proba(X)
 
         return probas[:, 1]
@@ -476,8 +486,7 @@ class Model(object):
     @timeit
     def predict(self, X: pd.DataFrame):
         X = self.engineer_.transform(X)
-
-        probas = self.model_.predict_proba(X)
+        probas = self.model_.predict_proba(X, timeout=0.75 * self.info.get('pred_time_budget', 3600))
 
         return pd.Series(probas)
 
