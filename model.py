@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 
 from optgbm.sklearn import OGBMClassifier
+from sklearn.base import BaseEstimator
 from sklearn.base import clone
 from sklearn.model_selection import check_cv
 from sklearn.model_selection import TimeSeriesSplit
@@ -44,7 +45,7 @@ NUMERICAL_PREFIX = 'n_'
 TIME_PREFIX = 't_'
 
 
-class Enginner(object):
+class Enginner(BaseEstimator):
     def __init__(
         self,
         high=99.0,
@@ -162,7 +163,7 @@ class Enginner(object):
         return X
 
 
-class AutoSSLClassifier(object):
+class AutoSSLClassifier(BaseEstimator):
     @property
     def predict_proba(self):
         return self.model_.predict_proba
@@ -238,7 +239,7 @@ class AutoSSLClassifier(object):
         return self
 
 
-class AutoPUClassifier(object):
+class AutoPUClassifier(BaseEstimator):
     def __init__(
         self,
         class_weight=None,
@@ -319,7 +320,7 @@ class AutoPUClassifier(object):
         return probas / len(self.models_)
 
 
-class AutoNoisyClassifier(object):
+class AutoNoisyClassifier(BaseEstimator):
     def __init__(
         self,
         class_weight=None,
