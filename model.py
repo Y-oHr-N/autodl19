@@ -14,7 +14,6 @@ os.system('pip3 install -q scikit-learn')
 
 import colorlog
 import numpy as np
-import optuna
 import pandas as pd
 
 from optgbm.sklearn import OGBMClassifier
@@ -199,16 +198,13 @@ class AutoSSLClassifier(BaseEstimator):
         y_labeled = y[is_labeled]
         iter_time = 0.0
 
-        study = optuna.create_study()
-
         self.model_ = AutoNoisyClassifier(
             class_weight=self.class_weight,
             cv=self.cv,
             max_samples=self.max_samples,
             n_jobs=self.n_jobs,
             n_trials=100,
-            random_state=self.random_state,
-            study=study
+            random_state=self.random_state
         )
 
         while timer.get_remaining_time() - iter_time > 0:
@@ -350,8 +346,7 @@ class AutoNoisyClassifier(BaseEstimator):
         max_samples=100_000,
         n_jobs=1,
         n_trials=25,
-        random_state=None,
-        study=None
+        random_state=None
     ):
         self.class_weight = class_weight
         self.cv = cv
@@ -359,7 +354,6 @@ class AutoNoisyClassifier(BaseEstimator):
         self.n_jobs = n_jobs
         self.n_trials = n_trials
         self.random_state = random_state
-        self.study = study
 
     def fit(self, X, y, timeout=None, **fit_params):
         timer = Timer(time_budget=timeout)
@@ -395,7 +389,6 @@ class AutoNoisyClassifier(BaseEstimator):
             n_jobs=self.n_jobs,
             n_trials=self.n_trials,
             random_state=random_state,
-            study=self.study,
             timeout=timeout
         )
 
