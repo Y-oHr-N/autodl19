@@ -52,7 +52,7 @@ class Enginner(object):
         max_samples=100_000,
         threshold=0.95,
         random_state=None
-        ):
+    ):
         self.high = high
         self.low = low
         self.max_samples = max_samples
@@ -82,8 +82,8 @@ class Enginner(object):
                 list(
                     itertools.compress(
                         self.categorical_features_,
-                        frequency[self.categorical_features_] \
-                            == self.n_samples_
+                        frequency[self.categorical_features_]
+                        == self.n_samples_
                     )
                 )
             )
@@ -353,9 +353,8 @@ class AutoNoisyClassifier(object):
                 X = X.iloc[-self.max_samples:]
                 y = y.iloc[-self.max_samples:]
             else:
-                sample_indices = np.arange(n_samples)
                 sample_indices = random_state.choice(
-                    sample_indices,
+                    n_samples,
                     self.max_samples,
                     replace=False
                 )
@@ -434,7 +433,8 @@ class Model(object):
         self.engineer_ = Enginner(
             high=self.high,
             max_samples=self.max_samples,
-            low=self.low
+            low=self.low,
+            random_state=self.random_state
         )
 
         self.engineer_.fit(X)
