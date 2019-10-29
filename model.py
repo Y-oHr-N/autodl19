@@ -194,6 +194,10 @@ class AutoSSLClassifier(object):
 
         n_samples, _ = X.shape
         n_neg_samples = np.sum(y == -1)
+        n_pos_samples = np.sum(y == 1)
+        low = 50.0 * self.proportion * n_neg_samples \
+            / (n_neg_samples + n_pos_samples)
+        high = 100.0 - low
         is_labeled = y != 0
         X_labeled = X[is_labeled]
         y_labeled = y[is_labeled]
@@ -218,8 +222,6 @@ class AutoSSLClassifier(object):
 
             y_score = np.full(n_samples, np.nan)
             y_score[~is_labeled] = self.model_.predict_proba(X[~is_labeled])
-            low = 50.0 * self.proportion * n_neg_samples / n_samples
-            high = 100.0 - low
             low_value, high_value = np.nanpercentile(y_score, [low, high])
             is_high = y_score >= high_value
             is_low = y_score <= low_value
