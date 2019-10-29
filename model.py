@@ -216,7 +216,15 @@ class AutoSSLClassifier(BaseEstimator):
         while timer.get_remaining_time() - iter_time > 0:
             start_time = time.perf_counter()
 
-            self.model_.fit(X_labeled, y_labeled, **fit_params)
+            self.model_.fit(
+                X_labeled,
+                y_labeled,
+                timeout=timer.get_remaining_time(),
+                **fit_params
+            )
+
+            if timer.get_remaining_time() <= 0:
+                break
 
             if is_labeled.sum() == n_samples:
                 break
@@ -299,6 +307,7 @@ class AutoPUClassifier(BaseEstimator):
             m.fit(
                 X.iloc[sample_indices_sampled],
                 y.iloc[sample_indices_sampled],
+                timeout=timer.get_remaining_time(),
                 **fit_params
             )
 
@@ -339,7 +348,7 @@ class AutoNoisyClassifier(BaseEstimator):
         self.random_state = random_state
         self.timeout = timeout
 
-    def fit(self, X, y, **fit_params):
+    def fit(self, X, y, timeout=None, **fit_params):
         timer = Timer(time_budget=self.timeout)
 
         timer.start()
@@ -364,10 +373,11 @@ class AutoNoisyClassifier(BaseEstimator):
                 X = X.iloc[sample_indices]
                 y = y.iloc[sample_indices]
 
-        if self.timeout is None:
-            timeout = None
-        else:
-            timeout = timer.get_remaining_time()
+        if timeout is None:
+            if self.timeout is None:
+                timeout = None
+            else:
+                timeout = timer.get_remaining_time()
 
         self.model_ = OGBMClassifier(
             class_weight=self.class_weight,
