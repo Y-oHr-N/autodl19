@@ -416,7 +416,7 @@ class Model(object):
         cv=4,
         high=99.9,
         low=0.1,
-        max_samples=1_000_000,
+        max_samples=100_000,
         n_jobs=-1,
         n_trials=None,
         random_state=0
@@ -469,7 +469,7 @@ class Model(object):
             klass = AutoNoisyClassifier
 
         timeout = \
-            0.9 * self.info['time_budget'] - self._timer.get_elapsed_time()
+            0.8 * self.info['time_budget'] - self._timer.get_elapsed_time()
 
         self.model_ = klass(
             class_weight=self.class_weight,
@@ -486,7 +486,8 @@ class Model(object):
     @timeit
     def predict(self, X: pd.DataFrame):
         X = self.engineer_.transform(X)
-        probas = self.model_.predict_proba(X, timeout=0.9 * self.info.get('pred_time_budget', 3600))
+        timeout = 0.8 * self.info.get('pred_time_budget', 3600)
+        probas = self.model_.predict_proba(X, timeout=timeout)
 
         return pd.Series(probas)
 
