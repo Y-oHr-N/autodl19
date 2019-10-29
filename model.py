@@ -323,7 +323,7 @@ class AutoPUClassifier(BaseEstimator):
 
         i = 0
 
-        for i, model in self.models_:
+        for model in self.models_:
             p = model.predict_proba(X)
 
             if i == 0:
