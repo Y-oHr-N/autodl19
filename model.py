@@ -453,8 +453,8 @@ class Model(object):
 
         self.engineer_ = Enginner(
             high=self.high,
-            max_samples=1_000,
             low=self.low,
+            max_samples=1_000,
             random_state=self.random_state
         )
 
