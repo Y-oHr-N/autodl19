@@ -242,6 +242,9 @@ class AutoSSLClassifier(BaseEstimator):
             X_labeled = X[is_labeled]
             y_labeled = y[is_labeled]
 
+            if np.sum(is_labeled) > self.max_samples:
+                self.model_.set_params(n_trials=None)
+
             iter_time = time.perf_counter() - start_time
 
         return self
