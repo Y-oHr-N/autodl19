@@ -116,6 +116,12 @@ def test_model() -> None:
 
     model.train(X_train, y_train)
 
+    timer.check_remaining_time()
+
+    timer = Timer(metadata['pred_time_budget'])
+
+    timer.start()
+
     y_score = model.predict(X_test)
 
     timer.check_remaining_time()
