@@ -173,8 +173,7 @@ class AutoSSLClassifier(BaseEstimator):
         n_jobs=1,
         n_trials=25,
         proportion=0.1,
-        random_state=None,
-        timeout=None
+        random_state=None
     ):
         self.class_weight = class_weight
         self.cv = cv
@@ -183,10 +182,9 @@ class AutoSSLClassifier(BaseEstimator):
         self.n_trials = n_trials
         self.proportion = proportion
         self.random_state = random_state
-        self.timeout = timeout
 
-    def fit(self, X, y, **fit_params):
-        timer = Timer(time_budget=self.timeout)
+    def fit(self, X, y, timeout=None, **fit_params):
+        timer = Timer(time_budget=timeout)
 
         timer.start()
 
@@ -261,8 +259,7 @@ class AutoPUClassifier(BaseEstimator):
         max_samples=100_000,
         n_jobs=1,
         n_trials=25,
-        random_state=None,
-        timeout=None
+        random_state=None
     ):
         self.class_weight = class_weight
         self.cv = cv
@@ -270,10 +267,9 @@ class AutoPUClassifier(BaseEstimator):
         self.n_jobs = n_jobs
         self.n_trials = n_trials
         self.random_state = random_state
-        self.timeout = timeout
 
-    def fit(self, X, y, **fit_params):
-        timer = Timer(time_budget=self.timeout)
+    def fit(self, X, y, timeout=None, **fit_params):
+        timer = Timer(time_budget=timeout)
 
         timer.start()
 
@@ -355,8 +351,7 @@ class AutoNoisyClassifier(BaseEstimator):
         n_jobs=1,
         n_trials=25,
         random_state=None,
-        study=None,
-        timeout=None
+        study=None
     ):
         self.class_weight = class_weight
         self.cv = cv
@@ -365,10 +360,9 @@ class AutoNoisyClassifier(BaseEstimator):
         self.n_trials = n_trials
         self.random_state = random_state
         self.study = study
-        self.timeout = timeout
 
     def fit(self, X, y, timeout=None, **fit_params):
-        timer = Timer(time_budget=self.timeout)
+        timer = Timer(time_budget=timeout)
 
         timer.start()
 
@@ -392,11 +386,8 @@ class AutoNoisyClassifier(BaseEstimator):
                 X = X.iloc[sample_indices]
                 y = y.iloc[sample_indices]
 
-        if timeout is None:
-            if self.timeout is None:
-                timeout = None
-            else:
-                timeout = timer.get_remaining_time()
+        if timeout is not None:
+            timeout = timer.get_remaining_time()
 
         self.model_ = OGBMClassifier(
             class_weight=self.class_weight,
@@ -478,25 +469,24 @@ class Model(object):
         elif self.info['task'] == 'noisy':
             klass = AutoNoisyClassifier
 
-        timeout = \
-            0.8 * self.info['time_budget'] - self._timer.get_elapsed_time()
-
         self.model_ = klass(
             class_weight=self.class_weight,
             cv=cv,
             max_samples=self.max_samples,
             n_jobs=self.n_jobs,
             n_trials=self.n_trials,
-            random_state=self.random_state,
-            timeout=timeout
+            random_state=self.random_state
         )
 
-        self.model_.fit(X, y, eval_metric='auc')
+        timeout = \
+            0.75 * self.info['time_budget'] - self._timer.get_elapsed_time()
+
+        self.model_.fit(X, y, timeout=timeout, eval_metric='auc')
 
     @timeit
     def predict(self, X: pd.DataFrame):
         X = self.engineer_.transform(X)
-        timeout = 0.8 * self.info.get('pred_time_budget', 3600)
+        timeout = 0.75 * self.info.get('pred_time_budget', 3600)
         probas = self.model_.predict_proba(X, timeout=timeout)
 
         return pd.Series(probas)
