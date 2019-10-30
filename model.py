@@ -4,6 +4,9 @@ import os
 import pickle
 import time
 
+from typing import Any
+from typing import Dict
+
 os.system('pip3 install -q colorlog')
 os.system('pip3 install -q imbalanced-learn')
 os.system('pip3 install -q lightgbm')
@@ -210,10 +213,13 @@ class AutoSSLClassifier(BaseEstimator):
         while timer.get_remaining_time() - iter_time > 0:
             start_time = time.perf_counter()
 
+            if timeout is not None:
+                timeout = timer.get_remaining_time()
+
             self.model_.fit(
                 X_labeled,
                 y_labeled,
-                timeout=timer.get_remaining_time(),
+                timeout=timeout,
                 **fit_params
             )
 
@@ -302,10 +308,13 @@ class AutoPUClassifier(BaseEstimator):
 
             m = clone(model)
 
+            if timeout is not None:
+                timeout = timer.get_remaining_time()
+
             m.fit(
                 X.iloc[sample_indices_sampled],
                 y.iloc[sample_indices_sampled],
-                timeout=timer.get_remaining_time(),
+                timeout=timeout,
                 **fit_params
             )
 
@@ -322,8 +331,8 @@ class AutoPUClassifier(BaseEstimator):
 
         i = 0
 
-        for model in self.models_:
-            p = model.predict_proba(X)
+        for m in self.models_:
+            p = m.predict_proba(X)
 
             if i == 0:
                 probas = p
@@ -405,7 +414,7 @@ class AutoNoisyClassifier(BaseEstimator):
 class Model(object):
     def __init__(
         self,
-        info: dict,
+        info: Dict[str, Any],
         class_weight='balanced',
         cv=4,
         high=99.9,
@@ -479,7 +488,12 @@ class Model(object):
     @timeit
     def predict(self, X: pd.DataFrame):
         X = self.engineer_.transform(X)
-        timeout = 0.75 * self.info.get('pred_time_budget', 3600)
+
+        timeout = self.info.get('pred_time_budget')
+
+        if timeout is not None:
+            timeout *= 0.75
+
         probas = self.model_.predict_proba(X, timeout=timeout)
 
         return pd.Series(probas)
