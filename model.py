@@ -4,19 +4,24 @@ from models import LGBMRegressor
 from preprocessing import parse_time, TypeAdapter
 import os
 
+
 class Model:
     def __init__(self, info, test_timestamp, pred_timestamp):
         self.info = info
-        self.primary_timestamp = info['primary_timestamp']
-        self.primary_id = info['primary_id']
-        self.label = info['label']
-        self.schema = info['schema']
+        self.primary_timestamp = info["primary_timestamp"]
+        self.primary_id = info["primary_id"]
+        self.label = info["label"]
+        self.schema = info["schema"]
 
         print(f"\ninfo: {self.info}")
 
         self.dtype_cols = {}
-        self.dtype_cols['cat'] = [col for col, types in self.schema.items() if types == 'str']
-        self.dtype_cols['num'] = [col for col, types in self.schema.items() if types == 'num']
+        self.dtype_cols["cat"] = [
+            col for col, types in self.schema.items() if types == "str"
+        ]
+        self.dtype_cols["num"] = [
+            col for col, types in self.schema.items() if types == "num"
+        ]
 
         self.test_timestamp = test_timestamp
         self.pred_timestamp = pred_timestamp
@@ -39,7 +44,7 @@ class Model:
         y = train_data.pop(self.label)
 
         # type adapter
-        self.type_adapter = TypeAdapter(self.dtype_cols['cat'])
+        self.type_adapter = TypeAdapter(self.dtype_cols["cat"])
         X = self.type_adapter.fit_transform(X)
 
         # parse time feature
@@ -55,7 +60,7 @@ class Model:
 
         print("Finish train\n")
 
-        next_step = 'predict'
+        next_step = "predict"
         return next_step
 
     def predict(self, new_history, pred_record, time_info):
@@ -75,10 +80,10 @@ class Model:
         predictions = self.lgb_model.predict(pred_record)
 
         if self.n_predict > self.update_interval:
-            next_step = 'update'
+            next_step = "update"
             self.n_predict = 0
         else:
-            next_step = 'predict'
+            next_step = "predict"
 
         return list(predictions), next_step
 
@@ -91,7 +96,7 @@ class Model:
 
         print("Finish update\n")
 
-        next_step = 'predict'
+        next_step = "predict"
         return next_step
 
     def save(self, model_dir, time_info):
@@ -100,24 +105,34 @@ class Model:
         pkl_list = []
 
         for attr in dir(self):
-            if attr.startswith('__') or attr in ['train', 'predict', 'update', 'save', 'load']:
+            if attr.startswith("__") or attr in [
+                "train",
+                "predict",
+                "update",
+                "save",
+                "load",
+            ]:
                 continue
 
             pkl_list.append(attr)
-            pickle.dump(getattr(self, attr), open(os.path.join(model_dir, f'{attr}.pkl'), 'wb'))
+            pickle.dump(
+                getattr(self, attr), open(os.path.join(model_dir, f"{attr}.pkl"), "wb")
+            )
 
-        pickle.dump(pkl_list, open(os.path.join(model_dir, f'pkl_list.pkl'), 'wb'))
+        pickle.dump(pkl_list, open(os.path.join(model_dir, f"pkl_list.pkl"), "wb"))
 
         print("Finish save\n")
-
-
 
     def load(self, model_dir, time_info):
         print(f"\nLoad time budget: {time_info['load']}s")
 
-        pkl_list = pickle.load(open(os.path.join(model_dir, 'pkl_list.pkl'), 'rb'))
+        pkl_list = pickle.load(open(os.path.join(model_dir, "pkl_list.pkl"), "rb"))
 
         for attr in pkl_list:
-            setattr(self, attr, pickle.load(open(os.path.join(model_dir, f'{attr}.pkl'), 'rb')))
+            setattr(
+                self,
+                attr,
+                pickle.load(open(os.path.join(model_dir, f"{attr}.pkl"), "rb")),
+            )
 
         print("Finish load\n")
