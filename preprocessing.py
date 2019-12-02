@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 
+from sklearn.base import BaseEstimator, TransformerMixin
+
 
 def parse_time(xtime: pd.Series):
     result = pd.DataFrame()
@@ -46,28 +48,20 @@ def parse_time(xtime: pd.Series):
     return result
 
 
-class TypeAdapter:
+class TypeAdapter(BaseEstimator, TransformerMixin):
     def __init__(self, primitive_cat):
         self.adapt_cols = primitive_cat.copy()
 
-    def fit_transform(self, X):
+    def fit(self, X, y=None):
         cols_dtype = dict(zip(X.columns, X.dtypes))
 
         for key, dtype in cols_dtype.items():
             if dtype == np.dtype("object"):
                 self.adapt_cols.append(key)
-            if key in self.adapt_cols:
-                X[key] = X[key].apply(hash_m)
 
         return X
 
     def transform(self, X):
-        for key in X.columns:
-            if key in self.adapt_cols:
-                X[key] = X[key].apply(hash_m)
+        X[self.adapt_cols] = X[self.adapt_cols].astype("category")
 
         return X
-
-
-def hash_m(x):
-    return hash(x) % 1048575
