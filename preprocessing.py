@@ -5,14 +5,43 @@ import numpy as np
 def parse_time(xtime: pd.Series):
     result = pd.DataFrame()
 
-    dtcol = pd.to_datetime(xtime, unit="s")
+    s = pd.to_datetime(xtime, unit="s")
 
-    result[f"{xtime.name}"] = dtcol.astype("int64") // 10 ** 9
-    result[f"{xtime.name}_year"] = dtcol.dt.year
-    result[f"{xtime.name}_month"] = dtcol.dt.month
-    result[f"{xtime.name}_day"] = dtcol.dt.day
-    result[f"{xtime.name}_weekday"] = dtcol.dt.weekday
-    result[f"{xtime.name}_hour"] = dtcol.dt.hour
+    result[f"{xtime.name}_unixtime"] = s.astype("int64") // 10 ** 9
+
+    attrs = [
+        # "year",
+        # "weekofyear",
+        "dayofyear",
+        "quarter",
+        "month",
+        "day",
+        "weekday",
+        "hour",
+        "minute",
+        "second",
+    ]
+
+    for attr in attrs:
+        if attr == "dayofyear":
+            period = np.where(s.dt.is_leap_year, 366.0, 365.0)
+        elif attr == "quarter":
+            period = 4.0
+        elif attr == "month":
+            period = 12.0
+        elif attr == "day":
+            period = s.dt.daysinmonth
+        elif attr == "weekday":
+            period = 7.0
+        elif attr == "hour":
+            period = 24.0
+        elif attr in ["minute", "second"]:
+            period = 60.0
+
+        theta = 2.0 * np.pi * getattr(s.dt, attr) / period
+
+        result[f"{xtime.name}_{attr}_sin"] = np.sin(theta)
+        result[f"{xtime.name}_{attr}_cos"] = np.cos(theta)
 
     return result
 
