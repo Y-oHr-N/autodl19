@@ -59,7 +59,7 @@ class TypeAdapter(BaseEstimator, TransformerMixin):
             if dtype == np.dtype("object"):
                 self.adapt_cols.append(key)
 
-        return X
+        return self
 
     def transform(self, X):
         X.loc[:, self.adapt_cols] = X.loc[:, self.adapt_cols].astype("category")
