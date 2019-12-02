@@ -62,6 +62,6 @@ class TypeAdapter(BaseEstimator, TransformerMixin):
         return X
 
     def transform(self, X):
-        X[self.adapt_cols] = X[self.adapt_cols].astype("category")
+        X.loc[:, self.adapt_cols] = X.loc[:, self.adapt_cols].astype("category")
 
         return X
