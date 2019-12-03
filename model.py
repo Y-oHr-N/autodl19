@@ -66,7 +66,8 @@ class Model:
             threshold=0.0
         )
 
-        X = self.sfm_.fit_transform(X)
+        X = self.sfm_.fit(X)
+        X = X.iloc[:, self.sfm_.get_support()]
 
         # lightgbm model use parse time feature
         self.lgb_model.fit(X, y)
@@ -92,7 +93,7 @@ class Model:
         pred_record.drop(self.primary_timestamp, axis=1, inplace=True)
         pred_record = pd.concat([pred_record, time_fea], axis=1)
 
-        pred_record = self.sfm_.transform(pred_record)
+        pred_record = pred_record.iloc[:, self.sfm_.get_support()]
 
         predictions = self.lgb_model.predict(pred_record)
 
