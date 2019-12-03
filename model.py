@@ -66,7 +66,8 @@ class Model:
             threshold=0.0
         )
 
-        X = self.sfm_.fit(X)
+        self.sfm_.fit(X)
+
         X = X.iloc[:, self.sfm_.get_support()]
 
         # lightgbm model use parse time feature
