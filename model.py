@@ -3,6 +3,7 @@ import pickle
 
 os.system("pip3 install -q scikit-learn==0.22")
 
+import lightgbm as lgb
 import pandas as pd
 
 from sklearn.feature_selection import SelectFromModel
@@ -59,7 +60,10 @@ class Model:
         X.drop(self.primary_timestamp, axis=1, inplace=True)
         X = pd.concat([X, time_fea], axis=1)
 
-        self.sfm_ = SelectFromModel(LGBMRegressor(), threshold=0.0)
+        self.sfm_ = SelectFromModel(
+            lgb.LGBMRegressor(random_state=0),
+            threshold=0.0
+        )
 
         X = self.sfm_.fit_transform(X)
 
