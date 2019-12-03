@@ -1,6 +1,7 @@
 import os
 import pickle
 
+os.system("pip3 install -q lightgbm==2.3.1")
 os.system("pip3 install -q scikit-learn==0.22")
 
 import lightgbm as lgb
