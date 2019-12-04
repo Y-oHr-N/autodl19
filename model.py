@@ -1,8 +1,16 @@
+import os
 import pickle
+
+os.system("pip3 install -q lightgbm==2.3.1")
+os.system("pip3 install -q scikit-learn==0.22")
+
+import lightgbm as lgb
 import pandas as pd
+
+from sklearn.feature_selection import SelectFromModel
+
 from models import LGBMRegressor
 from preprocessing import parse_time, TypeAdapter
-import os
 
 
 class Model:
@@ -53,6 +61,14 @@ class Model:
         X.drop(self.primary_timestamp, axis=1, inplace=True)
         X = pd.concat([X, time_fea], axis=1)
 
+        self.sfm_ = SelectFromModel(
+            lgb.LGBMRegressor(importance_type="gain", random_state=0), threshold=1e-06
+        )
+
+        self.sfm_.fit(X, y)
+
+        X = X.iloc[:, self.sfm_.get_support()]
+
         # lightgbm model use parse time feature
         self.lgb_model.fit(X, y)
 
@@ -76,6 +92,8 @@ class Model:
 
         pred_record.drop(self.primary_timestamp, axis=1, inplace=True)
         pred_record = pd.concat([pred_record, time_fea], axis=1)
+
+        pred_record = pred_record.iloc[:, self.sfm_.get_support()]
 
         predictions = self.lgb_model.predict(pred_record)
 
