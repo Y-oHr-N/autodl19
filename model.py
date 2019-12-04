@@ -62,8 +62,7 @@ class Model:
         X = pd.concat([X, time_fea], axis=1)
 
         self.sfm_ = SelectFromModel(
-            lgb.LGBMRegressor(random_state=0),
-            threshold=0.0
+            lgb.LGBMRegressor(importance_type="gain", random_state=0), threshold=1e-06
         )
 
         self.sfm_.fit(X)
