@@ -65,7 +65,7 @@ class Model:
             lgb.LGBMRegressor(importance_type="gain", random_state=0), threshold=1e-06
         )
 
-        self.sfm_.fit(X)
+        self.sfm_.fit(X, y)
 
         X = X.iloc[:, self.sfm_.get_support()]
 
