@@ -1,51 +1,9 @@
+from typing import Optional
+
 import pandas as pd
 import numpy as np
 
 from sklearn.base import BaseEstimator, TransformerMixin
-
-
-def parse_time(xtime: pd.Series):
-    result = pd.DataFrame()
-
-    s = pd.to_datetime(xtime, unit="s")
-
-    result[f"{xtime.name}_unixtime"] = s.astype("int64") // 10 ** 9
-
-    attrs = [
-        # "year",
-        # "weekofyear",
-        "dayofyear",
-        "quarter",
-        "month",
-        "day",
-        "weekday",
-        "hour",
-        "minute",
-        "second",
-    ]
-
-    for attr in attrs:
-        if attr == "dayofyear":
-            period = np.where(s.dt.is_leap_year, 366.0, 365.0)
-        elif attr == "quarter":
-            period = 4.0
-        elif attr == "month":
-            period = 12.0
-        elif attr == "day":
-            period = s.dt.daysinmonth
-        elif attr == "weekday":
-            period = 7.0
-        elif attr == "hour":
-            period = 24.0
-        elif attr in ["minute", "second"]:
-            period = 60.0
-
-        theta = 2.0 * np.pi * getattr(s.dt, attr) / period
-
-        result[f"{xtime.name}_{attr}_sin"] = np.sin(theta)
-        result[f"{xtime.name}_{attr}_cos"] = np.cos(theta)
-
-    return result
 
 
 class TypeAdapter(BaseEstimator, TransformerMixin):
@@ -67,3 +25,78 @@ class TypeAdapter(BaseEstimator, TransformerMixin):
                 X[key] = X[key].astype("category")
 
         return X
+
+
+class CalendarFeatures(BaseEstimator, TransformerMixin):
+    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "CalendarFeatures":
+        secondsinminute = 60.0
+        secondsinhour = 60.0 * secondsinminute
+        secondsinday = 24.0 * secondsinhour
+        secondsinweekday = 7.0 * secondsinday
+        secondsinmonth = 30.4167 * secondsinday
+        secondsinyear = 12.0 * secondsinmonth
+
+        self.attributes_ = {}
+
+        for col in X:
+            s = X[col]
+            duration = s.max() - s.min()
+            duration = duration.total_seconds()
+            attrs = []
+
+            if duration >= 2.0 * secondsinyear:
+                if s.dt.dayofyear.nunique() > 1:
+                    attrs.append("dayofyear")
+                if s.dt.quarter.nunique() > 1:
+                    attrs.append("quarter")
+                if s.dt.month.nunique() > 1:
+                    attrs.append("month")
+            if duration >= 2.0 * secondsinmonth and s.dt.day.nunique() > 1:
+                attrs.append("day")
+            if duration >= 2.0 * secondsinweekday and s.dt.weekday.nunique() > 1:
+                attrs.append("weekday")
+            if duration >= 2.0 * secondsinday and s.dt.hour.nunique() > 1:
+                attrs.append("hour")
+            # if duration >= 2.0 * secondsinhour \
+            #         and s.dt.minute.nunique() > 1:
+            #     attrs.append("minute")
+            # if duration >= 2.0 * secondsinminute \
+            #         and s.dt.second.nunique() > 1:
+            #     attrs.append("second")
+
+            self.attributes_[col] = attrs
+
+        return self
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        Xt = pd.DataFrame()
+
+        for col in X:
+            s = X[col]
+            # Xt[col] = 1e-09 * s.astype('int64')
+
+            for attr in self.attributes_[col]:
+                x = getattr(s.dt, attr)
+
+                if attr == "dayofyear":
+                    period = np.where(s.dt.is_leap_year, 366.0, 365.0)
+                elif attr == "quarter":
+                    period = 4.0
+                elif attr == "month":
+                    period = 12.0
+                elif attr == "day":
+                    period = s.dt.daysinmonth
+                elif attr == "weekday":
+                    period = 7.0
+                elif attr == "hour":
+                    x += s.dt.minute / 60.0 + s.dt.second / 60.0
+                    period = 24.0
+                elif attr in ["minute", "second"]:
+                    period = 60.0
+
+                theta = 2.0 * np.pi * x / period
+
+                Xt["{}_{}_sin".format(s.name, attr)] = np.sin(theta)
+                Xt["{}_{}_cos".format(s.name, attr)] = np.cos(theta)
+
+        return Xt

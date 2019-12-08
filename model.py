@@ -10,7 +10,8 @@ import pandas as pd
 from sklearn.feature_selection import SelectFromModel
 
 from models import LGBMRegressor
-from preprocessing import parse_time, TypeAdapter
+from preprocessing import CalendarFeatures
+from preprocessing import TypeAdapter
 
 
 class Model:
@@ -56,7 +57,9 @@ class Model:
         X = self.type_adapter.fit_transform(X)
 
         # parse time feature
-        time_fea = parse_time(X[self.primary_timestamp])
+        X[self.primary_timestamp] = pd.to_datetime(X[self.primary_timestamp], unit="s")
+        self.calendar_features = CalendarFeatures()
+        time_fea = self.calendar_features.fit_transform(X[[self.primary_timestamp]])
 
         X.drop(self.primary_timestamp, axis=1, inplace=True)
         X = pd.concat([X, time_fea], axis=1)
@@ -88,7 +91,12 @@ class Model:
         pred_record = self.type_adapter.transform(pred_record)
 
         # parse time feature
-        time_fea = parse_time(pred_record[self.primary_timestamp])
+        pred_record[self.primary_timestamp] = pd.to_datetime(
+            pred_record[self.primary_timestamp], unit="s"
+        )
+        time_fea = self.calendar_features.transform(
+            pred_record[[self.primary_timestamp]]
+        )
 
         pred_record.drop(self.primary_timestamp, axis=1, inplace=True)
         pred_record = pd.concat([pred_record, time_fea], axis=1)
