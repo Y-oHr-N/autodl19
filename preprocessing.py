@@ -100,3 +100,19 @@ class CalendarFeatures(BaseEstimator, TransformerMixin):
                 Xt["{}_{}_cos".format(s.name, attr)] = np.cos(theta)
 
         return Xt
+
+
+class ClippedFeatures(BaseEstimator, TransformerMixin):
+    def __init__(self, high: float = 99.0, low: float = 1.0) -> None:
+        self.high = high
+        self.low = low
+
+    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "ClippedFeatures":
+        self.data_min_, self.data_max_ = np.nanpercentile(
+            X, [self.low, self.high], axis=0
+        )
+
+        return self
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        return X.clip(self.data_min_, self.data_max_, axis=1)
