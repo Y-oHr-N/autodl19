@@ -11,6 +11,7 @@ from sklearn.feature_selection import SelectFromModel
 
 from models import LGBMRegressor
 from preprocessing import CalendarFeatures
+from preprocessing import ClippedFeatures
 from preprocessing import TypeAdapter
 
 
@@ -29,7 +30,7 @@ class Model:
             col for col, types in self.schema.items() if types == "str"
         ]
         self.dtype_cols["num"] = [
-            col for col, types in self.schema.items() if types == "num"
+            col for col, types in self.schema.items() if types == "num" and col != self.label
         ]
 
         self.test_timestamp = test_timestamp
@@ -55,6 +56,14 @@ class Model:
         # type adapter
         self.type_adapter = TypeAdapter(self.dtype_cols["cat"])
         X = self.type_adapter.fit_transform(X)
+
+        # Clip numerical features
+        if len(self.dtype_cols["num"]) > 0:
+            self.clipped_features = ClippedFeatures()
+
+            X.loc[:, self.dtype_cols["num"]] = self.clipped_features.fit_transform(
+                X.loc[:, self.dtype_cols["num"]]
+            )
 
         # parse time feature
         X[self.primary_timestamp] = pd.to_datetime(X[self.primary_timestamp], unit="s")
@@ -89,6 +98,12 @@ class Model:
 
         # type adapter
         pred_record = self.type_adapter.transform(pred_record)
+
+        # Clip numerical features
+        if len(self.dtype_cols["num"]) > 0:
+            pred_record[self.dtype_cols["num"]] = self.clipped_features.transform(
+                pred_record[self.dtype_cols["num"]]
+            )
 
         # parse time feature
         pred_record[self.primary_timestamp] = pd.to_datetime(
