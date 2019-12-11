@@ -168,14 +168,7 @@ class Timer:
 
     @contextmanager
     def time_limit(self, pname, verbose=True):
-        def signal_handler(signum, frame):
-            raise RuntimeError(f"{pname}: Timed out!")
-
-        # signal.signal(signal.SIGALRM, signal_handler)
-
         time_budget = int(math.ceil(self.get_remain(pname)))
-
-        # signal.alarm(time_budget)
 
         start_time = time.time()
 
@@ -185,7 +178,8 @@ class Timer:
         finally:
             exec_time = time.time() - start_time
 
-            # signal.alarm(0)
+            if time_budget - exec_time <= 0:
+                raise RuntimeError(f"{pname}: Timed out!")
 
             self.history[pname].append(exec_time)
 
