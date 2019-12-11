@@ -73,7 +73,7 @@ class CalendarFeatures(BaseEstimator, TransformerMixin):
 
         for col in X:
             s = X[col]
-            # Xt[col] = 1e-09 * s.astype('int64')
+            Xt[col] = 1e-09 * s.astype('int64')
 
             for attr in self.attributes_[col]:
                 x = getattr(s.dt, attr)
