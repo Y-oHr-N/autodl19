@@ -38,7 +38,7 @@ class LGBMRegressor:
 
         if X_eval is None or y_eval is None:
             X_train, X_eval, y_train, y_eval = train_test_split(
-                X_train, y_train, shuffle=False, test_size=0.2
+                X_train, y_train, test_size=0.2, random_state=0
             )
 
         lgb_train = lgb.Dataset(X_train, y_train)

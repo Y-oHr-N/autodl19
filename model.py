@@ -50,8 +50,6 @@ class Model:
     def train(self, train_data, time_info):
         print(f"\nTrain time budget: {time_info['train']}s")
 
-        train_data = train_data.sort_values(self.primary_timestamp)
-
         X = train_data
         y = train_data.pop(self.label)
 
