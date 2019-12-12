@@ -54,7 +54,7 @@ class Model:
         X = train_data
         y = train_data.pop(self.label)
 
-        profiler = Profiler()
+        profiler = Profiler(self.primary_id)
         profiler.fit(X, y)
 
         # type adapter

@@ -8,27 +8,27 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 class Profiler(BaseEstimator, TransformerMixin):
 
-    def __init__(self, primary_id)
+    def __init__(self, primary_id):
         self.primary_id = primary_id
 
     def fit(self, X, y=None):
+    
+        print(X.agg(["max","min","mean","var","skew","kurtosis","nunique"]))
 
-        def print_profile(df):
+        tmp = X
+        if self.primary_id:
+            tmp = X.groupby(self.primary_id)
 
-            print(df.agg(["max","min","mean","var","skew","kurtosis","nunique"]))
-            
-            # grouping
-            tmp = df
-            if primary_id:
-                tmp = df.groupby(primary_id)
+        #print(tmp.agg(["max","min","mean","var","skew","kurtosis","nunique"]))
+        print(tmp.agg(["max","min"]))
+        #print(tmp.agg(["mean"]))
+        #print(tmp.agg(["var"]))
+        #print(tmp.agg(["skew"]))
+        #print(tmp.agg(["kurtosis"]))
+        #print(tmp.agg(["nunique"]))
+        #print(tmp.apply(pd.isnull).sum())
 
-            print(tmp.shape)
-            print(tmp.agg(["max","min","mean","var","skew","kurtosis","nunique"]))
-            print(tmp.apply(pd.isnull).sum())
-
-
-        print_profile(X)
-        print_profile(y)
+        print(y.agg(["max","min","mean","var","skew","kurtosis","nunique"]))
 
         return self
 
