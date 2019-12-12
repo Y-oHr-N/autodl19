@@ -10,6 +10,7 @@ class Profiler(BaseEstimator, TransformerMixin):
 
     def __init__(self, primary_id):
         self.primary_id = primary_id
+        self.TYPE_LIST = ["int_", "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "float_", "float16", "float32", "float64"]
 
     def fit(self, X, y=None):
     
@@ -21,12 +22,35 @@ class Profiler(BaseEstimator, TransformerMixin):
 
         #print(tmp.agg(["max","min","mean","var","skew","kurtosis","nunique"]))
         print(tmp.agg(["max","min"]))
-        #print(tmp.agg(["mean"]))
-        #print(tmp.agg(["var"]))
-        #print(tmp.agg(["skew"]))
-        #print(tmp.agg(["kurtosis"]))
-        #print(tmp.agg(["nunique"]))
-        #print(tmp.apply(pd.isnull).sum())
+        print(tmp.agg(["nunique"]))
+
+        # 数値カラムのみを対象とする
+        tmp = pd.DataFrame(X.dtypes)
+        tmp[0] = tmp[0].astype("str")
+        if tmp[tmp[0].isin(self.TYPE_LIST)].shape[0] != 0:
+            tmp = X[list(tmp[tmp[0].isin(self.TYPE_LIST)].index) + self.primary_id]
+
+            if self.primary_id:
+                tmp = tmp.groupby(self.primary_id)
+                print(tmp.apply(pd.isnull).sum())
+                print(tmp.agg(["mean"]))
+                print(tmp.agg(["var"]))
+                print(tmp.agg(["skew"]))
+                print(tmp.agg(["kurtosis"]))
+        
+        # datetimeのみを対象とする
+        tmp = pd.DataFrame(X.dtypes)
+        tmp[0] = tmp[0].astype("str")
+        if tmp[tmp[0].isin(["datetime64"])].shape[0] != 0:
+            tmp = X[list(tmp[tmp[0].isin(["datetime64"])].index) + self.primary_id]
+
+            if self.primary_id:
+                tmp = tmp.groupby(self.primary_id)
+                print(tmp.apply(pd.isnull).sum())
+                print(tmp.agg(["mean"]))
+                print(tmp.agg(["var"]))
+                print(tmp.agg(["skew"]))
+                print(tmp.agg(["kurtosis"]))
 
         print(y.agg(["max","min","mean","var","skew","kurtosis","nunique"]))
 
