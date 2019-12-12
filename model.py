@@ -13,6 +13,7 @@ from models import LGBMRegressor
 from preprocessing import CalendarFeatures
 from preprocessing import ClippedFeatures
 from preprocessing import TypeAdapter
+from preprocessing import Profiler
 
 
 class Model:
@@ -52,6 +53,9 @@ class Model:
 
         X = train_data
         y = train_data.pop(self.label)
+
+        profiler = Profiler()
+        profiler.fit(X, y)
 
         # type adapter
         self.type_adapter = TypeAdapter(self.dtype_cols["cat"])
