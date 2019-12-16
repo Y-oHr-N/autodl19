@@ -20,28 +20,36 @@ except ImportError:
 
 
 class TypeAdapter(BaseEstimator, TransformerMixin):
-    def __init__(self, categorical_cols, numerical_cols, time_cols):
+    def __init__(
+        self,
+        categorical_cols: pd.Series,
+        numerical_cols: pd.Series,
+        time_cols: pd.Series,
+    ) -> None:
         self.categorical_cols = categorical_cols
         self.numerical_cols = numerical_cols
         self.time_cols = time_cols
 
-    def fit(self, X, y=None):
+    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "TypeAdapter":
         return self
 
-    def transform(self, X):
-        for key in X.columns:
-            if key in self.categorical_cols:
-                X[key] = X[key].astype("category")
-            elif key in self.numerical_cols:
-                X[key] = X[key].astype("float32")
-            elif key in self.time_cols:
-                X[key] = pd.to_datetime(X[key], unit="s")
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        X = pd.DataFrame(X)
+        Xt = X.copy()
 
-        return X
+        for key in Xt:
+            if key in self.categorical_cols:
+                Xt[key] = Xt[key].astype("category")
+            elif key in self.numerical_cols:
+                Xt[key] = Xt[key].astype("float32")
+            elif key in self.time_cols:
+                Xt[key] = pd.to_datetime(Xt[key], unit="s")
+
+        return Xt
 
 
 class CalendarFeatures(BaseEstimator, TransformerMixin):
-    def __init__(self, dtype: str = "float32"):
+    def __init__(self, dtype: str = "float32") -> None:
         self.dtype = dtype
 
     def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "CalendarFeatures":
