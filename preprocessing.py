@@ -1,9 +1,22 @@
+from typing import Any
+from typing import Dict
+from typing import List
 from typing import Optional
+from typing import Union
 
 import pandas as pd
 import numpy as np
 
-from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.base import BaseEstimator
+from sklearn.base import clone
+from sklearn.base import TransformerMixin
+
+try:  # scikit-learn<=0.21
+    from sklearn.feature_selection.from_model import _calculate_threshold
+    from sklearn.feature_selection.from_model import _get_feature_importances
+except ImportError:
+    from sklearn.feature_selection._from_model import _calculate_threshold
+    from sklearn.feature_selection._from_model import _get_feature_importances
 
 
 class TypeAdapter(BaseEstimator, TransformerMixin):
@@ -28,7 +41,12 @@ class TypeAdapter(BaseEstimator, TransformerMixin):
 
 
 class CalendarFeatures(BaseEstimator, TransformerMixin):
+    def __init__(self, dtype: str = "float32"):
+        self.dtype = dtype
+
     def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "CalendarFeatures":
+        X = pd.DataFrame(X)
+
         secondsinminute = 60.0
         secondsinhour = 60.0 * secondsinminute
         secondsinday = 24.0 * secondsinhour
@@ -36,7 +54,7 @@ class CalendarFeatures(BaseEstimator, TransformerMixin):
         secondsinmonth = 30.4167 * secondsinday
         secondsinyear = 12.0 * secondsinmonth
 
-        self.attributes_ = {}
+        self.attributes_: Dict[str, List[str]] = {}
 
         for col in X:
             s = X[col]
@@ -69,11 +87,12 @@ class CalendarFeatures(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        X = pd.DataFrame(X)
         Xt = pd.DataFrame()
 
         for col in X:
             s = X[col]
-            Xt[col] = 1e-09 * s.astype('int64')
+            Xt[col] = 1e-09 * s.astype("int64")
 
             for attr in self.attributes_[col]:
                 x = getattr(s.dt, attr)
@@ -99,7 +118,7 @@ class CalendarFeatures(BaseEstimator, TransformerMixin):
                 Xt["{}_{}_sin".format(s.name, attr)] = np.sin(theta)
                 Xt["{}_{}_cos".format(s.name, attr)] = np.cos(theta)
 
-        return Xt
+        return Xt.astype(self.dtype)
 
 
 class ClippedFeatures(BaseEstimator, TransformerMixin):
@@ -115,4 +134,41 @@ class ClippedFeatures(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        X = pd.DataFrame(X)
+
         return X.clip(self.data_min_, self.data_max_, axis=1)
+
+
+class ModifiedSelectFromModel(BaseEstimator, TransformerMixin):
+    def __init__(
+        self,
+        estimator: BaseEstimator,
+        threshold: Optional[Union[float, str]] = None
+    ):
+        self.estimator = estimator
+        self.threshold = threshold
+
+    def fit(
+        self,
+        X: pd.DataFrame,
+        y: Optional[pd.Series] = None,
+        **fit_params: Any
+    ) -> 'ModifiedSelectFromModel':
+        self.estimator_ = clone(self.estimator)
+
+        self.estimator_.fit(X, y, **fit_params)
+
+        return self
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        X = pd.DataFrame(X)
+
+        feature_importances = _get_feature_importances(self.estimator_)
+        threshold = _calculate_threshold(
+            self.estimator_,
+            feature_importances,
+            self.threshold
+        )
+        cols = feature_importances >= threshold
+
+        return X.loc[:, cols]
