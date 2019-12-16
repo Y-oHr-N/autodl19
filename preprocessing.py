@@ -141,19 +141,14 @@ class ClippedFeatures(BaseEstimator, TransformerMixin):
 
 class ModifiedSelectFromModel(BaseEstimator, TransformerMixin):
     def __init__(
-        self,
-        estimator: BaseEstimator,
-        threshold: Optional[Union[float, str]] = None
+        self, estimator: BaseEstimator, threshold: Optional[Union[float, str]] = None
     ):
         self.estimator = estimator
         self.threshold = threshold
 
     def fit(
-        self,
-        X: pd.DataFrame,
-        y: Optional[pd.Series] = None,
-        **fit_params: Any
-    ) -> 'ModifiedSelectFromModel':
+        self, X: pd.DataFrame, y: Optional[pd.Series] = None, **fit_params: Any
+    ) -> "ModifiedSelectFromModel":
         self.estimator_ = clone(self.estimator)
 
         self.estimator_.fit(X, y, **fit_params)
@@ -165,9 +160,7 @@ class ModifiedSelectFromModel(BaseEstimator, TransformerMixin):
 
         feature_importances = _get_feature_importances(self.estimator_)
         threshold = _calculate_threshold(
-            self.estimator_,
-            feature_importances,
-            self.threshold
+            self.estimator_, feature_importances, self.threshold
         )
         cols = feature_importances >= threshold
 

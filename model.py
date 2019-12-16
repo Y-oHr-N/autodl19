@@ -29,7 +29,9 @@ class Model:
             col for col, types in self.schema.items() if types == "str"
         ]
         self.dtype_cols["num"] = [
-            col for col, types in self.schema.items() if types == "num" and col != self.label
+            col
+            for col, types in self.schema.items()
+            if types == "num" and col != self.label
         ]
 
         self.test_timestamp = test_timestamp
