@@ -20,22 +20,22 @@ except ImportError:
 
 
 class TypeAdapter(BaseEstimator, TransformerMixin):
-    def __init__(self, primitive_cat):
-        self.adapt_cols = primitive_cat.copy()
+    def __init__(self, categorical_cols, numerical_cols, time_cols):
+        self.categorical_cols = categorical_cols
+        self.numerical_cols = numerical_cols
+        self.time_cols = time_cols
 
     def fit(self, X, y=None):
-        cols_dtype = dict(zip(X.columns, X.dtypes))
-
-        for key, dtype in cols_dtype.items():
-            if dtype == np.dtype("object"):
-                self.adapt_cols.append(key)
-
         return self
 
     def transform(self, X):
         for key in X.columns:
-            if key in self.adapt_cols:
+            if key in self.categorical_cols:
                 X[key] = X[key].astype("category")
+            elif key in self.numerical_cols:
+                X[key] = X[key].astype("float32")
+            elif key in self.time_cols:
+                X[key] = pd.to_datetime(X[key], unit="s")
 
         return X
 

@@ -53,7 +53,11 @@ class Model:
         y = train_data.pop(self.label)
 
         # type adapter
-        self.type_adapter = TypeAdapter(self.dtype_cols["cat"])
+        self.type_adapter = TypeAdapter(
+            categorical_cols=self.dtype_cols["cat"],
+            numerical_cols=self.dtype_cols["num"],
+            time_cols=[self.primary_timestamp],
+        )
         X = self.type_adapter.fit_transform(X)
 
         # Clip numerical features
@@ -65,7 +69,6 @@ class Model:
             )
 
         # parse time feature
-        X[self.primary_timestamp] = pd.to_datetime(X[self.primary_timestamp], unit="s")
         self.calendar_features = CalendarFeatures(dtype="float32")
         time_fea = self.calendar_features.fit_transform(X[[self.primary_timestamp]])
 
@@ -103,9 +106,6 @@ class Model:
             )
 
         # parse time feature
-        pred_record[self.primary_timestamp] = pd.to_datetime(
-            pred_record[self.primary_timestamp], unit="s"
-        )
         time_fea = self.calendar_features.transform(
             pred_record[[self.primary_timestamp]]
         )
