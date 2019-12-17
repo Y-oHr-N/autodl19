@@ -4,8 +4,8 @@ from typing import List
 from typing import Optional
 from typing import Union
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from sklearn.base import BaseEstimator
 from sklearn.base import clone
@@ -73,6 +73,8 @@ class CalendarFeatures(BaseEstimator, TransformerMixin):
             if duration >= 2.0 * secondsinyear:
                 if s.dt.dayofyear.nunique() > 1:
                     attrs.append("dayofyear")
+                if s.dt.weekofyear.nunique() > 1:
+                    attrs.append("weekofyear")
                 if s.dt.quarter.nunique() > 1:
                     attrs.append("quarter")
                 if s.dt.month.nunique() > 1:
@@ -107,6 +109,8 @@ class CalendarFeatures(BaseEstimator, TransformerMixin):
 
                 if attr == "dayofyear":
                     period = np.where(s.dt.is_leap_year, 366.0, 365.0)
+                if attr == "weekofyear":
+                    period = 52.1429
                 elif attr == "quarter":
                     period = 4.0
                 elif attr == "month":
@@ -150,7 +154,7 @@ class ClippedFeatures(BaseEstimator, TransformerMixin):
 class ModifiedSelectFromModel(BaseEstimator, TransformerMixin):
     def __init__(
         self, estimator: BaseEstimator, threshold: Optional[Union[float, str]] = None
-    ):
+    ) -> None:
         self.estimator = estimator
         self.threshold = threshold
 
