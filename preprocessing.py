@@ -28,14 +28,16 @@ class Profiler(BaseEstimator, TransformerMixin):
         print(agg_target.agg(["max", "min"]))
         print(agg_target.agg(["nunique"]))
 
-        # 数値カラムのみを対象とする
         target_dtypes = pd.DataFrame(X.dtypes)
         target_dtypes[0] = target_dtypes[0].astype("str")
+
+        # 数値カラムのみ対象
         target_dtypes_in_TYPE_LIST = \
             target_dtypes[target_dtypes[0].isin(self.TYPE_LIST)]
+
         if target_dtypes_in_TYPE_LIST.shape[0] != 0:
-            agg_target = X[list(target_dtypes_in_TYPE_LIST.index)
-                           + self.primary_id]
+            agg_target = X[list(set(list(target_dtypes_in_TYPE_LIST.index)
+                           + self.primary_id))]
 
             if self.primary_id:
                 agg_target = agg_target.groupby(self.primary_id)
@@ -43,24 +45,29 @@ class Profiler(BaseEstimator, TransformerMixin):
                 print(agg_target.agg(["mean"]))
                 print(agg_target.agg(["var"]))
                 print(agg_target.agg(["skew"]))
-                print(agg_target.agg(["kurtosis"]))
+                print(agg_target.apply(pd.DataFrame.kurt))
 
-        # datetimeのみを対象とする
-        target_dtypes = pd.DataFrame(X.dtypes)
-        target_dtypes[0] = target_dtypes[0].astype("str")
+        # datetimeのみ対象
         target_dtypes_as_datetime64 = \
-            target_dtypes[target_dtypes[0].isin(["datetime64"])]
-        if target_dtypes_as_datetime64.shape[0] != 0:
-            agg_target = X[list(target_dtypes_as_datetime64.index)
-                           + self.primary_id]
+            target_dtypes[target_dtypes[0].str.startswith("datetime64")]
+        print(target_dtypes_as_datetime64)
 
-            if self.primary_id:
-                agg_target = agg_target.groupby(self.primary_id)
-                print(agg_target.apply(pd.isnull).sum())
-                print(agg_target.agg(["mean"]))
-                print(agg_target.agg(["var"]))
-                print(agg_target.agg(["skew"]))
-                print(agg_target.agg(["kurtosis"]))
+        if target_dtypes_as_datetime64.shape[0] != 0:
+            agg_target = X[list(set(list(target_dtypes_as_datetime64.index)
+                           + self.primary_id))]
+            print(agg_target)
+            print(agg_target.dtypes)
+            print("flag2")
+
+            # TODO: bug fix
+            # if self.primary_id:
+            #     agg_target = agg_target.groupby(self.primary_id)
+            #     print(agg_target.apply(pd.DataFrame.max))
+            #     print(agg_target.apply(pd.DataFrame.mean))
+            #     print(agg_target.apply(pd.DataFrame.var))
+            #     print(agg_target.apply(pd.DataFrame.skew))
+            #     print(agg_target.apply(pd.DataFrame.kurt))
+            #     print(agg_target.diff().describe())
 
         print(y.agg(["max", "min", "mean", "var",
                      "skew", "kurtosis", "nunique"]))
