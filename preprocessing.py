@@ -41,7 +41,8 @@ class Profiler(BaseEstimator, TransformerMixin):
 
         summary = data.describe(include="all")
 
-        logger.info(summary)
+        with pd.option_context("display.max_columns", None, "display.precision", 3):
+            logger.info(summary)
 
         return self
 
