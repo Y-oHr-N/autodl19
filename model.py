@@ -55,9 +55,6 @@ class Model:
         X = train_data
         y = train_data.pop(self.label)
 
-        profiler = Profiler(self.primary_id)
-        profiler.fit(X, y)
-
         # type adapter
         self.type_adapter = TypeAdapter(
             categorical_cols=self.dtype_cols["cat"],
@@ -65,6 +62,10 @@ class Model:
             time_cols=[self.primary_timestamp],
         )
         X = self.type_adapter.fit_transform(X)
+
+        profiler = Profiler()
+
+        profiler.fit(X, y)
 
         # Clip numerical features
         if len(self.dtype_cols["num"]) > 0:

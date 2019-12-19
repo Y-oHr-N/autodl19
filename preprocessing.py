@@ -1,3 +1,5 @@
+import logging
+
 from typing import Any
 from typing import Dict
 from typing import List
@@ -18,62 +20,33 @@ except ImportError:
     from sklearn.feature_selection._from_model import _calculate_threshold
     from sklearn.feature_selection._from_model import _get_feature_importances
 
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
 
+logger.addHandler(handler)
+
+logger.setLevel(logging.INFO)
 
 
 class Profiler(BaseEstimator, TransformerMixin):
+    def __init__(self, label_col: str = "label"):
+        self.label_col = label_col
 
-    def __init__(self, primary_id):
-        self.primary_id = primary_id
-        self.TYPE_LIST = ["int_", "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "float_", "float16", "float32", "float64"]
+    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "Profiler":
+        data = pd.DataFrame(X)
 
-    def fit(self, X, y=None):
-    
-        print(X.agg(["max","min","mean","var","skew","kurtosis","nunique"]))
+        if y is not None:
+            kwargs = {self.label_col: y}
+            data = X.assign(**kwargs)
 
-        tmp = X
-        if self.primary_id:
-            tmp = X.groupby(self.primary_id)
+        summary = data.describe(include="all")
 
-        #print(tmp.agg(["max","min","mean","var","skew","kurtosis","nunique"]))
-        print(tmp.agg(["max","min"]))
-        print(tmp.agg(["nunique"]))
-
-        # 数値カラムのみを対象とする
-        tmp = pd.DataFrame(X.dtypes)
-        tmp[0] = tmp[0].astype("str")
-        if tmp[tmp[0].isin(self.TYPE_LIST)].shape[0] != 0:
-            tmp = X[list(tmp[tmp[0].isin(self.TYPE_LIST)].index) + self.primary_id]
-
-            if self.primary_id:
-                tmp = tmp.groupby(self.primary_id)
-                print(tmp.apply(pd.isnull).sum())
-                print(tmp.agg(["mean"]))
-                print(tmp.agg(["var"]))
-                print(tmp.agg(["skew"]))
-                print(tmp.agg(["kurtosis"]))
-        
-        # datetimeのみを対象とする
-        tmp = pd.DataFrame(X.dtypes)
-        tmp[0] = tmp[0].astype("str")
-        if tmp[tmp[0].isin(["datetime64"])].shape[0] != 0:
-            tmp = X[list(tmp[tmp[0].isin(["datetime64"])].index) + self.primary_id]
-
-            if self.primary_id:
-                tmp = tmp.groupby(self.primary_id)
-                print(tmp.apply(pd.isnull).sum())
-                print(tmp.agg(["mean"]))
-                print(tmp.agg(["var"]))
-                print(tmp.agg(["skew"]))
-                print(tmp.agg(["kurtosis"]))
-
-        print(y.agg(["max","min","mean","var","skew","kurtosis","nunique"]))
+        logger.info(summary)
 
         return self
 
-    def transform(self, X):
-
-        return X
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        return pd.DataFrame(X)
 
 
 class TypeAdapter(BaseEstimator, TransformerMixin):
