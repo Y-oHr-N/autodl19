@@ -49,8 +49,9 @@ class TypeAdapter(BaseEstimator, TransformerMixin):
 
 
 class CalendarFeatures(BaseEstimator, TransformerMixin):
-    def __init__(self, dtype: str = "float32") -> None:
+    def __init__(self, dtype: str = "float32", encode: bool = False) -> None:
         self.dtype = dtype
+        self.encode = encode
 
     def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "CalendarFeatures":
         X = pd.DataFrame(X)
@@ -85,11 +86,9 @@ class CalendarFeatures(BaseEstimator, TransformerMixin):
                 attrs.append("weekday")
             if duration >= 2.0 * secondsinday and s.dt.hour.nunique() > 1:
                 attrs.append("hour")
-            # if duration >= 2.0 * secondsinhour \
-            #         and s.dt.minute.nunique() > 1:
+            # if duration >= 2.0 * secondsinhour and s.dt.minute.nunique() > 1:
             #     attrs.append("minute")
-            # if duration >= 2.0 * secondsinminute \
-            #         and s.dt.second.nunique() > 1:
+            # if duration >= 2.0 * secondsinminute and s.dt.second.nunique() > 1:
             #     attrs.append("second")
 
             self.attributes_[col] = attrs
@@ -102,19 +101,30 @@ class CalendarFeatures(BaseEstimator, TransformerMixin):
 
         for col in X:
             s = X[col]
-            Xt[col] = 1e-09 * s.astype("int64")
+
+            unixtime = 1e-09 * s.astype("int64")
+            unixtime = unixtime.astype(self.dtype)
+
+            Xt[col] = unixtime
 
             for attr in self.attributes_[col]:
                 x = getattr(s.dt, attr)
 
+                if not self.encode:
+                    x = x.astype("category")
+
+                    Xt["{}_{}".format(col, attr)] = x
+
+                    continue
+
                 if attr == "dayofyear":
                     period = np.where(s.dt.is_leap_year, 366.0, 365.0)
-                # if attr == "weekofyear":
-                #     period = 52.1429
-                # elif attr == "quarter":
-                #     period = 4.0
-                # elif attr == "month":
-                #     period = 12.0
+                elif attr == "weekofyear":
+                    period = 52.1429
+                elif attr == "quarter":
+                    period = 4.0
+                elif attr == "month":
+                    period = 12.0
                 elif attr == "day":
                     period = s.dt.daysinmonth
                 elif attr == "weekday":
@@ -126,11 +136,15 @@ class CalendarFeatures(BaseEstimator, TransformerMixin):
                     period = 60.0
 
                 theta = 2.0 * np.pi * x / period
+                sin_theta = np.sin(theta)
+                sin_theta = sin_theta.astype(self.dtype)
+                cos_theta = np.cos(theta)
+                cos_theta = cos_theta.astype(self.dtype)
 
-                Xt["{}_{}_sin".format(s.name, attr)] = np.sin(theta)
-                Xt["{}_{}_cos".format(s.name, attr)] = np.cos(theta)
+                Xt["{}_{}_sin".format(col, attr)] = sin_theta
+                Xt["{}_{}_cos".format(col, attr)] = cos_theta
 
-        return Xt.astype(self.dtype)
+        return Xt
 
 
 class ClippedFeatures(BaseEstimator, TransformerMixin):
