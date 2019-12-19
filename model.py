@@ -12,6 +12,7 @@ from preprocessing import CalendarFeatures
 from preprocessing import ClippedFeatures
 from preprocessing import TypeAdapter
 from preprocessing import ModifiedSelectFromModel
+from preprocessing import TargetShiftFeatures
 
 
 class Model:
@@ -53,7 +54,6 @@ class Model:
 
         X = train_data
         y = train_data.pop(self.label)
-
         # type adapter
         self.type_adapter = TypeAdapter(
             categorical_cols=self.dtype_cols["cat"],
@@ -69,7 +69,13 @@ class Model:
             X.loc[:, self.dtype_cols["num"]] = self.clipped_features.fit_transform(
                 X.loc[:, self.dtype_cols["num"]]
             )
-
+        self.target_shift_features = TargetShiftFeatures(
+            max_shift=13,
+            primary_id=self.primary_id,
+            time_col=self.primary_timestamp
+            )
+        self.target_shift_features.fit(X, y)
+        X = self.target_shift_features.transform(X, istrain=True)
         # parse time feature
         self.calendar_features = CalendarFeatures(dtype="float32")
         time_fea = self.calendar_features.fit_transform(X[[self.primary_timestamp]])
@@ -84,6 +90,7 @@ class Model:
         X = self.sfm_.fit_transform(X, y)
 
         # lightgbm model use parse time feature
+        print(X.dtypes)
         self.lgb_model.fit(X, y)
 
         print(f"Feature importance: {self.lgb_model.score()}")
@@ -94,6 +101,7 @@ class Model:
         return next_step
 
     def predict(self, new_history, pred_record, time_info):
+        print("predict")
         if self.n_predict % 100 == 0:
             print(f"\nPredict time budget: {time_info['predict']}s")
         self.n_predict += 1
@@ -107,6 +115,7 @@ class Model:
                 pred_record[self.dtype_cols["num"]]
             )
 
+        pred_record = self.target_shift_features.transform(pred_record, istrain=False)
         # parse time feature
         time_fea = self.calendar_features.transform(
             pred_record[[self.primary_timestamp]]
@@ -119,23 +128,24 @@ class Model:
 
         predictions = self.lgb_model.predict(pred_record)
 
-        if self.n_predict > self.update_interval:
-            next_step = "update"
-            self.n_predict = 0
-        else:
+        next_step = "update"
+        if self.n_predict >= self.n_test_timestamp:
             next_step = "predict"
 
         return list(predictions), next_step
 
     def update(self, train_data, test_history_data, time_info):
         print(f"\nUpdate time budget: {time_info['update']}s")
+        X = pd.concat([train_data, test_history_data]).reset_index(drop=True)
+        y = X.pop(self.label)
+        self.target_shift_features.fit(X, y)
+        if self.n_predict > self.update_interval:
+            self.update_interval += int(self.n_test_timestamp / 5)
+            total_data = pd.concat([train_data, test_history_data])
 
-        total_data = pd.concat([train_data, test_history_data])
+            self.train(total_data, time_info)
 
-        self.train(total_data, time_info)
-
-        print("Finish update\n")
-
+            print("Finish update\n")
         next_step = "predict"
         return next_step
 

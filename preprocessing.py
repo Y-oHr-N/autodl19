@@ -177,3 +177,45 @@ class ModifiedSelectFromModel(BaseEstimator, TransformerMixin):
         cols = feature_importances >= threshold
 
         return X.loc[:, cols]
+
+class TargetShiftFeatures(BaseEstimator, TransformerMixin):
+    def __init__(
+        self,
+        max_shift: int = 5,
+        primary_id: List[str] = None,
+        time_col: str=None
+    ) -> None:
+        self.max_shift = max_shift
+        self.primary_id = primary_id
+        self.time_col = time_col
+
+    def fit(
+        self, X: pd.DataFrame, y: Optional[pd.Series] = None
+    ) -> "TargetShiftFeatures":
+        self.X = X[[self.time_col] + self.primary_id]
+        self.X["target"] = y
+
+    def transform(self, X: pd.DataFrame, istrain: bool = True) -> pd.DataFrame:
+        if istrain:
+            if self.primary_id:
+                grouped = self.X.groupby(self.primary_id)
+            else:
+                grouped = self.X
+            for i in range(1, self.max_shift):
+                X[f'target_{i}_shift'] = grouped["target"].shift(i)
+
+        else:
+            X_tmp = X[[self.time_col] + self.primary_id]
+            X_tmp["target"] = np.nan
+            X_tmp = pd.concat([self.X, X_tmp], axis=0).reset_index(drop=True)
+            if self.primary_id:
+                grouped = X_tmp.groupby(self.primary_id)
+            else:
+                grouped = X_tmp
+            for i in range(1, self.max_shift):
+                X_tmp[f'target_{i}_shift'] = grouped["target"].shift(i)
+            X_tmp = X_tmp.drop("target", axis=1)
+            X = pd.merge(X, X_tmp, on=[self.time_col] + self.primary_id, how="left")
+        for key in self.primary_id:
+            X[key] = X[key].astype("category")
+        return X
