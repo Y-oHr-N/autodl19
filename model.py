@@ -52,8 +52,8 @@ class Model:
     def train(self, train_data, time_info):
         print(f"\nTrain time budget: {time_info['train']}s")
 
-        X = train_data
-        y = train_data.pop(self.label)
+        X = train_data.sort_values(self.primary_timestamp)
+        y = X.pop(self.label)
 
         # type adapter
         self.type_adapter = TypeAdapter(
