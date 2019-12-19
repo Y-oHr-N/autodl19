@@ -7,12 +7,11 @@ os.system("pip3 install -q scikit-learn==0.22")
 import lightgbm as lgb
 import pandas as pd
 
-from sklearn.feature_selection import SelectFromModel
-
 from models import LGBMRegressor
 from preprocessing import CalendarFeatures
 from preprocessing import ClippedFeatures
 from preprocessing import TypeAdapter
+from preprocessing import ModifiedSelectFromModel
 from preprocessing import Profiler
 
 
@@ -31,7 +30,9 @@ class Model:
             col for col, types in self.schema.items() if types == "str"
         ]
         self.dtype_cols["num"] = [
-            col for col, types in self.schema.items() if types == "num" and col != self.label
+            col
+            for col, types in self.schema.items()
+            if types == "num" and col != self.label
         ]
 
         self.test_timestamp = test_timestamp
@@ -58,7 +59,11 @@ class Model:
         profiler.fit(X, y)
 
         # type adapter
-        self.type_adapter = TypeAdapter(self.dtype_cols["cat"])
+        self.type_adapter = TypeAdapter(
+            categorical_cols=self.dtype_cols["cat"],
+            numerical_cols=self.dtype_cols["num"],
+            time_cols=[self.primary_timestamp],
+        )
         X = self.type_adapter.fit_transform(X)
 
         # Clip numerical features
@@ -70,20 +75,17 @@ class Model:
             )
 
         # parse time feature
-        X[self.primary_timestamp] = pd.to_datetime(X[self.primary_timestamp], unit="s")
-        self.calendar_features = CalendarFeatures()
+        self.calendar_features = CalendarFeatures(dtype="float32")
         time_fea = self.calendar_features.fit_transform(X[[self.primary_timestamp]])
 
         X.drop(self.primary_timestamp, axis=1, inplace=True)
         X = pd.concat([X, time_fea], axis=1)
 
-        self.sfm_ = SelectFromModel(
+        self.sfm_ = ModifiedSelectFromModel(
             lgb.LGBMRegressor(importance_type="gain", random_state=0), threshold=1e-06
         )
 
-        self.sfm_.fit(X, y)
-
-        X = X.iloc[:, self.sfm_.get_support()]
+        X = self.sfm_.fit_transform(X, y)
 
         # lightgbm model use parse time feature
         self.lgb_model.fit(X, y)
@@ -110,9 +112,6 @@ class Model:
             )
 
         # parse time feature
-        pred_record[self.primary_timestamp] = pd.to_datetime(
-            pred_record[self.primary_timestamp], unit="s"
-        )
         time_fea = self.calendar_features.transform(
             pred_record[[self.primary_timestamp]]
         )
@@ -120,7 +119,7 @@ class Model:
         pred_record.drop(self.primary_timestamp, axis=1, inplace=True)
         pred_record = pd.concat([pred_record, time_fea], axis=1)
 
-        pred_record = pred_record.iloc[:, self.sfm_.get_support()]
+        pred_record = self.sfm_.transform(pred_record)
 
         predictions = self.lgb_model.predict(pred_record)
 
