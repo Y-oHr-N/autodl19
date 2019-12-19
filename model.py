@@ -71,7 +71,7 @@ class Model:
             )
 
         # parse time feature
-        self.calendar_features = CalendarFeatures(dtype="float32", encode=True)
+        self.calendar_features = CalendarFeatures(dtype="float32")
         time_fea = self.calendar_features.fit_transform(X[[self.primary_timestamp]])
 
         X.drop(self.primary_timestamp, axis=1, inplace=True)
