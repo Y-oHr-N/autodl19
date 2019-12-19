@@ -12,6 +12,7 @@ from preprocessing import CalendarFeatures
 from preprocessing import ClippedFeatures
 from preprocessing import TypeAdapter
 from preprocessing import ModifiedSelectFromModel
+from preprocessing import Profiler
 
 
 class Model:
@@ -61,6 +62,10 @@ class Model:
             time_cols=[self.primary_timestamp],
         )
         X = self.type_adapter.fit_transform(X)
+
+        profiler = Profiler()
+
+        profiler.fit(X, y)
 
         # Clip numerical features
         if len(self.dtype_cols["num"]) > 0:

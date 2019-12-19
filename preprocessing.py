@@ -1,3 +1,5 @@
+import logging
+
 from typing import Any
 from typing import Dict
 from typing import List
@@ -17,6 +19,34 @@ try:  # scikit-learn<=0.21
 except ImportError:
     from sklearn.feature_selection._from_model import _calculate_threshold
     from sklearn.feature_selection._from_model import _get_feature_importances
+
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+
+logger.addHandler(handler)
+
+logger.setLevel(logging.INFO)
+
+
+class Profiler(BaseEstimator, TransformerMixin):
+    def __init__(self, label_col: str = "label"):
+        self.label_col = label_col
+
+    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "Profiler":
+        data = pd.DataFrame(X)
+
+        if y is not None:
+            kwargs = {self.label_col: y}
+            data = X.assign(**kwargs)
+
+        summary = data.describe(include="all")
+
+        logger.info(summary)
+
+        return self
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        return pd.DataFrame(X)
 
 
 class TypeAdapter(BaseEstimator, TransformerMixin):
