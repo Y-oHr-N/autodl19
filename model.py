@@ -13,7 +13,7 @@ from preprocessing import ClippedFeatures
 from preprocessing import TypeAdapter
 from preprocessing import ModifiedSelectFromModel
 from preprocessing import TargetShiftFeatures
-
+from preprocessing import get_time_shift_range
 
 class Model:
     def __init__(self, info, test_timestamp, pred_timestamp):
@@ -46,7 +46,7 @@ class Model:
 
         self.lgb_model = LGBMRegressor()
         self.n_predict = 0
-
+        self.shift_range = get_time_shift_range(self.pred_timestamp, self.primary_timestamp)
         print(f"Finish init\n")
 
     def train(self, train_data, time_info):
@@ -70,7 +70,7 @@ class Model:
                 X.loc[:, self.dtype_cols["num"]]
             )
         self.target_shift_features = TargetShiftFeatures(
-            max_shift=13,
+            shift_range=self.shift_range,
             primary_id=self.primary_id,
             time_col=self.primary_timestamp
             )
@@ -90,7 +90,6 @@ class Model:
         X = self.sfm_.fit_transform(X, y)
 
         # lightgbm model use parse time feature
-        print(X.dtypes)
         self.lgb_model.fit(X, y)
 
         print(f"Feature importance: {self.lgb_model.score()}")

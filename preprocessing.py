@@ -181,11 +181,11 @@ class ModifiedSelectFromModel(BaseEstimator, TransformerMixin):
 class TargetShiftFeatures(BaseEstimator, TransformerMixin):
     def __init__(
         self,
-        max_shift: int = 5,
+        shift_range: List[int] = [1],
         primary_id: List[str] = None,
         time_col: str=None
     ) -> None:
-        self.max_shift = max_shift
+        self.shift_range = shift_range
         self.primary_id = primary_id
         self.time_col = time_col
 
@@ -201,7 +201,7 @@ class TargetShiftFeatures(BaseEstimator, TransformerMixin):
                 grouped = self.X.groupby(self.primary_id)
             else:
                 grouped = self.X
-            for i in range(1, self.max_shift):
+            for i in self.shift_range:
                 X[f'target_{i}_shift'] = grouped["target"].shift(i)
 
         else:
@@ -212,10 +212,31 @@ class TargetShiftFeatures(BaseEstimator, TransformerMixin):
                 grouped = X_tmp.groupby(self.primary_id)
             else:
                 grouped = X_tmp
-            for i in range(1, self.max_shift):
+            for i in self.shift_range:
                 X_tmp[f'target_{i}_shift'] = grouped["target"].shift(i)
             X_tmp = X_tmp.drop("target", axis=1)
             X = pd.merge(X, X_tmp, on=[self.time_col] + self.primary_id, how="left")
         for key in self.primary_id:
             X[key] = X[key].astype("category")
         return X
+
+def get_time_shift_range(pred_timestamp, time_col):
+    secondsinminute = 60.0
+    secondsinhour = 60.0 * secondsinminute
+    secondsinday = 24.0 * secondsinhour
+    secondsinmonth =  28.0 * secondsinday
+    pred_time_diff = pred_timestamp[time_col][1] - pred_timestamp[time_col][0]
+    pred_time_diff = pred_time_diff.total_seconds()
+    if pred_time_diff >= secondsinmonth:
+        time_shift_range = [1, 2, 3, 4, 6, 12]
+    elif pred_time_diff >= secondsinday:
+        time_shift_range = [1, 2, 3, 7, 14, 21, 28, 91, 182, 364]
+    elif pred_time_diff >= secondsinhour:
+        time_shift_range = [1, 2, 3, 4, 6, 12, 24, 48, 72]
+    elif pred_time_diff >= 10.0 * secondsinminute:
+        time_shift_range = [1, 2, 3, 6, 12, 18]
+    elif pred_time_diff >= secondsinminute:
+        time_shift_range = [1, 2, 3, 5, 10, 30, 60, 120, 180]
+    else:
+        time_shift_range = [1, 2, 3, 4, 5, 6]
+    return time_shift_range
