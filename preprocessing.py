@@ -223,12 +223,13 @@ class ModifiedSelectFromModel(BaseEstimator, TransformerMixin):
 
         return X.loc[:, cols]
 
+
 class TargetShiftFeatures(BaseEstimator, TransformerMixin):
     def __init__(
         self,
         shift_range: List[int] = [1],
         primary_id: List[str] = None,
-        time_col: str=None
+        time_col: str = None,
     ) -> None:
         self.shift_range = shift_range
         self.primary_id = primary_id
@@ -247,7 +248,7 @@ class TargetShiftFeatures(BaseEstimator, TransformerMixin):
             else:
                 grouped = self.X
             for i in self.shift_range:
-                X[f'target_{i}_shift'] = grouped["target"].shift(i)
+                X[f"target_{i}_shift"] = grouped["target"].shift(i)
 
         else:
             X_tmp = X[[self.time_col] + self.primary_id]
@@ -258,18 +259,19 @@ class TargetShiftFeatures(BaseEstimator, TransformerMixin):
             else:
                 grouped = X_tmp
             for i in self.shift_range:
-                X_tmp[f'target_{i}_shift'] = grouped["target"].shift(i)
+                X_tmp[f"target_{i}_shift"] = grouped["target"].shift(i)
             X_tmp = X_tmp.drop("target", axis=1)
             X = pd.merge(X, X_tmp, on=[self.time_col] + self.primary_id, how="left")
         for key in self.primary_id:
             X[key] = X[key].astype("category")
         return X
 
+
 def get_time_shift_range(pred_timestamp, time_col):
     secondsinminute = 60.0
     secondsinhour = 60.0 * secondsinminute
     secondsinday = 24.0 * secondsinhour
-    secondsinmonth =  28.0 * secondsinday
+    secondsinmonth = 28.0 * secondsinday
     pred_time_diff = pred_timestamp[time_col][1] - pred_timestamp[time_col][0]
     pred_time_diff = pred_time_diff.total_seconds()
     if pred_time_diff >= secondsinmonth:

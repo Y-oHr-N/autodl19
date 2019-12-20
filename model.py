@@ -48,7 +48,9 @@ class Model:
 
         self.lgb_model = LGBMRegressor()
         self.n_predict = 0
-        self.shift_range = get_time_shift_range(self.pred_timestamp, self.primary_timestamp)
+        self.shift_range = get_time_shift_range(
+            self.pred_timestamp, self.primary_timestamp
+        )
         print(f"Finish init\n")
 
     def train(self, train_data, time_info):
@@ -79,8 +81,8 @@ class Model:
         self.target_shift_features = TargetShiftFeatures(
             shift_range=self.shift_range,
             primary_id=self.primary_id,
-            time_col=self.primary_timestamp
-            )
+            time_col=self.primary_timestamp,
+        )
         self.target_shift_features.fit(X, y)
         X = self.target_shift_features.transform(X, istrain=True)
         # parse time feature
