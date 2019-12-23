@@ -8,9 +8,9 @@ import lightgbm as lgb
 import pandas as pd
 
 from models import LGBMRegressor
+from preprocessing import Astype
 from preprocessing import CalendarFeatures
 from preprocessing import ClippedFeatures
-from preprocessing import TypeAdapter
 from preprocessing import ModifiedSelectFromModel
 from preprocessing import Profiler
 
@@ -31,20 +31,12 @@ class Model:
         self.update_interval = int(len(pred_timestamp) / 5)
         self.n_predict = 0
 
-        print(f"\ninfo: {info}")
-        print(f"sample of test record: {len(test_timestamp)}")
-        print(f"number of pred timestamp: {len(pred_timestamp)}")
-        print(f"Finish init\n")
-
     def train(self, train_data, time_info):
-        print(f"\nTrain time budget: {time_info['train']}s")
-
-        self.type_adapter_ = TypeAdapter(
+        self.astype_ = Astype(
             categorical_cols=self.categorical_cols,
             numerical_cols=self.numerical_cols,
             time_cols=self.time_cols,
         )
-        self.profiler_ = Profiler()
         self.clipped_features_ = ClippedFeatures()
         self.calendar_features_ = CalendarFeatures(dtype="float32", encode=True)
         self.selector_ = ModifiedSelectFromModel(
@@ -55,8 +47,7 @@ class Model:
         X = train_data.sort_values(self.time_cols)
         y = X.pop(self.label)
 
-        X = self.type_adapter_.fit_transform(X)
-        X = self.profiler_.fit_transform(X, y)
+        X = self.astype_.fit_transform(X)
 
         if len(self.numerical_cols) > 0:
             X[self.numerical_cols] = self.clipped_features_.fit_transform(
@@ -70,13 +61,10 @@ class Model:
 
         self.model_.fit(X, y)
 
-        print(f"Feature importance: {self.model_.score()}")
-        print("Finish train\n")
-
         return "predict"
 
     def predict(self, new_history, pred_record, time_info):
-        X = self.type_adapter_.transform(pred_record)
+        X = self.astype_.transform(pred_record)
 
         if len(self.numerical_cols) > 0:
             X[self.numerical_cols] = self.clipped_features_.transform(
@@ -103,21 +91,15 @@ class Model:
         return list(y_pred), next_step
 
     def update(self, train_data, test_history_data, time_info):
-        print(f"\nUpdate time budget: {time_info['update']}s")
-
         total_data = pd.concat([train_data, test_history_data])
 
         self.train(total_data, time_info)
-
-        print("Finish update\n")
 
         next_step = "predict"
 
         return next_step
 
     def save(self, model_dir, time_info):
-        print(f"\nSave time budget: {time_info['save']}s")
-
         pkl_list = []
 
         for attr in dir(self):
@@ -138,11 +120,7 @@ class Model:
 
         pickle.dump(pkl_list, open(os.path.join(model_dir, f"pkl_list.pkl"), "wb"))
 
-        print("Finish save\n")
-
     def load(self, model_dir, time_info):
-        print(f"\nLoad time budget: {time_info['load']}s")
-
         pkl_list = pickle.load(open(os.path.join(model_dir, "pkl_list.pkl"), "rb"))
 
         for attr in pkl_list:
@@ -151,5 +129,3 @@ class Model:
                 attr,
                 pickle.load(open(os.path.join(model_dir, f"{attr}.pkl"), "rb")),
             )
-
-        print("Finish load\n")

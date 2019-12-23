@@ -50,12 +50,12 @@ class Profiler(BaseEstimator, TransformerMixin):
         return pd.DataFrame(X)
 
 
-class TypeAdapter(BaseEstimator, TransformerMixin):
+class Astype(BaseEstimator, TransformerMixin):
     def __init__(
         self,
-        categorical_cols: pd.Series,
-        numerical_cols: pd.Series,
-        time_cols: pd.Series,
+        categorical_cols: List[str],
+        numerical_cols: List[str],
+        time_cols: List[str],
     ) -> None:
         self.categorical_cols = categorical_cols
         self.numerical_cols = numerical_cols
