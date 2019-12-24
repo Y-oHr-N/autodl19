@@ -14,6 +14,7 @@ from preprocessing import TypeAdapter
 from preprocessing import ModifiedSelectFromModel
 from preprocessing import TargetShiftFeatures
 from preprocessing import get_time_shift_range
+from preprocessing import get_pred_time_diff
 
 class Model:
     def __init__(self, info, test_timestamp, pred_timestamp):
@@ -47,6 +48,7 @@ class Model:
         self.lgb_model = LGBMRegressor()
         self.n_predict = 0
         self.shift_range = get_time_shift_range(self.pred_timestamp, self.primary_timestamp)
+        self.pred_time_diff = get_pred_time_diff(self.pred_timestamp, self.primary_timestamp)
         print(f"Finish init\n")
 
     def train(self, train_data, time_info):
@@ -71,6 +73,7 @@ class Model:
             )
         self.target_shift_features = TargetShiftFeatures(
             shift_range=self.shift_range,
+            pred_time_diff=self.pred_time_diff,
             primary_id=self.primary_id,
             time_col=self.primary_timestamp
             )
