@@ -214,7 +214,6 @@ class TargetShiftFeatures(BaseEstimator, TransformerMixin):
             X_tmp["target"] = np.nan
             X_tmp = pd.concat([self.X[self.X[self.time_col] >=
                 target_time_col - self.time_delta], X_tmp], axis=0).reset_index(drop=True)
-            start = time.time()
             if self.primary_id:
                 grouped = X_tmp.groupby(self.primary_id)
             else:
@@ -239,15 +238,15 @@ def get_time_shift_range(pred_timestamp, time_col):
     secondsinmonth =  28.0 * secondsinday
     pred_time_diff = get_pred_time_diff(pred_timestamp, time_col)
     if pred_time_diff >= secondsinmonth:
-        time_shift_range = [1, 2, 3, 4, 6, 12]
+        time_shift_range = [1, 2, 6, 12]
     elif pred_time_diff >= secondsinday:
-        time_shift_range = [1, 2, 3, 7, 14, 21, 28, 91, 182, 364]
+        time_shift_range = [1, 2, 7, 28]
     elif pred_time_diff >= secondsinhour:
-        time_shift_range = [1, 2, 3, 4, 6, 12, 24, 48, 72]
+        time_shift_range = [1, 2, 12, 24]
     elif pred_time_diff >= 10.0 * secondsinminute:
-        time_shift_range = [1, 2, 3, 6, 12, 18]
+        time_shift_range = [1, 2, 6]
     elif pred_time_diff >= secondsinminute:
-        time_shift_range = [1, 2, 3, 5, 10, 30, 60, 120, 180]
+        time_shift_range = [1, 2, 10, 60]
     else:
-        time_shift_range = [1, 2, 3, 4, 5, 6]
+        time_shift_range = [1, 2, 3]
     return time_shift_range
