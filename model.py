@@ -35,12 +35,10 @@ class Model:
         self.update_interval = int(len(pred_timestamp) / 5)
         self.n_predict = 0
         self.shift_range = get_time_shift_range(
-            pred_timestamp,
-            info["primary_timestamp"]
+            pred_timestamp, info["primary_timestamp"]
         )
         self.pred_time_diff = get_pred_time_diff(
-            pred_timestamp,
-            info["primary_timestamp"]
+            pred_timestamp, info["primary_timestamp"]
         )
 
     def train(self, train_data, time_info):

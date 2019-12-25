@@ -237,7 +237,9 @@ class TargetShiftFeatures(BaseEstimator, TransformerMixin):
         self.pred_time_diff = pred_time_diff
         self.primary_id = primary_id
         self.time_col = time_col
-        self.time_delta = datetime.timedelta(seconds=max(self.shift_range)*self.pred_time_diff)
+        self.time_delta = datetime.timedelta(
+            seconds=max(self.shift_range) * self.pred_time_diff
+        )
 
     def fit(
         self, X: pd.DataFrame, y: Optional[pd.Series] = None
@@ -256,39 +258,45 @@ class TargetShiftFeatures(BaseEstimator, TransformerMixin):
 
         else:
             X_tmp = X[[self.time_col] + self.primary_id]
-            target_time_col = X_tmp.iloc[0,:][self.time_col]
+            target_time_col = X_tmp.iloc[0, :][self.time_col]
             X_tmp["target"] = np.nan
-            X_tmp = pd.concat([self.X[self.X[self.time_col] >=
-                target_time_col - self.time_delta], X_tmp], axis=0).reset_index(drop=True)
+            X_tmp = pd.concat(
+                [
+                    self.X[self.X[self.time_col] >= target_time_col - self.time_delta],
+                    X_tmp,
+                ],
+                axis=0,
+            ).reset_index(drop=True)
             if self.primary_id:
                 grouped = X_tmp.groupby(self.primary_id)
             else:
                 grouped = X_tmp
             for i in self.shift_range:
-                X_tmp[f'target_{i}_shift'] = grouped["target"].shift(i)
-                X[f'target_{i}_shift'] = np.array(X_tmp[X_tmp[self.time_col] == target_time_col]
-                    [f'target_{i}_shift'])
+                X_tmp[f"target_{i}_shift"] = grouped["target"].shift(i)
+                X[f"target_{i}_shift"] = np.array(
+                    X_tmp[X_tmp[self.time_col] == target_time_col][f"target_{i}_shift"]
+                )
         for key in self.primary_id:
             X[key] = X[key].astype("category")
         return X
 
-    def update(
-        self, X: pd.DataFrame, y: Optional[pd.Series] = None
-    ):
+    def update(self, X: pd.DataFrame, y: Optional[pd.Series] = None):
         X = X[[self.time_col] + self.primary_id]
         X["target"] = y
         self.X = pd.concat([self.X, X], axis=0).reset_index(drop=True)
+
 
 def get_pred_time_diff(pred_timestamp, time_col):
     pred_time_diff = pred_timestamp[time_col][1] - pred_timestamp[time_col][0]
     pred_time_diff = pred_time_diff.total_seconds()
     return pred_time_diff
 
+
 def get_time_shift_range(pred_timestamp, time_col):
     secondsinminute = 60.0
     secondsinhour = 60.0 * secondsinminute
     secondsinday = 24.0 * secondsinhour
-    secondsinmonth =  28.0 * secondsinday
+    secondsinmonth = 28.0 * secondsinday
     pred_time_diff = get_pred_time_diff(pred_timestamp, time_col)
     if pred_time_diff >= secondsinmonth:
         time_shift_range = [1, 2, 6, 12]
