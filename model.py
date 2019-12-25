@@ -15,6 +15,8 @@ from preprocessing import ModifiedSelectFromModel
 from preprocessing import TargetShiftFeatures
 from preprocessing import get_time_shift_range
 from preprocessing import get_pred_time_diff
+from preprocessing import Profiler
+
 
 class Model:
     def __init__(self, info, test_timestamp, pred_timestamp):
@@ -47,15 +49,22 @@ class Model:
 
         self.lgb_model = LGBMRegressor()
         self.n_predict = 0
-        self.shift_range = get_time_shift_range(self.pred_timestamp, self.primary_timestamp)
-        self.pred_time_diff = get_pred_time_diff(self.pred_timestamp, self.primary_timestamp)
+        self.shift_range = get_time_shift_range(
+            self.pred_timestamp,
+            self.primary_timestamp
+        )
+        self.pred_time_diff = get_pred_time_diff(
+            self.pred_timestamp,
+            self.primary_timestamp
+        )
         print(f"Finish init\n")
 
     def train(self, train_data, time_info):
         print(f"\nTrain time budget: {time_info['train']}s")
 
-        X = train_data
-        y = train_data.pop(self.label)
+        X = train_data.sort_values(self.primary_timestamp)
+        y = X.pop(self.label)
+
         # type adapter
         self.type_adapter = TypeAdapter(
             categorical_cols=self.dtype_cols["cat"],
@@ -63,6 +72,10 @@ class Model:
             time_cols=[self.primary_timestamp],
         )
         X = self.type_adapter.fit_transform(X)
+
+        profiler = Profiler()
+
+        profiler.fit(X, y)
 
         # Clip numerical features
         if len(self.dtype_cols["num"]) > 0:
@@ -75,12 +88,12 @@ class Model:
             shift_range=self.shift_range,
             pred_time_diff=self.pred_time_diff,
             primary_id=self.primary_id,
-            time_col=self.primary_timestamp
-            )
+            time_col=self.primary_timestamp,
+        )
         self.target_shift_features.fit(X, y)
         X = self.target_shift_features.transform(X, istrain=True)
         # parse time feature
-        self.calendar_features = CalendarFeatures(dtype="float32")
+        self.calendar_features = CalendarFeatures(dtype="float32", encode=True)
         time_fea = self.calendar_features.fit_transform(X[[self.primary_timestamp]])
 
         X.drop(self.primary_timestamp, axis=1, inplace=True)

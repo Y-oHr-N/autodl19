@@ -1,3 +1,5 @@
+import logging
+
 from typing import Any
 from typing import Dict
 from typing import List
@@ -18,6 +20,35 @@ try:  # scikit-learn<=0.21
 except ImportError:
     from sklearn.feature_selection._from_model import _calculate_threshold
     from sklearn.feature_selection._from_model import _get_feature_importances
+
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+
+logger.addHandler(handler)
+
+logger.setLevel(logging.INFO)
+
+
+class Profiler(BaseEstimator, TransformerMixin):
+    def __init__(self, label_col: str = "label"):
+        self.label_col = label_col
+
+    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "Profiler":
+        data = pd.DataFrame(X)
+
+        if y is not None:
+            kwargs = {self.label_col: y}
+            data = X.assign(**kwargs)
+
+        summary = data.describe(include="all")
+
+        with pd.option_context("display.max_columns", None, "display.precision", 3):
+            logger.info(summary)
+
+        return self
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        return pd.DataFrame(X)
 
 
 class TypeAdapter(BaseEstimator, TransformerMixin):
@@ -50,8 +81,9 @@ class TypeAdapter(BaseEstimator, TransformerMixin):
 
 
 class CalendarFeatures(BaseEstimator, TransformerMixin):
-    def __init__(self, dtype: str = "float32") -> None:
+    def __init__(self, dtype: str = "float32", encode: bool = False) -> None:
         self.dtype = dtype
+        self.encode = encode
 
     def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "CalendarFeatures":
         X = pd.DataFrame(X)
@@ -72,12 +104,12 @@ class CalendarFeatures(BaseEstimator, TransformerMixin):
             attrs = []
 
             if duration >= 2.0 * secondsinyear:
-                if s.dt.dayofyear.nunique() > 1:
-                    attrs.append("dayofyear")
-                if s.dt.weekofyear.nunique() > 1:
-                    attrs.append("weekofyear")
-                if s.dt.quarter.nunique() > 1:
-                    attrs.append("quarter")
+                # if s.dt.dayofyear.nunique() > 1:
+                #     attrs.append("dayofyear")
+                # if s.dt.weekofyear.nunique() > 1:
+                #     attrs.append("weekofyear")
+                # if s.dt.quarter.nunique() > 1:
+                #     attrs.append("quarter")
                 if s.dt.month.nunique() > 1:
                     attrs.append("month")
             if duration >= 2.0 * secondsinmonth and s.dt.day.nunique() > 1:
@@ -86,11 +118,9 @@ class CalendarFeatures(BaseEstimator, TransformerMixin):
                 attrs.append("weekday")
             if duration >= 2.0 * secondsinday and s.dt.hour.nunique() > 1:
                 attrs.append("hour")
-            # if duration >= 2.0 * secondsinhour \
-            #         and s.dt.minute.nunique() > 1:
+            # if duration >= 2.0 * secondsinhour and s.dt.minute.nunique() > 1:
             #     attrs.append("minute")
-            # if duration >= 2.0 * secondsinminute \
-            #         and s.dt.second.nunique() > 1:
+            # if duration >= 2.0 * secondsinminute and s.dt.second.nunique() > 1:
             #     attrs.append("second")
 
             self.attributes_[col] = attrs
@@ -103,14 +133,25 @@ class CalendarFeatures(BaseEstimator, TransformerMixin):
 
         for col in X:
             s = X[col]
-            Xt[col] = 1e-09 * s.astype("int64")
+
+            unixtime = 1e-09 * s.astype("int64")
+            unixtime = unixtime.astype(self.dtype)
+
+            Xt[col] = unixtime
 
             for attr in self.attributes_[col]:
                 x = getattr(s.dt, attr)
 
+                if not self.encode:
+                    x = x.astype("category")
+
+                    Xt["{}_{}".format(col, attr)] = x
+
+                    continue
+
                 if attr == "dayofyear":
                     period = np.where(s.dt.is_leap_year, 366.0, 365.0)
-                if attr == "weekofyear":
+                elif attr == "weekofyear":
                     period = 52.1429
                 elif attr == "quarter":
                     period = 4.0
@@ -127,11 +168,15 @@ class CalendarFeatures(BaseEstimator, TransformerMixin):
                     period = 60.0
 
                 theta = 2.0 * np.pi * x / period
+                sin_theta = np.sin(theta)
+                sin_theta = sin_theta.astype(self.dtype)
+                cos_theta = np.cos(theta)
+                cos_theta = cos_theta.astype(self.dtype)
 
-                Xt["{}_{}_sin".format(s.name, attr)] = np.sin(theta)
-                Xt["{}_{}_cos".format(s.name, attr)] = np.cos(theta)
+                Xt["{}_{}_sin".format(col, attr)] = sin_theta
+                Xt["{}_{}_cos".format(col, attr)] = cos_theta
 
-        return Xt.astype(self.dtype)
+        return Xt
 
 
 class ClippedFeatures(BaseEstimator, TransformerMixin):
@@ -179,13 +224,14 @@ class ModifiedSelectFromModel(BaseEstimator, TransformerMixin):
 
         return X.loc[:, cols]
 
+
 class TargetShiftFeatures(BaseEstimator, TransformerMixin):
     def __init__(
         self,
         shift_range: List[int] = [1],
         pred_time_diff: int = 0,
         primary_id: List[str] = None,
-        time_col: str=None
+        time_col: str = None,
     ) -> None:
         self.shift_range = shift_range
         self.pred_time_diff = pred_time_diff
@@ -206,7 +252,7 @@ class TargetShiftFeatures(BaseEstimator, TransformerMixin):
             else:
                 grouped = self.X
             for i in self.shift_range:
-                X[f'target_{i}_shift'] = grouped["target"].shift(i)
+                X[f"target_{i}_shift"] = grouped["target"].shift(i)
 
         else:
             X_tmp = X[[self.time_col] + self.primary_id]

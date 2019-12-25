@@ -254,16 +254,11 @@ def _predict(umodel, args, idx, timer):
             "next_step": next_step,
         }
 
-    except RuntimeError:
-        result["status"] = "timeout"
+    except RuntimeError as e:
+        raise RuntimeError("predicting timeout") from e
 
-    except Exception:
-        result["status"] = "failed"
-
-    if result["status"] == "timeout":
-        raise RuntimeError("predicting timeout")
-    elif result["status"] != "success":
-        raise RuntimeError("error occurs when predicting")
+    except Exception as e:
+        raise RuntimeError("error occurs when predicting") from e
 
     return result["idx"], result["next_step"], result["is_end"]
 
