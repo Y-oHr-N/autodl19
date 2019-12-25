@@ -8,9 +8,9 @@ import lightgbm as lgb
 import pandas as pd
 
 from models import LGBMRegressor
+from preprocessing import Astype
 from preprocessing import CalendarFeatures
 from preprocessing import ClippedFeatures
-from preprocessing import TypeAdapter
 from preprocessing import ModifiedSelectFromModel
 from preprocessing import TargetShiftFeatures
 from preprocessing import get_time_shift_range
@@ -21,129 +21,93 @@ from preprocessing import Profiler
 class Model:
     def __init__(self, info, test_timestamp, pred_timestamp):
         self.info = info
-        self.primary_timestamp = info["primary_timestamp"]
-        self.primary_id = info["primary_id"]
         self.label = info["label"]
-        self.schema = info["schema"]
-
-        print(f"\ninfo: {self.info}")
-
-        self.dtype_cols = {}
-        self.dtype_cols["cat"] = [
-            col for col, types in self.schema.items() if types == "str"
+        self.primary_id = info["primary_id"]
+        self.categorical_cols = [
+            col for col, types in info["schema"].items() if types == "str"
         ]
-        self.dtype_cols["num"] = [
+        self.numerical_cols = [
             col
-            for col, types in self.schema.items()
+            for col, types in info["schema"].items()
             if types == "num" and col != self.label
         ]
-
-        self.test_timestamp = test_timestamp
-        self.pred_timestamp = pred_timestamp
-
-        self.n_test_timestamp = len(pred_timestamp)
-        self.update_interval = int(self.n_test_timestamp / 5)
-
-        print(f"sample of test record: {len(test_timestamp)}")
-        print(f"number of pred timestamp: {len(pred_timestamp)}")
-
-        self.lgb_model = LGBMRegressor()
+        self.time_cols = [info["primary_timestamp"]]
+        self.update_interval = int(len(pred_timestamp) / 5)
         self.n_predict = 0
         self.shift_range = get_time_shift_range(
-            self.pred_timestamp,
-            self.primary_timestamp
+            pred_timestamp,
+            info["primary_timestamp"]
         )
         self.pred_time_diff = get_pred_time_diff(
-            self.pred_timestamp,
-            self.primary_timestamp
+            pred_timestamp,
+            info["primary_timestamp"]
         )
-        print(f"Finish init\n")
 
     def train(self, train_data, time_info):
-        print(f"\nTrain time budget: {time_info['train']}s")
-
-        X = train_data.sort_values(self.primary_timestamp)
-        y = X.pop(self.label)
-
-        # type adapter
-        self.type_adapter = TypeAdapter(
-            categorical_cols=self.dtype_cols["cat"],
-            numerical_cols=self.dtype_cols["num"],
-            time_cols=[self.primary_timestamp],
+        self.astype_ = Astype(
+            categorical_cols=self.categorical_cols,
+            numerical_cols=self.numerical_cols,
+            time_cols=self.time_cols,
         )
-        X = self.type_adapter.fit_transform(X)
-
-        profiler = Profiler()
-
-        profiler.fit(X, y)
-
-        # Clip numerical features
-        if len(self.dtype_cols["num"]) > 0:
-            self.clipped_features = ClippedFeatures()
-
-            X.loc[:, self.dtype_cols["num"]] = self.clipped_features.fit_transform(
-                X.loc[:, self.dtype_cols["num"]]
-            )
+        self.clipped_features_ = ClippedFeatures()
         self.target_shift_features = TargetShiftFeatures(
             shift_range=self.shift_range,
             pred_time_diff=self.pred_time_diff,
             primary_id=self.primary_id,
-            time_col=self.primary_timestamp,
+            time_col=self.time_cols[0],
         )
-        self.target_shift_features.fit(X, y)
-        X = self.target_shift_features.transform(X, istrain=True)
-        # parse time feature
-        self.calendar_features = CalendarFeatures(dtype="float32", encode=True)
-        time_fea = self.calendar_features.fit_transform(X[[self.primary_timestamp]])
-
-        X.drop(self.primary_timestamp, axis=1, inplace=True)
-        X = pd.concat([X, time_fea], axis=1)
-
-        self.sfm_ = ModifiedSelectFromModel(
+        self.calendar_features_ = CalendarFeatures(dtype="float32", encode=True)
+        self.selector_ = ModifiedSelectFromModel(
             lgb.LGBMRegressor(importance_type="gain", random_state=0), threshold=1e-06
         )
+        self.model_ = LGBMRegressor()
 
-        X = self.sfm_.fit_transform(X, y)
+        X = train_data.sort_values(self.time_cols)
+        y = X.pop(self.label)
 
-        # lightgbm model use parse time feature
-        self.lgb_model.fit(X, y)
+        X = self.astype_.fit_transform(X)
 
-        print(f"Feature importance: {self.lgb_model.score()}")
+        if len(self.numerical_cols) > 0:
+            X[self.numerical_cols] = self.clipped_features_.fit_transform(
+                X[self.numerical_cols]
+            )
 
-        print("Finish train\n")
+        self.target_shift_features.fit(X, y)
 
-        next_step = "predict"
-        return next_step
+        X = self.target_shift_features.transform(X, istrain=True)
+
+        Xt = self.calendar_features_.fit_transform(X[self.time_cols])
+        X = X.drop(columns=self.time_cols)
+        X = pd.concat([X, Xt], axis=1)
+        X = self.selector_.fit_transform(X, y)
+
+        self.model_.fit(X, y)
+
+        return "predict"
 
     def predict(self, new_history, pred_record, time_info):
-        if self.n_predict % 100 == 0:
-            print(f"\nPredict time budget: {time_info['predict']}s")
-        self.n_predict += 1
+        X = self.astype_.transform(pred_record)
 
-        # type adapter
-        pred_record = self.type_adapter.transform(pred_record)
-
-        # Clip numerical features
-        if len(self.dtype_cols["num"]) > 0:
-            pred_record[self.dtype_cols["num"]] = self.clipped_features.transform(
-                pred_record[self.dtype_cols["num"]]
+        if len(self.numerical_cols) > 0:
+            X[self.numerical_cols] = self.clipped_features_.transform(
+                X[self.numerical_cols]
             )
+
         X_new = new_history
         y_new = X_new.pop(self.label)
+
         self.target_shift_features.update(X_new, y_new)
+
         del X_new, y_new
-        pred_record = self.target_shift_features.transform(pred_record, istrain=False)
-        # parse time feature
-        time_fea = self.calendar_features.transform(
-            pred_record[[self.primary_timestamp]]
-        )
 
-        pred_record.drop(self.primary_timestamp, axis=1, inplace=True)
-        pred_record = pd.concat([pred_record, time_fea], axis=1)
+        X = self.target_shift_features.transform(X, istrain=False)
 
-        pred_record = self.sfm_.transform(pred_record)
+        Xt = self.calendar_features_.transform(X[self.time_cols])
+        X = X.drop(columns=self.time_cols)
+        X = pd.concat([X, Xt], axis=1)
+        X = self.selector_.transform(X)
 
-        predictions = self.lgb_model.predict(pred_record)
+        y_pred = self.model_.predict(X)
 
         self.n_predict += 1
 
@@ -155,7 +119,7 @@ class Model:
         else:
             next_step = "predict"
 
-        return list(predictions), next_step
+        return list(y_pred), next_step
 
     def update(self, train_data, test_history_data, time_info):
         total_data = pd.concat([train_data, test_history_data])
@@ -167,8 +131,6 @@ class Model:
         return next_step
 
     def save(self, model_dir, time_info):
-        print(f"\nSave time budget: {time_info['save']}s")
-
         pkl_list = []
 
         for attr in dir(self):
@@ -182,17 +144,14 @@ class Model:
                 continue
 
             pkl_list.append(attr)
+
             pickle.dump(
                 getattr(self, attr), open(os.path.join(model_dir, f"{attr}.pkl"), "wb")
             )
 
         pickle.dump(pkl_list, open(os.path.join(model_dir, f"pkl_list.pkl"), "wb"))
 
-        print("Finish save\n")
-
     def load(self, model_dir, time_info):
-        print(f"\nLoad time budget: {time_info['load']}s")
-
         pkl_list = pickle.load(open(os.path.join(model_dir, "pkl_list.pkl"), "rb"))
 
         for attr in pkl_list:
@@ -201,5 +160,3 @@ class Model:
                 attr,
                 pickle.load(open(os.path.join(model_dir, f"{attr}.pkl"), "rb")),
             )
-
-        print("Finish load\n")
