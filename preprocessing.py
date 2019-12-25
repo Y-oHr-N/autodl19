@@ -272,6 +272,13 @@ class TargetShiftFeatures(BaseEstimator, TransformerMixin):
             X[key] = X[key].astype("category")
         return X
 
+    def update(
+        self, X: pd.DataFrame, y: Optional[pd.Series] = None
+    ):
+        X = X[[self.time_col] + self.primary_id]
+        X["target"] = y
+        self.X = pd.concat([self.X, X], axis=0).reset_index(drop=True)
+
 def get_pred_time_diff(pred_timestamp, time_col):
     pred_time_diff = pred_timestamp[time_col][1] - pred_timestamp[time_col][0]
     pred_time_diff = pred_time_diff.total_seconds()

@@ -116,7 +116,6 @@ class Model:
         return next_step
 
     def predict(self, new_history, pred_record, time_info):
-        print("predict")
         if self.n_predict % 100 == 0:
             print(f"\nPredict time budget: {time_info['predict']}s")
         self.n_predict += 1
@@ -129,7 +128,10 @@ class Model:
             pred_record[self.dtype_cols["num"]] = self.clipped_features.transform(
                 pred_record[self.dtype_cols["num"]]
             )
-
+        X_new = new_history
+        y_new = X_new.pop(self.label)
+        self.target_shift_features.update(X_new, y_new)
+        del X_new, y_new
         pred_record = self.target_shift_features.transform(pred_record, istrain=False)
         # parse time feature
         time_fea = self.calendar_features.transform(
@@ -143,25 +145,25 @@ class Model:
 
         predictions = self.lgb_model.predict(pred_record)
 
-        next_step = "update"
-        if self.n_predict >= self.n_test_timestamp:
+        self.n_predict += 1
+
+        if self.n_predict > self.update_interval:
+            next_step = "update"
+
+            self.n_predict = 0
+
+        else:
             next_step = "predict"
 
         return list(predictions), next_step
 
     def update(self, train_data, test_history_data, time_info):
-        print(f"\nUpdate time budget: {time_info['update']}s")
-        X = pd.concat([train_data, test_history_data]).reset_index(drop=True)
-        y = X.pop(self.label)
-        self.target_shift_features.fit(X, y)
-        if self.n_predict > self.update_interval:
-            self.update_interval += int(self.n_test_timestamp / 5)
-            total_data = pd.concat([train_data, test_history_data])
+        total_data = pd.concat([train_data, test_history_data])
 
-            self.train(total_data, time_info)
+        self.train(total_data, time_info)
 
-            print("Finish update\n")
         next_step = "predict"
+
         return next_step
 
     def save(self, model_dir, time_info):
