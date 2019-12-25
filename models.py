@@ -1,6 +1,7 @@
 import lightgbm as lgb
-import pandas as pd
 import numpy as np
+import pandas as pd
+
 from sklearn.model_selection import train_test_split
 
 
@@ -51,9 +52,6 @@ class LGBMRegressor:
         return self
 
     def predict(self, X_test):
-        if self.model is None:
-            raise ValueError("You must fit first!")
-
         return self.model.predict(X_test)
 
     def score(self):
