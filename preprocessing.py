@@ -266,8 +266,8 @@ class TargetShiftFeatures(BaseEstimator, TransformerMixin):
                 grouped = X_tmp
             for i in self.shift_range:
                 X_tmp[f'target_{i}_shift'] = grouped["target"].shift(i)
-                X[f'target_{i}_shift'] = np.array(X_tmp[X_tmp[self.time_col] == target_time_col]
-                    [f'target_{i}_shift'])
+            X_tmp = X_tmp.drop("target", axis=1)
+            X = pd.merge(X, X_tmp, on=[self.time_col] + self.primary_id, how="left")
         for key in self.primary_id:
             X[key] = X[key].astype("category")
         return X

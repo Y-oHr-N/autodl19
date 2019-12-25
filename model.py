@@ -130,6 +130,7 @@ class Model:
             )
         X_new = new_history
         y_new = X_new.pop(self.label)
+        X_new = self.type_adapter.transform(X_new)
         self.target_shift_features.update(X_new, y_new)
         del X_new, y_new
         pred_record = self.target_shift_features.transform(pred_record, istrain=False)
@@ -142,7 +143,6 @@ class Model:
         pred_record = pd.concat([pred_record, time_fea], axis=1)
 
         pred_record = self.sfm_.transform(pred_record)
-
         predictions = self.lgb_model.predict(pred_record)
 
         self.n_predict += 1
