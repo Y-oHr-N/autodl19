@@ -44,9 +44,7 @@ class Model:
         start_time = time.perf_counter()
 
         self.astype_ = Astype(
-            categorical_cols=self.categorical_cols,
-            numerical_cols=self.numerical_cols,
-            time_cols=self.time_cols,
+            categorical_cols=self.categorical_cols, numerical_cols=self.numerical_cols
         )
         self.clipped_features_ = ClippedFeatures()
         self.calendar_features_ = CalendarFeatures(dtype="float32", encode=True)
