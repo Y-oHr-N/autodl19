@@ -132,10 +132,10 @@ class Model:
         return list(y_pred), next_step
 
     def update(self, train_data, test_history_data, time_info):
-        if time_info['update'] <= self.train_time_:
-            logger.info('There is not enough time available for updating.')
+        if time_info["update"] <= self.train_time_:
+            logger.info("There is not enough time available for updating.")
 
-            return 'predict'
+            return "predict"
 
         total_data = pd.concat([train_data, test_history_data])
 

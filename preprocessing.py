@@ -272,9 +272,10 @@ class TargetShiftFeatures(BaseEstimator, TransformerMixin):
             else:
                 grouped = X_tmp
             for i in self.shift_range:
-                X_tmp[f'target_{i}_shift'] = grouped["target"].shift(i)
-                X[f'target_{i}_shift'] = X_tmp[X_tmp[self.time_col] == \
-                    target_time_col][f'target_{i}_shift']
+                X_tmp[f"target_{i}_shift"] = grouped["target"].shift(i)
+                X[f"target_{i}_shift"] = X_tmp[X_tmp[self.time_col] == target_time_col][
+                    f"target_{i}_shift"
+                ]
         for key in self.primary_id:
             X[key] = X[key].astype("category")
         return X
