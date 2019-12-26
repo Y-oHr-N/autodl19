@@ -29,53 +29,20 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
 
-class Profiler(BaseEstimator, TransformerMixin):
-    def __init__(self, label_col: str = "label"):
-        self.label_col = label_col
-
-    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "Profiler":
-        data = pd.DataFrame(X)
-
-        if y is not None:
-            kwargs = {self.label_col: y}
-            data = X.assign(**kwargs)
-
-        summary = data.describe(include="all")
-
-        with pd.option_context("display.max_columns", None, "display.precision", 3):
-            logger.info(summary)
-
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        return pd.DataFrame(X)
-
-
 class Astype(BaseEstimator, TransformerMixin):
-    def __init__(
-        self,
-        categorical_cols: List[str],
-        numerical_cols: List[str],
-        time_cols: List[str],
-    ) -> None:
+    def __init__(self, categorical_cols: List[str], numerical_cols: List[str]) -> None:
         self.categorical_cols = categorical_cols
         self.numerical_cols = numerical_cols
-        self.time_cols = time_cols
 
-    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "TypeAdapter":
+    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "Astype":
         return self
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         X = pd.DataFrame(X)
-        Xt = X.copy()
 
-        for key in Xt:
-            if key in self.categorical_cols:
-                Xt[key] = Xt[key].astype("category")
-            elif key in self.numerical_cols:
-                Xt[key] = Xt[key].astype("float32")
-            elif key in self.time_cols:
-                Xt[key] = pd.to_datetime(Xt[key], unit="s")
+        Xt = X.copy()
+        Xt[self.categorical_cols] = Xt[self.categorical_cols].astype("category")
+        Xt[self.numerical_cols] = Xt[self.numerical_cols].astype("float32")
 
         return Xt
 
@@ -223,6 +190,28 @@ class ModifiedSelectFromModel(BaseEstimator, TransformerMixin):
         cols = feature_importances >= threshold
 
         return X.loc[:, cols]
+
+
+class Profiler(BaseEstimator, TransformerMixin):
+    def __init__(self, label_col: str = "label") -> None:
+        self.label_col = label_col
+
+    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "Profiler":
+        data = pd.DataFrame(X)
+
+        if y is not None:
+            kwargs = {self.label_col: y}
+            data = X.assign(**kwargs)
+
+        summary = data.describe(include="all")
+
+        with pd.option_context("display.max_columns", None, "display.precision", 3):
+            logger.info(summary)
+
+        return self
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        return pd.DataFrame(X)
 
 
 class TargetShiftFeatures(BaseEstimator, TransformerMixin):
