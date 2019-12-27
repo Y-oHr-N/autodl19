@@ -1,7 +1,6 @@
 import copy
 import math
 import os
-import signal
 import time
 
 from contextlib import contextmanager
