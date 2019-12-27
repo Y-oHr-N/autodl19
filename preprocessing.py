@@ -38,10 +38,13 @@ class Astype(BaseEstimator, TransformerMixin):
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         X = pd.DataFrame(X)
-
         Xt = X.copy()
-        Xt[self.categorical_cols] = Xt[self.categorical_cols].astype("category")
-        Xt[self.numerical_cols] = Xt[self.numerical_cols].astype("float32")
+
+        if self.categorical_cols:
+            Xt[self.categorical_cols] = Xt[self.categorical_cols].astype("category")
+
+        if self.numerical_cols:
+            Xt[self.numerical_cols] = Xt[self.numerical_cols].astype("float32")
 
         return Xt
 
