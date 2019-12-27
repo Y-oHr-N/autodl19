@@ -14,6 +14,9 @@ from preprocessing import Astype
 from preprocessing import CalendarFeatures
 from preprocessing import ClippedFeatures
 from preprocessing import ModifiedSelectFromModel
+from preprocessing import TargetShiftFeatures
+from preprocessing import get_time_shift_range
+from preprocessing import get_pred_time_diff
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
@@ -27,6 +30,7 @@ class Model:
     def __init__(self, info, test_timestamp, pred_timestamp):
         self.info = info
         self.label = info["label"]
+        self.primary_id = info["primary_id"]
         self.categorical_cols = [
             col for col, types in info["schema"].items() if types == "str"
         ]
@@ -38,6 +42,12 @@ class Model:
         self.time_cols = [info["primary_timestamp"]]
         self.update_interval = int(len(pred_timestamp) / 10)
         self.n_predict = 0
+        self.shift_range = get_time_shift_range(
+            pred_timestamp, info["primary_timestamp"]
+        )
+        self.pred_time_diff = get_pred_time_diff(
+            pred_timestamp, info["primary_timestamp"]
+        )
 
     def train(self, train_data, time_info):
         start_time = time.perf_counter()
@@ -46,6 +56,12 @@ class Model:
             categorical_cols=self.categorical_cols, numerical_cols=self.numerical_cols
         )
         self.clipped_features_ = ClippedFeatures()
+        self.target_shift_features = TargetShiftFeatures(
+            shift_range=self.shift_range,
+            pred_time_diff=self.pred_time_diff,
+            primary_id=self.primary_id,
+            time_col=self.time_cols[0],
+        )
         self.calendar_features_ = CalendarFeatures(dtype="float32", encode=True)
         self.selector_ = ModifiedSelectFromModel(
             lgb.LGBMRegressor(importance_type="gain", random_state=0), threshold=1e-06
@@ -61,6 +77,10 @@ class Model:
             X[self.numerical_cols] = self.clipped_features_.fit_transform(
                 X[self.numerical_cols]
             )
+
+        self.target_shift_features.fit(X, y)
+
+        X = self.target_shift_features.transform(X, istrain=True)
 
         Xt = self.calendar_features_.fit_transform(X[self.time_cols])
         X = X.drop(columns=self.time_cols)
@@ -81,11 +101,19 @@ class Model:
                 X[self.numerical_cols]
             )
 
+        X_new = new_history
+        y_new = X_new.pop(self.label)
+        X_new = self.astype_.transform(X_new)
+        self.target_shift_features.update(X_new, y_new)
+
+        del X_new, y_new
+
+        X = self.target_shift_features.transform(X, istrain=False)
+
         Xt = self.calendar_features_.transform(X[self.time_cols])
         X = X.drop(columns=self.time_cols)
         X = pd.concat([X, Xt], axis=1)
         X = self.selector_.transform(X)
-
         y_pred = self.model_.predict(X)
 
         self.n_predict += 1
