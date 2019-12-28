@@ -64,7 +64,9 @@ class Model:
         )
         self.calendar_features_ = CalendarFeatures(dtype="float32", encode=True)
         self.selector_ = ModifiedSelectFromModel(
-            lgb.LGBMRegressor(importance_type="gain", random_state=0), threshold=1e-06
+            lgb.LGBMRegressor(importance_type="gain", random_state=0),
+            random_state=0,
+            threshold=1e-06,
         )
         self.model_ = LGBMRegressor()
 

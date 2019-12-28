@@ -12,6 +12,7 @@ import pandas as pd
 from sklearn.base import BaseEstimator
 from sklearn.base import clone
 from sklearn.base import TransformerMixin
+from sklearn.model_selection import train_test_split
 import datetime
 
 try:  # scikit-learn<=0.21
@@ -169,14 +170,31 @@ class ClippedFeatures(BaseEstimator, TransformerMixin):
 
 class ModifiedSelectFromModel(BaseEstimator, TransformerMixin):
     def __init__(
-        self, estimator: BaseEstimator, threshold: Optional[Union[float, str]] = None
+        self,
+        estimator: BaseEstimator,
+        random_state: Optional[Union[int, np.random.RandomState]] = None,
+        shuffle: bool = True,
+        threshold: Optional[Union[float, str]] = None,
+        train_size: float = 0.75,
     ) -> None:
         self.estimator = estimator
+        self.random_state = random_state
+        self.shuffle = shuffle
         self.threshold = threshold
+        self.train_size = train_size
 
     def fit(
         self, X: pd.DataFrame, y: Optional[pd.Series] = None, **fit_params: Any
     ) -> "ModifiedSelectFromModel":
+        if self.train_size < 1.0:
+            X, _, y, _ = train_test_split(
+                X,
+                y,
+                random_state=self.random_state,
+                shuffle=self.shuffle,
+                train_size=self.train_size,
+            )
+
         self.estimator_ = clone(self.estimator)
 
         self.estimator_.fit(X, y, **fit_params)
@@ -191,6 +209,10 @@ class ModifiedSelectFromModel(BaseEstimator, TransformerMixin):
             self.estimator_, feature_importances, self.threshold
         )
         cols = feature_importances >= threshold
+        _, n_features = X.shape
+        n_dropped_features = n_features - np.sum(cols)
+
+        logger.info("{} features are dropped.".format(n_dropped_features))
 
         return X.loc[:, cols]
 
