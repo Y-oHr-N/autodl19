@@ -30,6 +30,33 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
 
+def get_time_diff(time_col: pd.Series) -> float:
+    diff = time_col.diff()
+    diff_mean = diff.mean()
+
+    return diff_mean.total_seconds()
+
+
+def get_shift_range(time_diff: float) -> List[int]:
+    secondsinminute = 60.0
+    secondsinhour = 60.0 * secondsinminute
+    secondsinday = 24.0 * secondsinhour
+    secondsinmonth = 30.4167 * secondsinday
+
+    if time_diff >= secondsinmonth:
+        shift_range = [1, 2, 3, 6, 12]
+    elif time_diff >= secondsinday:
+        shift_range = [1, 2, 7, 14, 28]
+    elif time_diff >= secondsinhour:
+        shift_range = [1, 2, 6, 12, 24]
+    elif time_diff >= secondsinminute:
+        shift_range = [1, 2, 3, 30, 60]
+    else:
+        shift_range = [1, 2, 3, 4, 5]
+
+    return shift_range
+
+
 class Astype(BaseEstimator, TransformerMixin):
     def __init__(self, categorical_cols: List[str], numerical_cols: List[str]) -> None:
         self.categorical_cols = categorical_cols
@@ -239,7 +266,7 @@ class Profiler(BaseEstimator, TransformerMixin):
         return pd.DataFrame(X)
 
 
-class TargetShiftFeatures(BaseEstimator, TransformerMixin):
+class LagFeatures(BaseEstimator, TransformerMixin):
     def __init__(
         self,
         shift_range: List[int] = [1],
@@ -255,11 +282,20 @@ class TargetShiftFeatures(BaseEstimator, TransformerMixin):
             seconds=max(self.shift_range) * self.pred_time_diff
         )
 
-    def fit(
-        self, X: pd.DataFrame, y: Optional[pd.Series] = None
-    ) -> "TargetShiftFeatures":
+    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "LagFeatures":
         self.X = X[[self.time_col] + self.primary_id]
         self.X["target"] = y
+
+        return self
+
+    def partial_fit(
+        self, X: pd.DataFrame, y: Optional[pd.Series] = None
+    ) -> "LagFeatures":
+        X = X[[self.time_col] + self.primary_id]
+        X["target"] = y
+        self.X = pd.concat([self.X, X], axis=0).reset_index(drop=True)
+
+        return self
 
     def transform(self, X: pd.DataFrame, istrain: bool = True) -> pd.DataFrame:
         if istrain:
@@ -267,8 +303,9 @@ class TargetShiftFeatures(BaseEstimator, TransformerMixin):
                 grouped = self.X.groupby(self.primary_id)
             else:
                 grouped = self.X
+
             for i in self.shift_range:
-                X[f"target_{i}_shift"] = grouped["target"].shift(i)
+                X[f"target_shift_{i}"] = grouped["target"].shift(i)
 
         else:
             X_tmp = X[[self.time_col] + self.primary_id]
@@ -285,43 +322,14 @@ class TargetShiftFeatures(BaseEstimator, TransformerMixin):
                 grouped = X_tmp.groupby(self.primary_id)
             else:
                 grouped = X_tmp
+
             for i in self.shift_range:
-                X_tmp[f"target_{i}_shift"] = grouped["target"].shift(i)
-                X[f"target_{i}_shift"] = X_tmp[X_tmp[self.time_col] == target_time_col][
-                    f"target_{i}_shift"
+                X_tmp[f"target_shift_{i}"] = grouped["target"].shift(i)
+                X[f"target_shift_{i}"] = X_tmp[X_tmp[self.time_col] == target_time_col][
+                    f"target_shift_{i}"
                 ]
+
         for key in self.primary_id:
             X[key] = X[key].astype("category")
+
         return X
-
-    def update(self, X: pd.DataFrame, y: Optional[pd.Series] = None):
-        X = X[[self.time_col] + self.primary_id]
-        X["target"] = y
-        self.X = pd.concat([self.X, X], axis=0).reset_index(drop=True)
-
-
-def get_pred_time_diff(pred_timestamp, time_col):
-    pred_time_diff = pred_timestamp[time_col][1] - pred_timestamp[time_col][0]
-    pred_time_diff = pred_time_diff.total_seconds()
-    return pred_time_diff
-
-
-def get_time_shift_range(pred_timestamp, time_col):
-    secondsinminute = 60.0
-    secondsinhour = 60.0 * secondsinminute
-    secondsinday = 24.0 * secondsinhour
-    secondsinmonth = 28.0 * secondsinday
-    pred_time_diff = get_pred_time_diff(pred_timestamp, time_col)
-    if pred_time_diff >= secondsinmonth:
-        time_shift_range = [1, 2, 6, 12]
-    elif pred_time_diff >= secondsinday:
-        time_shift_range = [1, 2, 7, 28]
-    elif pred_time_diff >= secondsinhour:
-        time_shift_range = [1, 2, 12, 24]
-    elif pred_time_diff >= 10.0 * secondsinminute:
-        time_shift_range = [1, 2, 6]
-    elif pred_time_diff >= secondsinminute:
-        time_shift_range = [1, 2, 10, 60]
-    else:
-        time_shift_range = [1, 2, 3]
-    return time_shift_range

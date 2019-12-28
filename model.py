@@ -13,10 +13,10 @@ from models import LGBMRegressor
 from preprocessing import Astype
 from preprocessing import CalendarFeatures
 from preprocessing import ClippedFeatures
+from preprocessing import get_shift_range
+from preprocessing import get_time_diff
+from preprocessing import LagFeatures
 from preprocessing import ModifiedSelectFromModel
-from preprocessing import TargetShiftFeatures
-from preprocessing import get_time_shift_range
-from preprocessing import get_pred_time_diff
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
@@ -42,12 +42,8 @@ class Model:
         self.time_cols = [info["primary_timestamp"]]
         self.update_interval = int(len(pred_timestamp) / 10)
         self.n_predict = 0
-        self.shift_range = get_time_shift_range(
-            pred_timestamp, info["primary_timestamp"]
-        )
-        self.pred_time_diff = get_pred_time_diff(
-            pred_timestamp, info["primary_timestamp"]
-        )
+        self.pred_time_diff = get_time_diff(pred_timestamp[info["primary_timestamp"]])
+        self.shift_range = get_shift_range(self.pred_time_diff)
 
     def train(self, train_data, time_info):
         start_time = time.perf_counter()
@@ -56,7 +52,7 @@ class Model:
             categorical_cols=self.categorical_cols, numerical_cols=self.numerical_cols
         )
         self.clipped_features_ = ClippedFeatures()
-        self.target_shift_features = TargetShiftFeatures(
+        self.lag_features = LagFeatures(
             shift_range=self.shift_range,
             pred_time_diff=self.pred_time_diff,
             primary_id=self.primary_id,
@@ -80,9 +76,9 @@ class Model:
                 X[self.numerical_cols]
             )
 
-        self.target_shift_features.fit(X, y)
+        self.lag_features.fit(X, y)
 
-        X = self.target_shift_features.transform(X, istrain=True)
+        X = self.lag_features.transform(X, istrain=True)
 
         Xt = self.calendar_features_.fit_transform(X[self.time_cols])
         X = X.drop(columns=self.time_cols)
@@ -106,11 +102,12 @@ class Model:
         X_new = new_history
         y_new = X_new.pop(self.label)
         X_new = self.astype_.transform(X_new)
-        self.target_shift_features.update(X_new, y_new)
+
+        self.lag_features.partial_fit(X_new, y_new)
 
         del X_new, y_new
 
-        X = self.target_shift_features.transform(X, istrain=False)
+        X = self.lag_features.transform(X, istrain=False)
 
         Xt = self.calendar_features_.transform(X[self.time_cols])
         X = X.drop(columns=self.time_cols)
