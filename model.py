@@ -26,7 +26,7 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
 
-class Model:
+class Model(object):
     def __init__(self, info, test_timestamp, pred_timestamp):
         self.info = info
         self.label = info["label"]
@@ -137,9 +137,7 @@ class Model:
 
         self.train(total_data, time_info)
 
-        next_step = "predict"
-
-        return next_step
+        return "predict"
 
     def save(self, model_dir, time_info):
         pkl_list = []
