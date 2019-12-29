@@ -30,6 +30,33 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
 
+def get_time_diff(time_col: pd.Series) -> float:
+    diff = time_col.diff()
+    diff_mean = diff.mean()
+
+    return diff_mean.total_seconds()
+
+
+def get_shift_range(time_diff: float) -> List[int]:
+    secondsinminute = 60.0
+    secondsinhour = 60.0 * secondsinminute
+    secondsinday = 24.0 * secondsinhour
+    secondsinmonth = 30.4167 * secondsinday
+
+    if time_diff >= secondsinmonth:
+        shift_range = [1, 2, 3, 6, 12]
+    elif time_diff >= secondsinday:
+        shift_range = [1, 2, 7, 14, 28]
+    elif time_diff >= secondsinhour:
+        shift_range = [1, 2, 6, 12, 24]
+    elif time_diff >= secondsinminute:
+        shift_range = [1, 2, 3, 30, 60]
+    else:
+        shift_range = [1, 2, 3, 4, 5]
+
+    return shift_range
+
+
 class Astype(BaseEstimator, TransformerMixin):
     def __init__(self, categorical_cols: List[str], numerical_cols: List[str]) -> None:
         self.categorical_cols = categorical_cols
@@ -168,91 +195,6 @@ class ClippedFeatures(BaseEstimator, TransformerMixin):
         return X.clip(self.data_min_, self.data_max_, axis=1)
 
 
-class LagFeatures(BaseEstimator, TransformerMixin):
-    def __init__(
-        self,
-        time_col: str,
-        label_col: str = "label",
-        primary_id: Optional[List[str]] = None,
-        shift_range: Optional[List[str]] = None,
-    ) -> None:
-        self.label_col = label_col
-        self.primary_id = primary_id
-        self.shift_range = shift_range
-        self.time_col = time_col
-
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "LagFeatures":
-        self.id_ = id(X)
-
-        unique = X[self.time_col].unique()
-        unique = pd.Series(unique)
-        diff = unique.diff()
-
-        self.timedelta_ = diff.mean()
-
-        X = X[self.primary_id + [self.time_col]]
-        kwargs = {self.label_col: y}
-
-        self.data_ = X.assign(**kwargs)
-
-        if self.shift_range is None:
-            time_diff = self.timedelta_.total_seconds()
-
-            secondsinminute = 60.0
-            secondsinhour = 60.0 * secondsinminute
-            secondsinday = 24.0 * secondsinhour
-            secondsinmonth = 30.4167 * secondsinday
-
-            if time_diff >= secondsinmonth:
-                self.shift_range_ = (1, 2, 3, 6, 12)
-            elif time_diff >= secondsinday:
-                self.shift_range_ = (1, 2, 7, 14, 28)
-            elif time_diff >= secondsinhour:
-                self.shift_range_ = (1, 2, 6, 12, 24)
-            elif time_diff >= secondsinminute:
-                self.shift_range_ = (1, 2, 3, 30, 60)
-            else:
-                self.shift_range_ = (1, 2, 3, 4, 5)
-
-        else:
-            self.shift_range_ = self.shift_range
-
-        return self
-
-    def partial_fit(self, X: pd.DataFrame, y: pd.Series) -> "LagFeatures":
-        X = X[self.primary_id + [self.time_col]]
-        kwargs = {self.label_col: y}
-
-        data = X.assign(**kwargs)
-
-        self.data_ = pd.concat([self.data_, data], ignore_index=True)
-
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        n_samples, _ = X.shape
-        Xt = X.copy()
-
-        if id(X) == self.id_:
-            data = self.data_
-        else:
-            time_min = X[self.time_col].min()
-            timedelta = max(self.shift_range_) * self.timedelta_
-            is_selected = self.data_[self.time_col] >= time_min - timedelta
-            data = X[self.primary_id + [self.time_col]]
-            data = pd.concat(
-                [self.data_[is_selected], data], ignore_index=True, sort=True
-            )
-
-        if self.primary_id:
-            data = data.groupby(self.primary_id)
-
-        for i in self.shift_range_:
-            Xt["{}_lag_{}".format(self.label_col, i)] = data[self.label_col].shift(i)
-
-        return Xt.iloc[-n_samples:]
-
-
 class ModifiedSelectFromModel(BaseEstimator, TransformerMixin):
     def __init__(
         self,
@@ -322,3 +264,72 @@ class Profiler(BaseEstimator, TransformerMixin):
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame(X)
+
+
+class LagFeatures(BaseEstimator, TransformerMixin):
+    def __init__(
+        self,
+        shift_range: List[int] = [1],
+        pred_time_diff: int = 0,
+        primary_id: List[str] = None,
+        time_col: str = None,
+    ) -> None:
+        self.shift_range = shift_range
+        self.pred_time_diff = pred_time_diff
+        self.primary_id = primary_id
+        self.time_col = time_col
+        self.time_delta = datetime.timedelta(
+            seconds=max(self.shift_range) * self.pred_time_diff
+        )
+
+    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "LagFeatures":
+        self.X = X[[self.time_col] + self.primary_id]
+        self.X["target"] = y
+
+        return self
+
+    def partial_fit(
+        self, X: pd.DataFrame, y: Optional[pd.Series] = None
+    ) -> "LagFeatures":
+        X = X[[self.time_col] + self.primary_id]
+        X["target"] = y
+        self.X = pd.concat([self.X, X], axis=0).reset_index(drop=True)
+
+        return self
+
+    def transform(self, X: pd.DataFrame, istrain: bool = True) -> pd.DataFrame:
+        if istrain:
+            if self.primary_id:
+                grouped = self.X.groupby(self.primary_id)
+            else:
+                grouped = self.X
+
+            for i in self.shift_range:
+                X[f"target_shift_{i}"] = grouped["target"].shift(i)
+
+        else:
+            X_tmp = X[[self.time_col] + self.primary_id]
+            target_time_col = X_tmp.iloc[0, :][self.time_col]
+            X_tmp["target"] = np.nan
+            X_tmp = pd.concat(
+                [
+                    self.X[self.X[self.time_col] >= target_time_col - self.time_delta],
+                    X_tmp,
+                ],
+                axis=0,
+            )
+            if self.primary_id:
+                grouped = X_tmp.groupby(self.primary_id)
+            else:
+                grouped = X_tmp
+
+            for i in self.shift_range:
+                X_tmp[f"target_shift_{i}"] = grouped["target"].shift(i)
+                X[f"target_shift_{i}"] = X_tmp[X_tmp[self.time_col] == target_time_col][
+                    f"target_shift_{i}"
+                ]
+
+        for key in self.primary_id:
+            X[key] = X[key].astype("category")
+
+        return X
