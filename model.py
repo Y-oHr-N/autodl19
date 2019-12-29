@@ -13,8 +13,6 @@ from models import LGBMRegressor
 from preprocessing import Astype
 from preprocessing import CalendarFeatures
 from preprocessing import ClippedFeatures
-from preprocessing import get_shift_range
-from preprocessing import get_time_diff
 from preprocessing import LagFeatures
 from preprocessing import ModifiedSelectFromModel
 
@@ -42,8 +40,6 @@ class Model(object):
         self.time_cols = [info["primary_timestamp"]]
         self.update_interval = int(len(pred_timestamp) / 10)
         self.n_predict = 0
-        self.pred_time_diff = get_time_diff(pred_timestamp[info["primary_timestamp"]])
-        self.shift_range = get_shift_range(self.pred_time_diff)
 
     def train(self, train_data, time_info):
         start_time = time.perf_counter()
@@ -52,12 +48,7 @@ class Model(object):
             categorical_cols=self.categorical_cols, numerical_cols=self.numerical_cols
         )
         self.clipped_features_ = ClippedFeatures()
-        self.lag_features = LagFeatures(
-            shift_range=self.shift_range,
-            pred_time_diff=self.pred_time_diff,
-            primary_id=self.primary_id,
-            time_col=self.time_cols[0],
-        )
+        self.lag_features_ = LagFeatures(self.time_cols[0], primary_id=self.primary_id,)
         self.calendar_features_ = CalendarFeatures(dtype="float32", encode=True)
         self.selector_ = ModifiedSelectFromModel(
             lgb.LGBMRegressor(importance_type="gain", random_state=0),
@@ -76,9 +67,7 @@ class Model(object):
                 X[self.numerical_cols]
             )
 
-        self.lag_features.fit(X, y)
-
-        X = self.lag_features.transform(X, istrain=True)
+        X = self.lag_features_.fit_transform(X, y)
 
         Xt = self.calendar_features_.fit_transform(X[self.time_cols])
         X = X.drop(columns=self.time_cols)
@@ -92,6 +81,13 @@ class Model(object):
         return "predict"
 
     def predict(self, new_history, pred_record, time_info):
+        X_new = new_history
+        y_new = X_new.pop(self.label)
+
+        X_new = self.astype_.transform(X_new)
+
+        self.lag_features_.partial_fit(X_new, y_new)
+
         X = self.astype_.transform(pred_record)
 
         if len(self.numerical_cols) > 0:
@@ -99,15 +95,7 @@ class Model(object):
                 X[self.numerical_cols]
             )
 
-        X_new = new_history
-        y_new = X_new.pop(self.label)
-        X_new = self.astype_.transform(X_new)
-
-        self.lag_features.partial_fit(X_new, y_new)
-
-        del X_new, y_new
-
-        X = self.lag_features.transform(X, istrain=False)
+        X = self.lag_features_.transform(X)
 
         Xt = self.calendar_features_.transform(X[self.time_cols])
         X = X.drop(columns=self.time_cols)
