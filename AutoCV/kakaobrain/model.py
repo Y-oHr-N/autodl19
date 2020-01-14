@@ -54,7 +54,8 @@ class Model(LogicModel):
         LOGGER.info("[init] session")
         [t.join() for t in threads]
 
-        self.device = torch.device("cuda", 0)
+        #self.device = torch.device("cuda", 0)
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.session = tf.Session()
 
         LOGGER.info("[init] Model")
