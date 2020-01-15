@@ -31,6 +31,10 @@ import os
 import sys
 import tensorflow as tf
 import time
+import torch
+from torch import nn
+import torch.nn.functional as F
+from torch.utils.data import Dataset, DataLoader
 
 np.random.seed(42)
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -52,17 +56,21 @@ class Model(object):
 
         # Set batch size (for both training and testing)
         self.batch_size = 128
-
         # Get model function from class method below
+        """
         model_fn = self.model_fn
+        """
         # Change to True if you want to show device info at each operation
         log_device_placement = False
         session_config = tf.ConfigProto(log_device_placement=log_device_placement)
         # Classifier using model_fn (see below)
+        #TODO
+        """
         self.classifier = tf.estimator.Estimator(
             model_fn=model_fn,
             config=tf.estimator.RunConfig(session_config=session_config),
         )
+        """
 
         # Attributes for preprocessing
         self.default_image_size = (112, 112)
@@ -148,15 +156,27 @@ class Model(object):
                     sample_count
                 )
             )
+        X, y = self.to_numpy(dataset)
+        X = X.reshape(-1, X.shape[2])
+        dataset = TabularDataset(X, y)
+        dataloader = DataLoader(dataset, self.batch_size, shuffle=True)
+
+        if not hasattr(self, "model"):
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            self.model = NeuralNetClassifier(
+                feature_num=X.shape[1],
+                output_dim=self.outputdim
+            ).to(device)
 
         self.train_begin_times.append(time.time())
+        #TODO
         if len(self.train_begin_times) >= 2:
             cycle_length = self.train_begin_times[-1] - self.train_begin_times[-2]
             self.li_cycle_length.append(cycle_length)
 
         # Get number of steps to train according to some strategy
         steps_to_train = self.get_steps_to_train(remaining_time_budget)
-
+        #TODO
         if steps_to_train <= 0:
             logger.info(
                 "Not enough time remaining for training + test. "
@@ -188,11 +208,22 @@ class Model(object):
             )
 
             # Prepare input function for training
-            train_input_fn = lambda: self.input_function(dataset, is_training=True)
+            # train_input_fn = lambda: self.input_function(dataset, is_training=True)
 
             # Start training
             train_start = time.time()
-            self.classifier.train(input_fn=train_input_fn, steps=steps_to_train)
+            #TODO
+            criterion = nn.CrossEntropyLoss()
+            optimizer = torch.optim.Adam(self.model.parameters(), lr=0.1)
+            for epoch in range(1):
+                for train_X, train_y in dataloader:
+                    preds = self.model(train_X)
+                    loss = citerion(preds, train_y)
+
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+            # self.classifier.train(input_fn=train_input_fn, steps=steps_to_train)
             train_end = time.time()
 
             # Update for time budget managing
@@ -489,6 +520,151 @@ class Model(object):
         return (
             num_epochs > self.num_epochs_we_want_to_train
         )  # Train for at least certain number of epochs then stop
+
+    def to_numpy(self, dataset, is_training):
+        """Given the TF dataset received by `train` or `test` method, compute two
+    lists of NumPy arrays: `X_train`, `Y_train` for `train` and `X_test`,
+    `Y_test` for `test`. Although `Y_test` will always be an
+    all-zero matrix, since the test labels are not revealed in `dataset`.
+    The computed two lists will by memorized as object attribute:
+      self.X_train
+      self.Y_train
+    or
+      self.X_test
+      self.Y_test
+    according to `is_training`.
+    WARNING: since this method will load all data in memory, it's possible to
+      cause Out Of Memory (OOM) error, especially for large datasets (e.g.
+      video/image datasets).
+    Args:
+      dataset: a `tf.data.Dataset` object, received by the method `self.train`
+        or `self.test`.
+      is_training: boolean, indicates whether it concerns the training set.
+    Returns:
+      two lists of NumPy arrays, for features and labels respectively. If the
+        examples all have the same shape, they can be further converted to
+        NumPy arrays by:
+          X = np.array(X)
+          Y = np.array(Y)
+        And in this case, `X` will be of shape
+          [num_examples, sequence_size, row_count, col_count, num_channels]
+        and `Y` will be of shape
+          [num_examples, num_classes]
+    """
+        if is_training:
+            subset = "train"
+        else:
+            subset = "test"
+        attr_X = "X_{}".format(subset)
+        attr_Y = "Y_{}".format(subset)
+
+        # Only iterate the TF dataset when it's not done yet
+        if not (hasattr(self, attr_X) and hasattr(self, attr_Y)):
+            iterator = dataset.make_one_shot_iterator()
+            next_element = iterator.get_next()
+            X = []
+            Y = []
+            with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
+                while True:
+                    try:
+                        example, labels = sess.run(next_element)
+                        X.append(example)
+                        Y.append(labels)
+                    except tf.errors.OutOfRangeError:
+                        break
+            #TODO fill na
+            np.nan_to_num(X, copy=False, nan=np.nanmean(X))
+            setattr(self, attr_X, X)
+            setattr(self, attr_Y, Y)
+        X = getattr(self, attr_X)
+        Y = getattr(self, attr_Y)
+        return X, Y
+
+class TabularDataset(Dataset):
+    def __init__(self, X, y):
+        self.n = X.shape[0]
+        self.X = X
+        self.y = y
+
+    def __len__(self):
+        return self.n
+
+    def __getitem__(self, index):
+        return [self.X[idx], self.y[idx]]
+
+class FullyConnectedModule(nn.Module):
+    def __init__(
+        self,
+        input_dim,
+        output_dim
+    ):
+        super(Model, self).__init__()
+        self.linear_layer = nn.Linear(input_dim, output_dim)
+        self.bn_layer = nn.BatchNorm1d(output_dim)
+
+    def forward(self, X):
+        X = self.linear_layer(X)
+        X = F.relu(self.bn_layer(X))
+        return X
+
+
+class SkipNN(nn.Module):
+    def __init__(
+        self,
+        input_dim
+    ):
+        super(Model, self).__init__()
+        # linear layers
+        self.fc_layer1 = FullyConnectedModule(input_dim, 256)
+        self.fc_layer2 = FullyConnectedModule(256, 256)
+        self.fc_layer3 = FullyConnectedModule(256, 256)
+        self.fc_layer4 = FullyConnectedModule(256, input_dim)
+        # Batch norm layers
+
+        # dropout layers
+        self.dropout_layer = nn.Dropout(0.5)
+    def forward(self, X):
+        X_skip = self.fc_layer1(X)
+        X = self.fc_layer2(X)
+        X = self.dropout_layer(X)
+        X = self.fc_layer3(X) + X_skip
+        X = self.fc_layer4(X)
+        return X
+
+
+class TabularNN(nn.Module):
+    def __init__(
+        self,
+        feature_num=None,
+        output_dim=None,
+        layer_size=3,
+        dropout_p=0.5
+    ):
+        super(Model, self).__init__()
+        # Batch Norm layers
+        self.first_bn_layer = nn.BatchNorm1d(feature_num)
+        # drop out layers
+        self.dropout_layer = nn.Dropout(dropout_p)
+        # skip layer
+        self.skip_layer = SkipNN(feature_num)
+        # fully connected layers
+        self.mid_FC_layer = FullyConnectedModule(feature_num, 256)
+        self.FC_layers = nn.ModuleList(
+            [
+                FullyConnectedModule(256, 256) for i in range(layer_size)
+            ]
+        )
+        self.last_lin_layers = nn.Linear(256, output_dim)
+
+    def forward(self, X):
+        X = self.first_bn_layer(X)
+        X = self.dropout_layer(X)
+        X = self.skip_layer(X)
+        X = self.mid_FC_layer(X)
+        for FC_layer in self.FC_layers:
+            X = FC_layer(X)
+        X = self.last_lin_layers(X)
+        return X
 
 
 def sigmoid_cross_entropy_with_logits(labels=None, logits=None):
