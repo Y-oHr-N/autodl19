@@ -156,17 +156,18 @@ class Model(object):
                     sample_count
                 )
             )
-        X, y = self.to_numpy(dataset)
+        # load X, y from dataset
+        X, y = self.to_numpy(dataset, True)
         X = X.reshape(-1, X.shape[2])
         dataset = TabularDataset(X, y)
         dataloader = DataLoader(dataset, self.batch_size, shuffle=True)
-
+        # define model
         if not hasattr(self, "model"):
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             self.model = NeuralNetClassifier(
                 feature_num=X.shape[1],
                 output_dim=self.outputdim
-            ).to(device)
+            ).to(self.device)
 
         self.train_begin_times.append(time.time())
         #TODO
@@ -215,8 +216,11 @@ class Model(object):
             #TODO
             criterion = nn.CrossEntropyLoss()
             optimizer = torch.optim.Adam(self.model.parameters(), lr=0.1)
+            self.model.train()
             for epoch in range(1):
                 for train_X, train_y in dataloader:
+                    train_X = train_X.to(self.device)
+                    train_y = train_y.to(self.device)
                     preds = self.model(train_X)
                     loss = citerion(preds, train_y)
 
@@ -269,17 +273,26 @@ class Model(object):
                     sample_count
                 )
             )
-
+        X, _ = self.to_numpy(dataset, False)
+        X = X.reshape(-1, X.shape[2])
+        dataset = TabularDataset(X, None)
+        dataloader = DataLoader(dataset, self.batch_size, shuffle=False)
         test_begin = time.time()
         self.test_begin_times.append(test_begin)
         logger.info("Begin testing...")
 
         # Prepare input function for testing
-        test_input_fn = lambda: self.input_function(dataset, is_training=False)
+        # test_input_fn = lambda: self.input_function(dataset, is_training=False)
 
         # Start testing (i.e. making prediction on test set)
-        test_results = self.classifier.predict(input_fn=test_input_fn)
-
+        # test_results = self.classifier.predict(input_fn=test_input_fn)
+        self.model.eval()
+        predictions = np.empty((0, self.output_dim))
+        for test_X in dataloader:
+            test_X = test_X.to(self.device)
+            output = F.Softmax(self.model(test_X)).numpy()
+            predictions = pd.concat([predictions, output], axis=0)
+            # predictions = torch.cat((predictions, preds.softmax()))
         predictions = [x["probabilities"] for x in test_results]
         predictions = np.array(predictions)
         test_end = time.time()
@@ -574,6 +587,11 @@ class Model(object):
                         break
             #TODO fill na
             np.nan_to_num(X, copy=False, nan=np.nanmean(X))
+            X = torch.Tensor(X)
+            y = torch.Tensor(y)
+            dtype = torch.float
+            X = X.to(dtype)
+            y = y.to(dtype)
             setattr(self, attr_X, X)
             setattr(self, attr_Y, Y)
         X = getattr(self, attr_X)
@@ -590,7 +608,10 @@ class TabularDataset(Dataset):
         return self.n
 
     def __getitem__(self, index):
-        return [self.X[idx], self.y[idx]]
+        if self.y  is not None:
+            return self.X[idx], self.y[idx]
+        else:
+            return self.X[idx]
 
 class FullyConnectedModule(nn.Module):
     def __init__(
