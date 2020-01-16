@@ -25,6 +25,10 @@ not exceed 300MB.
 """
 
 from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import roc_auc_score
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.model_selection import train_test_split
 import logging
 import numpy as np
 import os
@@ -56,22 +60,9 @@ class Model(object):
 
         # Set batch size (for both training and testing)
         self.batch_size = 128
-        # Get model function from class method below
-        """
-        model_fn = self.model_fn
-        """
         # Change to True if you want to show device info at each operation
         log_device_placement = False
         session_config = tf.ConfigProto(log_device_placement=log_device_placement)
-        # Classifier using model_fn (see below)
-        #TODO
-        """
-        self.classifier = tf.estimator.Estimator(
-            model_fn=model_fn,
-            config=tf.estimator.RunConfig(session_config=session_config),
-        )
-        """
-
         # Attributes for preprocessing
         self.default_image_size = (112, 112)
         self.default_num_frames = 10
@@ -89,6 +80,8 @@ class Model(object):
         # Critical number for early stopping
         # Depends on number of classes (output_dim)
         # see the function self.choose_to_stop_early() below for more details
+        self.epoch_num = 0
+        self.max_score = 0
         self.num_epochs_we_want_to_train = 70
 
     def train(self, dataset, remaining_time_budget=None):
@@ -158,40 +151,74 @@ class Model(object):
             )
         # load X, y from dataset
         X, y = self.to_numpy(dataset, True)
-        X = X.reshape(-1, X.shape[2])
-        dataset = TabularDataset(X, y)
-        dataloader = DataLoader(dataset, self.batch_size, shuffle=True)
+        X = X.reshape(-1, X.shape[3])
+        if not hasattr(self, "is_multi_label"):
+            if np.sum(y) != self.num_examples_train:
+                self.is_multi_label = True
+            else:
+                self.is_multi_label = False
+        if not hasattr(self, "standard_scaler"):
+            self.standard_scaler = StandardScaler()
+            self.standard_scaler.fit(X)
+        X = self.standard_scaler.transform(X)
+        #TODO fill na
+        #TODO feature engineering
+        #TODO estimate type (categorical or numerical)
+        X = np.nan_to_num(X)
+        X_train, X_valid, y_train, y_valid = train_test_split(
+            X,
+            y,
+            random_state=42,
+            shuffle=True,
+            stratify=np.argmax(y, axis=1),
+            train_size=0.9
+        )
+        # transform Tensor
+        X_train = torch.Tensor(X_train)
+        y_train = torch.Tensor(y_train)
+        X_valid = torch.Tensor(X_valid)
+        y_valid = torch.Tensor(y_valid)
+
+        X_train = X_train.to(torch.float)
+        y_train = y_train.to(torch.float)
+        X_valid = X_valid.to(torch.float)
+        y_valid = y_valid.to(torch.float)
+        # define dataset and dataloader
+        dataset_train = TabularDataset(X_train, y_train)
+        dataset_valid = TabularDataset(X_valid, y_valid)
+        dataloader_train = DataLoader(dataset_train, self.batch_size, shuffle=True)
+        dataloader_valid = DataLoader(dataset_valid, self.batch_size, shuffle=False)
         # define model
         if not hasattr(self, "model"):
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            self.model = NeuralNetClassifier(
+            self.model = TabularNN(
                 feature_num=X.shape[1],
-                output_dim=self.outputdim
+                output_dim=self.output_dim
             ).to(self.device)
 
         self.train_begin_times.append(time.time())
-        #TODO
+        #TODO time management
         if len(self.train_begin_times) >= 2:
             cycle_length = self.train_begin_times[-1] - self.train_begin_times[-2]
             self.li_cycle_length.append(cycle_length)
 
         # Get number of steps to train according to some strategy
         steps_to_train = self.get_steps_to_train(remaining_time_budget)
-        #TODO
+        #TODO time management and early stopping
         if steps_to_train <= 0:
             logger.info(
                 "Not enough time remaining for training + test. "
                 + "Skipping training..."
             )
             self.done_training = True
-        elif self.choose_to_stop_early():
-            logger.info(
-                "The model chooses to stop further training because "
-                + "The preset maximum number of epochs for training is "
-                + "obtained: self.num_epochs_we_want_to_train = "
-                + str(self.num_epochs_we_want_to_train)
-            )
-            self.done_training = True
+        # elif self.choose_to_stop_early():
+        #     logger.info(
+        #         "The model chooses to stop further training because "
+        #         + "The preset maximum number of epochs for training is "
+        #         + "obtained: self.num_epochs_we_want_to_train = "
+        #         + str(self.num_epochs_we_want_to_train)
+        #    )
+        #     self.done_training = True
         else:
             msg_est = ""
             if len(self.li_estimated_time) > 0:
@@ -213,20 +240,45 @@ class Model(object):
 
             # Start training
             train_start = time.time()
-            #TODO
-            criterion = nn.CrossEntropyLoss()
+            #TODO corresponding multi class
+            if self.is_multi_label:
+                criterion = nn.BCEWithLogitsLoss()
+            else:
+                criterion = nn.CrossEntropyLoss()
             optimizer = torch.optim.Adam(self.model.parameters(), lr=0.1)
-            self.model.train()
-            for epoch in range(1):
-                for train_X, train_y in dataloader:
-                    train_X = train_X.to(self.device)
-                    train_y = train_y.to(self.device)
-                    preds = self.model(train_X)
-                    loss = citerion(preds, train_y)
-
+            for epoch in range(5):
+                running_loss = 0.0
+                auc = []
+                self.model.train()
+                for X_batch, y_batch in dataloader_train:
+                    X_batch = X_batch.to(self.device)
+                    y_batch = y_batch.to(self.device)
+                    preds = self.model(X_batch)
+                    if self.is_multi_label:
+                        loss = criterion(preds, y_batch)
+                    else:
+                        loss = criterion(preds, torch.argmax(y_batch, dim=1))
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()
+                    running_loss += loss.item()
+
+                self.model.eval()
+                predictions = np.empty((0, self.output_dim))
+                for X_batch, y_batch in dataloader_valid:
+                    X_batch = X_batch.to(self.device)
+                    if self.is_multi_label:
+                        output = torch.sigmoid(self.model(X_batch)).data.numpy()
+                    else:
+                        output = F.softmax(self.model(X_batch)).data.numpy()
+                    predictions = np.concatenate([predictions, output], axis=0)
+                valid_score = 2 * roc_auc_score(y_valid.data.numpy(), predictions, average="macro") - 1
+                print("loss : ", running_loss)
+                print("auc : ", valid_score)
+                if self.max_score < valid_score:
+                    self.max_score = valid_score
+                self.epoch_num += 5
+
             # self.classifier.train(input_fn=train_input_fn, steps=steps_to_train)
             train_end = time.time()
 
@@ -274,9 +326,13 @@ class Model(object):
                 )
             )
         X, _ = self.to_numpy(dataset, False)
-        X = X.reshape(-1, X.shape[2])
-        dataset = TabularDataset(X, None)
-        dataloader = DataLoader(dataset, self.batch_size, shuffle=False)
+        X = X.reshape(-1, X.shape[3])
+        X = self.standard_scaler.transform(X)
+        X = np.nan_to_num(X)
+        X = torch.Tensor(X)
+        X = X.to(torch.float)
+        dataset_test = TabularDataset(X, None)
+        dataloader_test = DataLoader(dataset_test, self.batch_size, shuffle=False)
         test_begin = time.time()
         self.test_begin_times.append(test_begin)
         logger.info("Begin testing...")
@@ -288,13 +344,13 @@ class Model(object):
         # test_results = self.classifier.predict(input_fn=test_input_fn)
         self.model.eval()
         predictions = np.empty((0, self.output_dim))
-        for test_X in dataloader:
-            test_X = test_X.to(self.device)
-            output = F.Softmax(self.model(test_X)).numpy()
-            predictions = pd.concat([predictions, output], axis=0)
-            # predictions = torch.cat((predictions, preds.softmax()))
-        predictions = [x["probabilities"] for x in test_results]
-        predictions = np.array(predictions)
+        for X_test in dataloader_test:
+            X_test = X_test.to(self.device)
+            if self.is_multi_label:
+                output = torch.sigmoid(self.model(X_test)).data.numpy()
+            else:
+                output = F.softmax(self.model(X_test)).data.numpy()
+            predictions = np.concatenate([predictions, output], axis=0)
         test_end = time.time()
         # Update some variables for time management
         test_duration = test_end - test_begin
@@ -500,18 +556,19 @@ class Model(object):
         )
 
         if len(self.li_steps_to_train) == 0:
-            return 10
+            return 1
         else:
-            steps_to_train = self.li_steps_to_train[-1] * 2
+            steps_to_train = self.li_steps_to_train[-1] + 1
 
             # Estimate required time using linear regression
-            X = np.array(self.li_steps_to_train).reshape(-1, 1)
-            Y = np.array(self.li_cycle_length)
-            self.time_estimator.fit(X, Y)
-            X_test = np.array([steps_to_train]).reshape(-1, 1)
-            Y_pred = self.time_estimator.predict(X_test)
+            #X = np.array(self.li_steps_to_train).reshape(-1, 1)
+            #Y = np.array(self.li_cycle_length)
+            #self.time_estimator.fit(X, Y)
+            #X_test = np.array([steps_to_train]).reshape(-1, 1)
+            #Y_pred = self.time_estimator.predict(X_test)
 
-            estimated_time = Y_pred[0]
+            #estimated_time = Y_pred[0]
+            estimated_time = self.li_cycle_length[-1]
             self.li_estimated_time.append(estimated_time)
 
             if estimated_time >= remaining_time_budget:
@@ -585,13 +642,8 @@ class Model(object):
                         Y.append(labels)
                     except tf.errors.OutOfRangeError:
                         break
-            #TODO fill na
-            np.nan_to_num(X, copy=False, nan=np.nanmean(X))
-            X = torch.Tensor(X)
-            y = torch.Tensor(y)
-            dtype = torch.float
-            X = X.to(dtype)
-            y = y.to(dtype)
+            X = np.array(X)
+            Y = np.array(Y)
             setattr(self, attr_X, X)
             setattr(self, attr_Y, Y)
         X = getattr(self, attr_X)
@@ -607,7 +659,7 @@ class TabularDataset(Dataset):
     def __len__(self):
         return self.n
 
-    def __getitem__(self, index):
+    def __getitem__(self, idx):
         if self.y  is not None:
             return self.X[idx], self.y[idx]
         else:
@@ -619,7 +671,7 @@ class FullyConnectedModule(nn.Module):
         input_dim,
         output_dim
     ):
-        super(Model, self).__init__()
+        super(FullyConnectedModule, self).__init__()
         self.linear_layer = nn.Linear(input_dim, output_dim)
         self.bn_layer = nn.BatchNorm1d(output_dim)
 
@@ -634,7 +686,7 @@ class SkipNN(nn.Module):
         self,
         input_dim
     ):
-        super(Model, self).__init__()
+        super(SkipNN, self).__init__()
         # linear layers
         self.fc_layer1 = FullyConnectedModule(input_dim, 256)
         self.fc_layer2 = FullyConnectedModule(256, 256)
@@ -645,11 +697,11 @@ class SkipNN(nn.Module):
         # dropout layers
         self.dropout_layer = nn.Dropout(0.5)
     def forward(self, X):
-        X_skip = self.fc_layer1(X)
-        X = self.fc_layer2(X)
-        X = self.dropout_layer(X)
-        X = self.fc_layer3(X) + X_skip
-        X = self.fc_layer4(X)
+        X_skip = self.fc_layer1(X) # input_dim -> 256
+        X = self.fc_layer2(X_skip) # 256 -> 256
+        X = self.dropout_layer(X) # 256
+        X = self.fc_layer3(X) + X_skip # 256 -> 256
+        X = self.fc_layer4(X) # 256 -> input_dim
         return X
 
 
@@ -661,7 +713,7 @@ class TabularNN(nn.Module):
         layer_size=3,
         dropout_p=0.5
     ):
-        super(Model, self).__init__()
+        super(TabularNN, self).__init__()
         # Batch Norm layers
         self.first_bn_layer = nn.BatchNorm1d(feature_num)
         # drop out layers
@@ -678,13 +730,13 @@ class TabularNN(nn.Module):
         self.last_lin_layers = nn.Linear(256, output_dim)
 
     def forward(self, X):
-        X = self.first_bn_layer(X)
-        X = self.dropout_layer(X)
-        X = self.skip_layer(X)
-        X = self.mid_FC_layer(X)
+        X = self.first_bn_layer(X) # input_dim
+        X = self.dropout_layer(X) # input_dim
+        X = self.skip_layer(X) # input_dim -> input_dim
+        X = self.mid_FC_layer(X) # input_dim -> 256
         for FC_layer in self.FC_layers:
-            X = FC_layer(X)
-        X = self.last_lin_layers(X)
+            X = FC_layer(X) # 256 -> 256
+        X = self.last_lin_layers(X) # 256 -> output_dim
         return X
 
 
