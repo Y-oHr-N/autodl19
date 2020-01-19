@@ -26,8 +26,8 @@ not exceed 300MB.
 
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import roc_auc_score
-from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import train_test_split
 import logging
 import numpy as np
@@ -152,19 +152,34 @@ class Model(object):
         # load X, y from dataset
         X, y = self.to_numpy(dataset, True)
         X = X.reshape(-1, X.shape[3])
+        X = np.nan_to_num(X)
         if not hasattr(self, "is_multi_label"):
             if np.sum(y) != self.num_examples_train:
                 self.is_multi_label = True
             else:
                 self.is_multi_label = False
-        if not hasattr(self, "standard_scaler"):
+        if not hasattr(self, "cat_cols"):
+            self.cat_cols = self.get_cat_cols(X)
+            self.emb_dims = []
+            self.label_encoders = []
+            for i in self.cat_cols:
+                emb_dim = len(np.unique(X[:, i]))
+                # self.emb_dims.append(((emb_dim, int(6*(emb_dim**(1/4)))  )))
+                self.emb_dims.append((emb_dim, int(max(2, min(emb_dim / 2, 50)))))
+                label_encoder = LabelEncoder()
+                label_encoder.fit(X[:, i])
+                self.label_encoders.append(label_encoder)
             self.standard_scaler = StandardScaler()
             self.standard_scaler.fit(X)
-        X = self.standard_scaler.transform(X)
+            self.no_of_numerical = X.shape[1]
+            self.lin_layer_sizes = [256, 256]
+            self.emb_dropout = 0.5
+            self.lin_layer_dropouts = [0.5, 0.5]
+            
         #TODO fill na
         #TODO feature engineering
         #TODO estimate type (categorical or numerical)
-        X = np.nan_to_num(X)
+
         X_train, X_valid, y_train, y_valid = train_test_split(
             X,
             y,
@@ -173,29 +188,43 @@ class Model(object):
             stratify=np.argmax(y, axis=1),
             train_size=0.9
         )
-        # transform Tensor
-        X_train = torch.Tensor(X_train)
-        y_train = torch.Tensor(y_train)
-        X_valid = torch.Tensor(X_valid)
-        y_valid = torch.Tensor(y_valid)
-
-        X_train = X_train.to(torch.float)
-        y_train = y_train.to(torch.float)
-        X_valid = X_valid.to(torch.float)
-        y_valid = y_valid.to(torch.float)
         # define dataset and dataloader
-        dataset_train = TabularDataset(X_train, y_train)
-        dataset_valid = TabularDataset(X_valid, y_valid)
+        # dataset_train = TabularDataset(X_train, y_train)
+        # dataset_valid = TabularDataset(X_valid, y_valid)
+        dataset_train = TabularEmbeddingDataset(
+            X_train,
+            y_train,
+            cat_cols=self.cat_cols,
+            standard_scaler=self.standard_scaler,
+            label_encoder=self.label_encoders
+        )
+        dataset_valid = TabularEmbeddingDataset(
+            X_valid,
+            y_valid,
+            cat_cols=self.cat_cols,
+            standard_scaler=self.standard_scaler,
+            label_encoder=self.label_encoders
+        )
+        
         dataloader_train = DataLoader(dataset_train, self.batch_size, shuffle=True)
         dataloader_valid = DataLoader(dataset_valid, self.batch_size, shuffle=False)
         # define model
         if not hasattr(self, "model"):
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            """
             self.model = TabularNN(
                 feature_num=X.shape[1],
                 output_dim=self.output_dim
             ).to(self.device)
-
+            """
+            self.model = TabularEmbeddingNN(
+                emb_dims=self.emb_dims,
+                no_of_numerical=self.no_of_numerical,
+                lin_layer_sizes=self.lin_layer_sizes,
+                output_size=self.output_dim,
+                emb_dropout=self.emb_dropout,
+                lin_layer_dropouts=self.lin_layer_dropouts
+            ).to(self.device)
         self.train_begin_times.append(time.time())
         #TODO time management
         if len(self.train_begin_times) >= 2:
@@ -235,9 +264,6 @@ class Model(object):
                 )
             )
 
-            # Prepare input function for training
-            # train_input_fn = lambda: self.input_function(dataset, is_training=True)
-
             # Start training
             train_start = time.time()
             #TODO corresponding multi class
@@ -245,15 +271,16 @@ class Model(object):
                 criterion = nn.BCEWithLogitsLoss()
             else:
                 criterion = nn.CrossEntropyLoss()
-            optimizer = torch.optim.Adam(self.model.parameters(), lr=0.1)
+            optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
             for epoch in range(5):
                 running_loss = 0.0
                 auc = []
                 self.model.train()
-                for X_batch, y_batch in dataloader_train:
-                    X_batch = X_batch.to(self.device)
+                for X_num_batch, X_cat_batch, y_batch in dataloader_train:
+                    X_num_batch = X_num_batch.to(self.device)
+                    X_cat_batch = X_cat_batch.to(self.device)
                     y_batch = y_batch.to(self.device)
-                    preds = self.model(X_batch)
+                    preds = self.model(X_num_batch, X_cat_batch)
                     if self.is_multi_label:
                         loss = criterion(preds, y_batch)
                     else:
@@ -261,25 +288,25 @@ class Model(object):
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()
-                    running_loss += loss.item()
+                    running_loss += loss.item() / dataset_train.__len__()
 
                 self.model.eval()
                 predictions = np.empty((0, self.output_dim))
-                for X_batch, y_batch in dataloader_valid:
-                    X_batch = X_batch.to(self.device)
+                for X_num_batch, X_cat_batch, y_batch in dataloader_valid:
+                    X_num_batch = X_num_batch.to(self.device)
+                    X_cat_batch = X_cat_batch.to(self.device)
                     if self.is_multi_label:
-                        output = torch.sigmoid(self.model(X_batch)).data.numpy()
+                        output = torch.sigmoid(self.model(X_num_batch, X_cat_batch)).data.numpy()
                     else:
-                        output = F.softmax(self.model(X_batch)).data.numpy()
+                        output = F.softmax(self.model(X_num_batch, X_cat_batch)).data.numpy()
                     predictions = np.concatenate([predictions, output], axis=0)
-                valid_score = 2 * roc_auc_score(y_valid.data.numpy(), predictions, average="macro") - 1
+                valid_score = 2 * roc_auc_score(y_valid, predictions, average="macro") - 1
                 print("loss : ", running_loss)
                 print("auc : ", valid_score)
                 if self.max_score < valid_score:
                     self.max_score = valid_score
                 self.epoch_num += 5
 
-            # self.classifier.train(input_fn=train_input_fn, steps=steps_to_train)
             train_end = time.time()
 
             # Update for time budget managing
@@ -327,29 +354,33 @@ class Model(object):
             )
         X, _ = self.to_numpy(dataset, False)
         X = X.reshape(-1, X.shape[3])
-        X = self.standard_scaler.transform(X)
         X = np.nan_to_num(X)
-        X = torch.Tensor(X)
-        X = X.to(torch.float)
-        dataset_test = TabularDataset(X, None)
+        # X = torch.Tensor(X)
+        # X = X.to(torch.float)
+        dataset_test = TabularEmbeddingDataset(
+            X,
+            None,
+            cat_cols=self.cat_cols,
+            standard_scaler=self.standard_scaler,
+            label_encoder=self.label_encoders
+        )
         dataloader_test = DataLoader(dataset_test, self.batch_size, shuffle=False)
         test_begin = time.time()
         self.test_begin_times.append(test_begin)
         logger.info("Begin testing...")
 
         # Prepare input function for testing
-        # test_input_fn = lambda: self.input_function(dataset, is_training=False)
 
         # Start testing (i.e. making prediction on test set)
-        # test_results = self.classifier.predict(input_fn=test_input_fn)
         self.model.eval()
         predictions = np.empty((0, self.output_dim))
-        for X_test in dataloader_test:
-            X_test = X_test.to(self.device)
+        for X_num_batch, X_cat_batch, in dataloader_test:
+            X_num_batch = X_num_batch.to(self.device)
+            X_cat_batch = X_cat_batch.to(self.device)
             if self.is_multi_label:
-                output = torch.sigmoid(self.model(X_test)).data.numpy()
+                output = torch.sigmoid(self.model(X_num_batch, X_cat_batch)).data.numpy()
             else:
-                output = F.softmax(self.model(X_test)).data.numpy()
+                output = F.softmax(self.model(X_num_batch, X_cat_batch)).data.numpy()
             predictions = np.concatenate([predictions, output], axis=0)
         test_end = time.time()
         # Update some variables for time management
@@ -570,7 +601,6 @@ class Model(object):
             #estimated_time = Y_pred[0]
             estimated_time = self.li_cycle_length[-1]
             self.li_estimated_time.append(estimated_time)
-
             if estimated_time >= remaining_time_budget:
                 return 0
             else:
@@ -650,6 +680,14 @@ class Model(object):
         Y = getattr(self, attr_Y)
         return X, Y
 
+    def get_cat_cols(self, X):
+        cat_cols = []
+        for i in range(X.shape[1]):
+            unique_list = np.unique(X[:, i])
+            if (min(unique_list) == 1) & (np.all(np.diff(unique_list, n=1) == 1)):
+                cat_cols.append(i)
+        return cat_cols
+
 class TabularDataset(Dataset):
     def __init__(self, X, y):
         self.n = X.shape[0]
@@ -664,6 +702,43 @@ class TabularDataset(Dataset):
             return self.X[idx], self.y[idx]
         else:
             return self.X[idx]
+
+class TabularEmbeddingDataset(Dataset):
+    def __init__(self, X, y, cat_cols=None, standard_scaler=None, label_encoder=None):
+        self.n = X.shape[0]
+        self.y = y
+        self.cat_cols = cat_cols if cat_cols else []
+        self.numerical_cols = list(range(X.shape[1]))
+
+        if self.numerical_cols:
+            self.numerical_X = X
+            self.numerical_X = standard_scaler.transform(self.numerical_X)
+        else:
+            self.numerical_X = np.zeros((self.n, 1))
+        
+        if self.cat_cols:
+            self.cat_X = X[:, self.cat_cols]
+            for i in range(self.cat_X.shape[1]):
+                self.cat_X[:,i] = label_encoder[i].transform(self.cat_X[:,i])
+        else:
+            self.cat_X = np.zeros((self.n, 1))
+        self.numerical_X = torch.Tensor(self.numerical_X)
+        self.cat_X = torch.Tensor(self.cat_X)
+        
+        self.numerical_X = self.numerical_X.to(torch.float)
+        self.cat_X = self.cat_X.to(torch.long)
+        if y is not None:
+            self.y = torch.Tensor(self.y)
+            self.y = self.y.to(torch.float)
+
+    def __len__(self):
+        return self.n
+    
+    def __getitem__(self, idx):
+        if self.y is not None:
+            return [self.numerical_X[idx], self.cat_X[idx], self.y[idx]]
+        else:
+            return [self.numerical_X[idx], self.cat_X[idx]]
 
 class FullyConnectedModule(nn.Module):
     def __init__(
@@ -739,6 +814,73 @@ class TabularNN(nn.Module):
         X = self.last_lin_layers(X) # 256 -> output_dim
         return X
 
+class TabularEmbeddingNN(nn.Module):
+    def __init__(
+        self,
+        emb_dims,
+        no_of_numerical,
+        lin_layer_sizes,
+        output_size,
+        emb_dropout,
+        lin_layer_dropouts
+    ):
+        super(TabularEmbeddingNN, self).__init__()
+
+        self.emb_layers = nn.ModuleList([nn.Embedding(x, y) for x, y in emb_dims])
+
+        self.no_of_embs = sum([y for x, y in emb_dims])
+        self.no_of_numerical = no_of_numerical
+        self.skip_layer = SkipNN(self.no_of_embs + self.no_of_numerical)
+        first_lin_layer = nn.Linear(
+            self.no_of_embs + self.no_of_numerical, lin_layer_sizes[0]
+        )
+        self.lin_layers = nn.ModuleList(
+            [first_lin_layer] +
+            [
+                nn.Linear(lin_layer_sizes[i], lin_layer_sizes[i + 1])
+                for i in range(len(lin_layer_sizes) - 1)
+            ]
+        )
+        for lin_layer in self.lin_layers:
+            nn.init.kaiming_normal_(lin_layer.weight.data)
+        self.output_layer = nn.Linear(lin_layer_sizes[-1], output_size)
+        nn.init.kaiming_normal_(self.output_layer.weight.data)
+
+        self.first_bn_layer = nn.BatchNorm1d(self.no_of_numerical)
+        self.bn_layers = nn.ModuleList(
+            [nn.BatchNorm1d(size) for size in lin_layer_sizes]
+        )
+
+        self.emb_dropout_layer = nn.Dropout(emb_dropout)
+        self.dropout_layers = nn.ModuleList(
+            [nn.Dropout(size) for size in lin_layer_dropouts]
+        )
+    
+    def forward(self, numerical_data, cat_data):
+        if self.no_of_embs != 0:
+            X = [
+                emb_layer(cat_data[:, i]) for i, emb_layer in enumerate(self.emb_layers)
+            ]
+            X = torch.cat(X, 1)
+            X = self.emb_dropout_layer(X)
+        if self.no_of_numerical != 0:
+            normalized_numerical_data = self.first_bn_layer(numerical_data)
+
+            if self.no_of_embs != 0:
+                X = torch.cat([X, normalized_numerical_data], 1)
+            else:
+                X = normalized_numerical_data
+        X = self.skip_layer(X)
+        for lin_layer, dropout_layer, bn_layer in zip(
+            self.lin_layers, self.dropout_layers, self.bn_layers
+        ):
+            X = F.relu(lin_layer(X))
+            X = bn_layer(X)
+            X = dropout_layer(X)
+
+        X = self.output_layer(X)
+
+        return X
 
 def sigmoid_cross_entropy_with_logits(labels=None, logits=None):
     """Re-implementation of this function:
