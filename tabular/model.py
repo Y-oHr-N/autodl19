@@ -175,7 +175,7 @@ class Model(object):
             self.lin_layer_sizes = [256, 256]
             self.emb_dropout = 0.5
             self.lin_layer_dropouts = [0.5, 0.5]
-            
+
         #TODO fill na
         #TODO feature engineering
         #TODO estimate type (categorical or numerical)
@@ -205,7 +205,7 @@ class Model(object):
             standard_scaler=self.standard_scaler,
             label_encoder=self.label_encoders
         )
-        
+
         dataloader_train = DataLoader(dataset_train, self.batch_size, shuffle=True)
         dataloader_valid = DataLoader(dataset_valid, self.batch_size, shuffle=False)
         # define model
@@ -542,7 +542,7 @@ class TabularEmbeddingDataset(Dataset):
             self.numerical_X = standard_scaler.transform(self.numerical_X)
         else:
             self.numerical_X = np.zeros((self.n, 1))
-        
+
         if self.cat_cols:
             self.cat_X = X[:, self.cat_cols]
             for i in range(self.cat_X.shape[1]):
@@ -551,7 +551,7 @@ class TabularEmbeddingDataset(Dataset):
             self.cat_X = np.zeros((self.n, 1))
         self.numerical_X = torch.Tensor(self.numerical_X)
         self.cat_X = torch.Tensor(self.cat_X)
-        
+
         self.numerical_X = self.numerical_X.to(torch.float)
         self.cat_X = self.cat_X.to(torch.long)
         if y is not None:
@@ -560,7 +560,7 @@ class TabularEmbeddingDataset(Dataset):
 
     def __len__(self):
         return self.n
-    
+
     def __getitem__(self, idx):
         if self.y is not None:
             return [self.numerical_X[idx], self.cat_X[idx], self.y[idx]]
@@ -682,7 +682,7 @@ class TabularEmbeddingNN(nn.Module):
         self.dropout_layers = nn.ModuleList(
             [nn.Dropout(size) for size in lin_layer_dropouts]
         )
-    
+
     def forward(self, numerical_data, cat_data):
         if self.no_of_embs != 0:
             X = [
