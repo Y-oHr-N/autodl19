@@ -296,9 +296,9 @@ class Model(object):
                     X_num_batch = X_num_batch.to(self.device)
                     X_cat_batch = X_cat_batch.to(self.device)
                     if self.is_multi_label:
-                        output = torch.sigmoid(self.model(X_num_batch, X_cat_batch)).data.numpy()
+                        output = torch.sigmoid(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
                     else:
-                        output = F.softmax(self.model(X_num_batch, X_cat_batch)).data.numpy()
+                        output = F.softmax(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
                     predictions = np.concatenate([predictions, output], axis=0)
                 valid_score = 2 * roc_auc_score(y_valid, predictions, average="macro") - 1
                 print("loss : ", running_loss)
@@ -378,9 +378,9 @@ class Model(object):
             X_num_batch = X_num_batch.to(self.device)
             X_cat_batch = X_cat_batch.to(self.device)
             if self.is_multi_label:
-                output = torch.sigmoid(self.model(X_num_batch, X_cat_batch)).data.numpy()
+                output = torch.sigmoid(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
             else:
-                output = F.softmax(self.model(X_num_batch, X_cat_batch)).data.numpy()
+                output = F.softmax(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
             predictions = np.concatenate([predictions, output], axis=0)
         test_end = time.time()
         # Update some variables for time management
