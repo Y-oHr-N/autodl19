@@ -136,7 +136,7 @@ class Model(object):
         if self.is_first:
             X, y = self.to_numpy(dataset, True)
             self.num_examples_train = X.shape[0]
-            print("train size: ", X.shpae)
+            print("train size: ", X.shape)
             X = np.nan_to_num(X)
             if not hasattr(self, "is_multi_label"):
                 if np.sum(y) != self.num_examples_train:
