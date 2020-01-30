@@ -634,7 +634,7 @@ class TabularEmbeddingNN(nn.Module):
 
         self.no_of_embs = sum([y for x, y in emb_dims])
         self.no_of_numerical = no_of_numerical
-        self.skip_layer = SkipNN(self.no_of_embs + self.no_of_numerical)
+        # self.skip_layer = SkipNN(self.no_of_embs + self.no_of_numerical)
         first_lin_layer = nn.Linear(
             self.no_of_embs + self.no_of_numerical, lin_layer_sizes[0]
         )
@@ -674,7 +674,7 @@ class TabularEmbeddingNN(nn.Module):
                 X = torch.cat([X, normalized_numerical_data], 1)
             else:
                 X = normalized_numerical_data
-        X = self.skip_layer(X)
+        # X = self.skip_layer(X)
         for lin_layer, dropout_layer, bn_layer in zip(
             self.lin_layers, self.dropout_layers, self.bn_layers
         ):
