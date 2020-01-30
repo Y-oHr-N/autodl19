@@ -129,28 +129,9 @@ class Model(object):
     """
         if self.done_training:
             return
-
-        # Count examples on training set
-        if not hasattr(self, "num_examples_train"):
-            logger.info("Counting number of examples on train set.")
-            iterator = dataset.make_one_shot_iterator()
-            example, labels = iterator.get_next()
-            sample_count = 0
-            with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
-                while True:
-                    try:
-                        sess.run(labels)
-                        sample_count += 1
-                    except tf.errors.OutOfRangeError:
-                        break
-            self.num_examples_train = sample_count
-            logger.info(
-                "Finished counting. There are {} examples for training set.".format(
-                    sample_count
-                )
-            )
         # load X, y from dataset
         X, y = self.to_numpy(dataset, True)
+        self.num_examples_train = X.shape[0]
         X = X.reshape(-1, X.shape[3])
         X = np.nan_to_num(X)
         if not hasattr(self, "is_multi_label"):
