@@ -143,9 +143,7 @@ class Model(object):
                 else:
                     self.is_multi_label = False
             if not hasattr(self, "cat_cols"):
-                start = time.time()
                 self.cat_cols = self.get_cat_cols(X)
-                print("cat: ", start - time.time())
                 self.emb_dims = []
                 self.label_encoders = []
                 for i in self.cat_cols:
