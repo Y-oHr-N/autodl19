@@ -83,6 +83,8 @@ class Model(object):
         self.epoch_num = 0
         self.max_score = 0
         self.num_epochs_we_want_to_train = 70
+        self.is_first = True
+        self.early_stopping_rounds = 50
 
     def train(self, dataset, remaining_time_budget=None):
         """Train this algorithm on the tensorflow |dataset|.
@@ -130,82 +132,90 @@ class Model(object):
         if self.done_training:
             return
         # load X, y from dataset
-        X, y = self.to_numpy(dataset, True)
-        self.num_examples_train = X.shape[0]
-        X = X.reshape(-1, X.shape[3])
-        X = np.nan_to_num(X)
-        if not hasattr(self, "is_multi_label"):
-            if np.sum(y) != self.num_examples_train:
-                self.is_multi_label = True
-            else:
-                self.is_multi_label = False
-        if not hasattr(self, "cat_cols"):
-            self.cat_cols = self.get_cat_cols(X)
-            self.emb_dims = []
-            self.label_encoders = []
-            for i in self.cat_cols:
-                emb_dim = len(np.unique(X[:, i]))
-                # self.emb_dims.append(((emb_dim, int(6*(emb_dim**(1/4)))  )))
-                self.emb_dims.append((emb_dim, int(max(2, min(emb_dim / 2, 50)))))
-                label_encoder = LabelEncoder()
-                label_encoder.fit(X[:, i])
-                self.label_encoders.append(label_encoder)
-            self.standard_scaler = StandardScaler()
-            self.standard_scaler.fit(X)
-            self.no_of_numerical = X.shape[1]
-            self.lin_layer_sizes = [256, 256]
-            self.emb_dropout = 0.5
-            self.lin_layer_dropouts = [0.5, 0.5]
+        if self.is_first:
+            X, y = self.to_numpy(dataset, True)
+            self.num_examples_train = X.shape[0]
+            X = X.reshape(-1, X.shape[3])
+            X = np.nan_to_num(X)
+            if not hasattr(self, "is_multi_label"):
+                if np.sum(y) != self.num_examples_train:
+                    self.is_multi_label = True
+                else:
+                    self.is_multi_label = False
+            if not hasattr(self, "cat_cols"):
+                start = time.time()
+                self.cat_cols = self.get_cat_cols(X)
+                print("cat: ", start - time.time())
+                self.emb_dims = []
+                self.label_encoders = []
+                for i in self.cat_cols:
+                    emb_dim = len(np.unique(X[:, i]))
+                    # self.emb_dims.append(((emb_dim, int(6*(emb_dim**(1/4)))  )))
+                    self.emb_dims.append((emb_dim, int(max(2, min(emb_dim / 2, 50)))))
+                    label_encoder = LabelEncoder()
+                    label_encoder.fit(X[:, i])
+                    self.label_encoders.append(label_encoder)
+                self.standard_scaler = StandardScaler()
+                self.standard_scaler.fit(X)
+                self.no_of_numerical = X.shape[1]
+                self.lin_layer_sizes = [256, 256]
+                self.emb_dropout = 0.5
+                self.lin_layer_dropouts = [0.5, 0.5]
 
-        #TODO fill na
-        #TODO feature engineering
-        #TODO estimate type (categorical or numerical)
+            #TODO fill na
+            #TODO feature engineering
+            #TODO estimate type (categorical or numerical)
 
-        X_train, X_valid, y_train, y_valid = train_test_split(
-            X,
-            y,
-            random_state=42,
-            shuffle=True,
-            stratify=np.argmax(y, axis=1),
-            train_size=0.9
-        )
-        # define dataset and dataloader
-        # dataset_train = TabularDataset(X_train, y_train)
-        # dataset_valid = TabularDataset(X_valid, y_valid)
-        dataset_train = TabularEmbeddingDataset(
-            X_train,
-            y_train,
-            cat_cols=self.cat_cols,
-            standard_scaler=self.standard_scaler,
-            label_encoder=self.label_encoders
-        )
-        dataset_valid = TabularEmbeddingDataset(
-            X_valid,
-            y_valid,
-            cat_cols=self.cat_cols,
-            standard_scaler=self.standard_scaler,
-            label_encoder=self.label_encoders
-        )
+            self.X_train, self.X_valid, self.y_train, self.y_valid = train_test_split(
+                X,
+                y,
+                random_state=42,
+                shuffle=True,
+                stratify=np.argmax(y, axis=1),
+                train_size=0.9
+            )
+            # define dataset and dataloader
+            # dataset_train = TabularDataset(X_train, y_train)
+            # dataset_valid = TabularDataset(X_valid, y_valid)
+            self.dataset_train = TabularEmbeddingDataset(
+                self.X_train,
+                self.y_train,
+                cat_cols=self.cat_cols,
+                standard_scaler=self.standard_scaler,
+                label_encoder=self.label_encoders
+            )
+            self.dataset_valid = TabularEmbeddingDataset(
+                self.X_valid,
+                self.y_valid,
+                cat_cols=self.cat_cols,
+                standard_scaler=self.standard_scaler,
+                label_encoder=self.label_encoders
+            )
 
-        dataloader_train = DataLoader(dataset_train, self.batch_size, shuffle=True)
-        dataloader_valid = DataLoader(dataset_valid, self.batch_size, shuffle=False)
+            self.dataloader_train = DataLoader(self.dataset_train, self.batch_size, shuffle=True)
+            self.dataloader_valid = DataLoader(self.dataset_valid, self.batch_size, shuffle=False)
         # define model
-        if not hasattr(self, "model"):
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            """
-            self.model = TabularNN(
-                feature_num=X.shape[1],
-                output_dim=self.output_dim
-            ).to(self.device)
-            """
-            self.model = TabularEmbeddingNN(
-                emb_dims=self.emb_dims,
-                no_of_numerical=self.no_of_numerical,
-                lin_layer_sizes=self.lin_layer_sizes,
-                output_size=self.output_dim,
-                emb_dropout=self.emb_dropout,
-                lin_layer_dropouts=self.lin_layer_dropouts
-            ).to(self.device)
+            if not hasattr(self, "model"):
+                self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                """
+                self.model = TabularNN(
+                    feature_num=X.shape[1],
+                    output_dim=self.output_dim
+                ).to(self.device)
+                """
+                self.model = TabularEmbeddingNN(
+                    emb_dims=self.emb_dims,
+                    no_of_numerical=self.no_of_numerical,
+                    lin_layer_sizes=self.lin_layer_sizes,
+                    output_size=self.output_dim,
+                    emb_dropout=self.emb_dropout,
+                    lin_layer_dropouts=self.lin_layer_dropouts
+                ).to(self.device)
+            if self.is_multi_label:
+                self.criterion = nn.BCEWithLogitsLoss()
+            else:
+                self.criterion = nn.CrossEntropyLoss()
+            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
         self.train_begin_times.append(time.time())
         #TODO time management
         if len(self.train_begin_times) >= 2:
@@ -248,32 +258,27 @@ class Model(object):
             # Start training
             train_start = time.time()
             #TODO corresponding multi class
-            if self.is_multi_label:
-                criterion = nn.BCEWithLogitsLoss()
-            else:
-                criterion = nn.CrossEntropyLoss()
-            optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
-            for epoch in range(5):
+            for i in range(self.early_stopping_rounds):
                 running_loss = 0.0
                 auc = []
                 self.model.train()
-                for X_num_batch, X_cat_batch, y_batch in dataloader_train:
+                for X_num_batch, X_cat_batch, y_batch in self.dataloader_train:
                     X_num_batch = X_num_batch.to(self.device)
                     X_cat_batch = X_cat_batch.to(self.device)
                     y_batch = y_batch.to(self.device)
                     preds = self.model(X_num_batch, X_cat_batch)
                     if self.is_multi_label:
-                        loss = criterion(preds, y_batch)
+                        loss = self.criterion(preds, y_batch)
                     else:
-                        loss = criterion(preds, torch.argmax(y_batch, dim=1))
-                    optimizer.zero_grad()
+                        loss = self.criterion(preds, torch.argmax(y_batch, dim=1))
+                    self.optimizer.zero_grad()
                     loss.backward()
-                    optimizer.step()
-                    running_loss += loss.item() / dataset_train.__len__()
+                    self.optimizer.step()
+                    running_loss += loss.item() / self.dataset_train.__len__()
 
                 self.model.eval()
                 predictions = np.empty((0, self.output_dim))
-                for X_num_batch, X_cat_batch, y_batch in dataloader_valid:
+                for X_num_batch, X_cat_batch, y_batch in self.dataloader_valid:
                     X_num_batch = X_num_batch.to(self.device)
                     X_cat_batch = X_cat_batch.to(self.device)
                     if self.is_multi_label:
@@ -281,12 +286,17 @@ class Model(object):
                     else:
                         output = F.softmax(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
                     predictions = np.concatenate([predictions, output], axis=0)
-                valid_score = 2 * roc_auc_score(y_valid, predictions, average="macro") - 1
+                valid_score = 2 * roc_auc_score(self.y_valid, predictions, average="macro") - 1
                 print("loss : ", running_loss)
                 print("auc : ", valid_score)
+                self.epoch_num += 1
                 if self.max_score < valid_score:
                     self.max_score = valid_score
-                self.epoch_num += 5
+                    break
+                if self.epoch_num <= 5:
+                    break
+                if i == self.early_stopping_rounds - 1:
+                    self.done_training = True
 
             train_end = time.time()
 
@@ -314,38 +324,24 @@ class Model(object):
           set and `output_dim` is the number of labels to be predicted. The
           values should be binary or in the interval [0,1].
     """
+        if self.done_training:
+            return self.predictions
         # Count examples on test set
-        if not hasattr(self, "num_examples_test"):
-            logger.info("Counting number of examples on test set.")
-            iterator = dataset.make_one_shot_iterator()
-            example, labels = iterator.get_next()
-            sample_count = 0
-            with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
-                while True:
-                    try:
-                        sess.run(labels)
-                        sample_count += 1
-                    except tf.errors.OutOfRangeError:
-                        break
-            self.num_examples_test = sample_count
-            logger.info(
-                "Finished counting. There are {} examples for test set.".format(
-                    sample_count
-                )
+        if self.is_first:
+            X, _ = self.to_numpy(dataset, False)
+            X = X.reshape(-1, X.shape[3])
+            X = np.nan_to_num(X)
+            # X = torch.Tensor(X)
+            # X = X.to(torch.float)
+            self.dataset_test = TabularEmbeddingDataset(
+                X,
+                None,
+                cat_cols=self.cat_cols,
+                standard_scaler=self.standard_scaler,
+                label_encoder=self.label_encoders
             )
-        X, _ = self.to_numpy(dataset, False)
-        X = X.reshape(-1, X.shape[3])
-        X = np.nan_to_num(X)
-        # X = torch.Tensor(X)
-        # X = X.to(torch.float)
-        dataset_test = TabularEmbeddingDataset(
-            X,
-            None,
-            cat_cols=self.cat_cols,
-            standard_scaler=self.standard_scaler,
-            label_encoder=self.label_encoders
-        )
-        dataloader_test = DataLoader(dataset_test, self.batch_size, shuffle=False)
+            self.dataloader_test = DataLoader(self.dataset_test, self.batch_size, shuffle=False)
+        self.is_first = False
         test_begin = time.time()
         self.test_begin_times.append(test_begin)
         logger.info("Begin testing...")
@@ -354,15 +350,15 @@ class Model(object):
 
         # Start testing (i.e. making prediction on test set)
         self.model.eval()
-        predictions = np.empty((0, self.output_dim))
-        for X_num_batch, X_cat_batch, in dataloader_test:
+        self.predictions = np.empty((0, self.output_dim))
+        for X_num_batch, X_cat_batch, in self.dataloader_test:
             X_num_batch = X_num_batch.to(self.device)
             X_cat_batch = X_cat_batch.to(self.device)
             if self.is_multi_label:
                 output = torch.sigmoid(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
             else:
                 output = F.softmax(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
-            predictions = np.concatenate([predictions, output], axis=0)
+            self.predictions = np.concatenate([self.predictions, output], axis=0)
         test_end = time.time()
         # Update some variables for time management
         test_duration = test_end - test_begin
@@ -372,7 +368,7 @@ class Model(object):
             )
             + "Duration used for test: {:2f}".format(test_duration)
         )
-        return predictions
+        return self.predictions
 
     def get_steps_to_train(self, remaining_time_budget):
         """Get number of steps for training according to `remaining_time_budget`.
@@ -407,9 +403,9 @@ class Model(object):
             #Y_pred = self.time_estimator.predict(X_test)
 
             #estimated_time = Y_pred[0]
-            estimated_time = self.li_cycle_length[-1]
+            estimated_time = self.li_cycle_length[0]
             self.li_estimated_time.append(estimated_time)
-            if estimated_time >= remaining_time_budget:
+            if self.early_stopping_rounds*estimated_time >= remaining_time_budget:
                 return 0
             else:
                 return steps_to_train
