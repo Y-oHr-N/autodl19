@@ -57,6 +57,7 @@ class Model(object):
 
         self.metadata = metadata
         self.output_dim = self.metadata.get_output_size()
+        self.feature_size = self.metadata.get_matrix_size()[1]
 
         # Set batch size (for both training and testing)
         self.batch_size = 128
@@ -135,7 +136,6 @@ class Model(object):
         if self.is_first:
             X, y = self.to_numpy(dataset, True)
             self.num_examples_train = X.shape[0]
-            X = X.reshape(-1, X.shape[3])
             X = np.nan_to_num(X)
             if not hasattr(self, "is_multi_label"):
                 if np.sum(y) != self.num_examples_train:
@@ -327,10 +327,7 @@ class Model(object):
         # Count examples on test set
         if self.is_first:
             X, _ = self.to_numpy(dataset, False)
-            X = X.reshape(-1, X.shape[3])
             X = np.nan_to_num(X)
-            # X = torch.Tensor(X)
-            # X = X.to(torch.float)
             self.dataset_test = TabularEmbeddingDataset(
                 X,
                 None,
@@ -459,23 +456,27 @@ class Model(object):
             subset = "test"
         attr_X = "X_{}".format(subset)
         attr_Y = "Y_{}".format(subset)
-
         # Only iterate the TF dataset when it's not done yet
         if not (hasattr(self, attr_X) and hasattr(self, attr_Y)):
+            dataset = dataset.batch(batch_size=1024, drop_remainder=False)
             iterator = dataset.make_one_shot_iterator()
             next_element = iterator.get_next()
-            X = []
-            Y = []
-            with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
+            X = np.empty((0, self.feature_size))
+            Y = np.empty((0, self.output_dim))
+            with tf.Session(config=tf.ConfigProto(log_device_placement=False,
+                gpu_options=tf.GPUOptions(
+                    allow_growth=True
+                )
+            )) as sess:
                 while True:
                     try:
                         example, labels = sess.run(next_element)
-                        X.append(example)
-                        Y.append(labels)
+                        example = example.reshape(-1, self.feature_size)
+                        labels = labels.reshape(-1, self.output_dim)
+                        X = np.append(X, example, axis=0)
+                        Y = np.append(Y, labels, axis=0)
                     except tf.errors.OutOfRangeError:
                         break
-            X = np.array(X)
-            Y = np.array(Y)
             setattr(self, attr_X, X)
             setattr(self, attr_Y, Y)
         X = getattr(self, attr_X)
