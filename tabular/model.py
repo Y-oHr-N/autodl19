@@ -136,6 +136,7 @@ class Model(object):
         if self.is_first:
             X, y = self.to_numpy(dataset, True)
             self.num_examples_train = X.shape[0]
+            print("train size: ", X.shpae)
             X = np.nan_to_num(X)
             if not hasattr(self, "is_multi_label"):
                 if np.sum(y) != self.num_examples_train:
@@ -144,6 +145,10 @@ class Model(object):
                     self.is_multi_label = False
             if not hasattr(self, "cat_cols"):
                 self.cat_cols = self.get_cat_cols(X)
+                logger.info(
+                "category estimate"
+                )
+                print(self.cat_cols)
                 self.emb_dims = []
                 self.label_encoders = []
                 for i in self.cat_cols:
