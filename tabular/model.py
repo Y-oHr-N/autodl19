@@ -492,7 +492,7 @@ class Model(object):
         cat_cols = []
         for i in range(X.shape[1]):
             unique_list = np.unique(X[:, i])
-            if (min(unique_list) == 1) & (np.all(np.diff(unique_list, n=1) == 1)):
+            if (np.all(np.diff(unique_list, n=1) == 1)):
                 cat_cols.append(i)
         return cat_cols
 
