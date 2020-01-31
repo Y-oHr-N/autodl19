@@ -427,15 +427,16 @@ class Model(object):
 
         # Start testing (i.e. making prediction on test set)
         self.model.eval()
-        self.predictions = np.empty((0, self.output_dim))
-        for X_num_batch, X_cat_batch, in self.dataloader_test:
-            X_num_batch = X_num_batch.to(self.device)
-            X_cat_batch = X_cat_batch.to(self.device)
-            if self.is_multi_label:
-                output = torch.sigmoid(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
-            else:
-                output = F.softmax(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
-            self.predictions = np.concatenate([self.predictions, output], axis=0)
+        if not self.done_training:
+            self.predictions = np.empty((0, self.output_dim))
+            for X_num_batch, X_cat_batch, in self.dataloader_test:
+                X_num_batch = X_num_batch.to(self.device)
+                X_cat_batch = X_cat_batch.to(self.device)
+                if self.is_multi_label:
+                    output = torch.sigmoid(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
+                else:
+                    output = F.softmax(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
+                self.predictions = np.concatenate([self.predictions, output], axis=0)
         if self.using_model != "NN":
             if self.is_multi_label:
                 predictions_lgb = np.empty((self.X_test.shape[0], 0))
