@@ -474,7 +474,8 @@ class Model(object):
             remaining_time_budget is None
         ):  # This is never true in the competition anyway
             remaining_time_budget = 1200  # if no time limit is given, set to 20min
-
+        if remaining_time_budget < 600:
+            return 0
         # for more conservative estimation
         remaining_time_budget = min(
             remaining_time_budget - 60, remaining_time_budget * 0.6
