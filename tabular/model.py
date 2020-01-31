@@ -39,6 +39,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
+import lightgbm as lgb
 
 np.random.seed(42)
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -86,6 +87,8 @@ class Model(object):
         self.num_epochs_we_want_to_train = 70
         self.is_first = True
         self.early_stopping_rounds = 50
+        self.lgb_weight = 0.8
+        self.using_model = "NN"
 
     def train(self, dataset, remaining_time_budget=None):
         """Train this algorithm on the tensorflow |dataset|.
@@ -302,7 +305,83 @@ class Model(object):
                     self.done_training = True
 
             train_end = time.time()
+        if self.done_training:
+            if self.is_multi_label:
+                self.lgb_models = []
+                predictions_lgb = np.empty((self.X_valid.shape[0], 0))
+                for i in range(self.output_dim):
+                    lgb_model = lgb.LGBMClassifier(
+                        boosting_type="gbdt",
+                        objective="binary",
+                        num_leaves=2**5-1,
+                        max_depth=5,
+                        learning_rate=0.01,
+                        n_estimators=1000,
+                        subsample=0.8,
+                        subsample_freq=1
+                    )
+                    lgb_model.fit(
+                        self.X_train,
+                        self.y_train[:,i],
+                        eval_set=[(self.X_valid, self.y_valid[:,i])],
+                        eval_metric="logloss",
+                        early_stopping_rounds=10,
+                        verbose=100
+                    )
 
+                    pred_tmp = lgb_model.predict_proba(self.X_valid)[:,1].reshape(-1, 1)
+                    predictions_lgb = np.concatenate([predictions_lgb, pred_tmp], axis=1)
+                    self.lgb_models.append(lgb_model)
+            else:
+                if self.output_dim == 2:
+                    self.lgb_model = lgb.LGBMClassifier(
+                        boosting_type="gbdt",
+                        objective="binary",
+                        num_leaves=2**5-1,
+                        max_depth=5,
+                        learning_rate=0.01,
+                        n_estimators=1000,
+                        subsample=0.8,
+                        subsample_freq=1,
+                        )
+                    self.lgb_model.fit(
+                        self.X_train,
+                        np.argmax(self.y_train, axis=1),
+                        eval_set=[(self.X_valid, np.argmax(self.y_valid, axis=1))],
+                        eval_metric="logloss",
+                        early_stopping_rounds=10,
+                        verbose=100
+                        )
+                else:
+                    self.lgb_model = lgb.LGBMClassifier(
+                        boosting_type="gbdt",
+                        objective="multiclass",
+                        num_leaves=2**5-1,
+                        max_depth=5,
+                        learning_rate=0.01,
+                        n_estimators=1000,
+                        subsample=0.8,
+                        subsample_freq=1,
+                        num_class=self.output_dim
+                        )
+                    self.lgb_model.fit(
+                        self.X_train,
+                        np.argmax(self.y_train, axis=1),
+                        eval_set=[(self.X_valid, np.argmax(self.y_valid, axis=1))],
+                        eval_metric="multi_logloss",
+                        early_stopping_rounds=10,
+                        verbose=100
+                        )
+                predictions_lgb = self.lgb_model.predict_proba(self.X_valid)
+            valid_score_lgb = 2 * roc_auc_score(self.y_valid, predictions_lgb, average="macro") - 1
+            print("lgb_auc: ", valid_score_lgb)
+            predictions_ensemble = (1-self.lgb_weight)*predictions + self.lgb_weight*predictions_lgb
+            valid_score_ensemble = 2 * roc_auc_score(self.y_valid, predictions_ensemble, average="macro") - 1
+            print("ensemble_auc: ", valid_score_ensemble)
+            if valid_score_lgb > valid_score_ensemble:
+                self.using_model = "lgb"
+            else:
+                self.using_model = "ensemble"
             # Update for time budget managing
             train_duration = train_end - train_start
             self.li_steps_to_train.append(steps_to_train)
@@ -327,14 +406,12 @@ class Model(object):
           set and `output_dim` is the number of labels to be predicted. The
           values should be binary or in the interval [0,1].
     """
-        if self.done_training:
-            return self.predictions
         # Count examples on test set
         if self.is_first:
-            X, _ = self.to_numpy(dataset, False)
-            X = np.nan_to_num(X)
+            self.X_test, _ = self.to_numpy(dataset, False)
+            self.X_test = np.nan_to_num(self.X_test)
             self.dataset_test = TabularEmbeddingDataset(
-                X,
+                self.X_test,
                 None,
                 cat_cols=self.cat_cols,
                 standard_scaler=self.standard_scaler,
@@ -359,6 +436,18 @@ class Model(object):
             else:
                 output = F.softmax(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
             self.predictions = np.concatenate([self.predictions, output], axis=0)
+        if self.using_model != "NN":
+            if self.is_multi_label:
+                predictions_lgb = np.empty((self.X_test.shape[0], 0))
+                for lgb_model in self.lgb_models:
+                    pred_tmp = lgb_model.predict_proba(self.X_test)[:,1].reshape(-1, 1)
+                    predictions_lgb = np.concatenate([predictions_lgb, pred_tmp], axis=1)
+            else:
+                predictions_lgb = self.lgb_model.predict_proba(self.X_valid)
+            if self.using_model == "lgb":
+                self.predictions = predictions_lgb
+            elif self.using_model == "ensemble":
+                self.predictions = (1-self.lgb_weight)*self.predictions + self.lgb_weight*predictions_lgb
         test_end = time.time()
         # Update some variables for time management
         test_duration = test_end - test_begin
@@ -387,7 +476,7 @@ class Model(object):
 
         # for more conservative estimation
         remaining_time_budget = min(
-            remaining_time_budget - 60, remaining_time_budget * 0.95
+            remaining_time_budget - 60, remaining_time_budget * 0.6
         )
 
         if len(self.li_steps_to_train) == 0:
@@ -492,7 +581,8 @@ class Model(object):
         cat_cols = []
         for i in range(X.shape[1]):
             unique_list = np.unique(X[:, i])
-            if (np.all(np.diff(unique_list, n=1) == 1)):
+            if ((np.min(unique_list) == 0) | (np.min(unique_list) == 1))\
+                & (np.all(np.diff(unique_list, n=1) == 1)):
                 cat_cols.append(i)
         return cat_cols
 
