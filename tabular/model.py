@@ -214,11 +214,11 @@ class Model(object):
                     emb_dropout=self.emb_dropout,
                     lin_layer_dropouts=self.lin_layer_dropouts
                 ).to(self.device)
-            if self.is_multi_label:
-                self.criterion = nn.BCEWithLogitsLoss()
-            else:
-                self.criterion = nn.CrossEntropyLoss()
-            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
+                if self.is_multi_label:
+                    self.criterion = nn.BCEWithLogitsLoss()
+                else:
+                    self.criterion = nn.CrossEntropyLoss()
+                self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
         self.train_begin_times.append(time.time())
         #TODO time management
         if len(self.train_begin_times) >= 2:
