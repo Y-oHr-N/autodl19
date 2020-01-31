@@ -444,7 +444,7 @@ class Model(object):
                     pred_tmp = lgb_model.predict_proba(self.X_test)[:,1].reshape(-1, 1)
                     predictions_lgb = np.concatenate([predictions_lgb, pred_tmp], axis=1)
             else:
-                predictions_lgb = self.lgb_model.predict_proba(self.X_valid)
+                predictions_lgb = self.lgb_model.predict_proba(self.X_test)
             if self.using_model == "lgb":
                 self.predictions = predictions_lgb
             elif self.using_model == "ensemble":
