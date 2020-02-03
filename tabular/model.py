@@ -87,7 +87,7 @@ class Model(object):
         self.max_score = 0
         self.num_epochs_we_want_to_train = 70
         self.is_first = True
-        self.early_stopping_rounds = 50
+        self.early_stopping_rounds = 10
         self.lgb_weight = 0.8
         self.using_model = "NN"
 
