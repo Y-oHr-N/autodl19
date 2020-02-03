@@ -27,6 +27,7 @@ not exceed 300MB.
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import LabelEncoder
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 import logging
@@ -200,28 +201,102 @@ class Model(object):
 
             self.dataloader_train = DataLoader(self.dataset_train, self.batch_size, shuffle=True)
             self.dataloader_valid = DataLoader(self.dataset_valid, self.batch_size, shuffle=False)
-        # define model
-            if not hasattr(self, "model"):
-                self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                """
-                self.model = TabularNN(
-                    feature_num=X.shape[1],
-                    output_dim=self.output_dim
-                ).to(self.device)
-                """
-                self.model = TabularEmbeddingNN(
-                    emb_dims=self.emb_dims,
-                    no_of_numerical=self.no_of_numerical,
-                    lin_layer_sizes=self.lin_layer_sizes,
-                    output_size=self.output_dim,
-                    emb_dropout=self.emb_dropout,
-                    lin_layer_dropouts=self.lin_layer_dropouts
-                ).to(self.device)
-                if self.is_multi_label:
-                    self.criterion = nn.BCEWithLogitsLoss()
+            if self.is_multi_label:
+                self.rf_models = []
+                self.predictions_rf_valid = np.empty((self.X_valid.shape[0], 0))
+                for i in range(self.output_dim):
+                    rf_model = lgb.LGBMClassifier(
+                        boosting_type="rf",
+                        objective="binary",
+                        num_leaves=2**7-1,
+                        max_depth=7,
+                        # learning_rate=0.01,
+                        n_estimators=100,
+                        colsample_bytree=0.5,
+                        subsample=0.5,
+                        subsample_freq=1,
+                    )
+                    rf_model.fit(
+                        self.X_train,
+                        self.y_train[:,i],
+                        eval_set=[(self.X_valid, self.y_valid[:,i])],
+                        eval_metric="logloss",
+                        early_stopping_rounds=10,
+                        verbose=100,
+                    )
+
+                    pred_tmp = rf_model.predict_proba(self.X_valid)[:,1].reshape(-1, 1)
+                    self.predictions_rf_valid = np.concatenate([self.predictions_rf_valid, pred_tmp], axis=1)
+                    self.rf_models.append(rf_model)
+            else:
+                if self.output_dim == 2:
+                    self.rf_model = lgb.LGBMClassifier(
+                        boosting_type="rf",
+                        objective="binary",
+                        num_leaves=2**5-1,
+                        max_depth=5,
+                        learning_rate=0.01,
+                        n_estimators=1000,
+                        colsample_bytree=0.5,
+                        subsample=0.5,
+                        subsample_freq=1,
+                        )
+                    self.rf_model.fit(
+                        self.X_train,
+                        np.argmax(self.y_train, axis=1),
+                        eval_set=[(self.X_valid, np.argmax(self.y_valid, axis=1))],
+                        eval_metric="logloss",
+                        early_stopping_rounds=10,
+                        verbose=100
+                        )
                 else:
-                    self.criterion = nn.CrossEntropyLoss()
-                self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
+                    self.rf_model = lgb.LGBMClassifier(
+                        boosting_type="rf",
+                        objective="multiclass",
+                        num_leaves=2**5-1,
+                        max_depth=5,
+                        learning_rate=0.01,
+                        n_estimators=1000,
+                        colsample_bytree=0.5,
+                        subsample=0.5,
+                        subsample_freq=1,
+                        num_class=self.output_dim
+                        )
+                    self.rf_model.fit(
+                        self.X_train,
+                        np.argmax(self.y_train, axis=1),
+                        eval_set=[(self.X_valid, np.argmax(self.y_valid, axis=1))],
+                        eval_metric="multi_logloss",
+                        early_stopping_rounds=10,
+                        verbose=100
+                        )
+                self.predictions_rf_valid = self.rf_model.predict_proba(self.X_valid)
+            self.valid_score_rf = 2 * roc_auc_score(self.y_valid, self.predictions_rf_valid, average="macro") - 1
+            print("rf_auc: ", self.valid_score_rf)
+            return self
+
+        # define model
+        if not hasattr(self, "model"):
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            """
+            self.model = TabularNN(
+                feature_num=X.shape[1],
+                output_dim=self.output_dim
+            ).to(self.device)
+            """
+            self.model = TabularEmbeddingNN(
+                emb_dims=self.emb_dims,
+                no_of_numerical=self.no_of_numerical,
+                lin_layer_sizes=self.lin_layer_sizes,
+                output_size=self.output_dim,
+                emb_dropout=self.emb_dropout,
+                lin_layer_dropouts=self.lin_layer_dropouts
+            ).to(self.device)
+            if self.is_multi_label:
+                self.criterion = nn.BCEWithLogitsLoss()
+            else:
+                self.criterion = nn.CrossEntropyLoss()
+            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
         self.train_begin_times.append(time.time())
         #TODO time management
         if len(self.train_begin_times) >= 2:
@@ -283,7 +358,7 @@ class Model(object):
                     running_loss += loss.item() / self.dataset_train.__len__()
 
                 self.model.eval()
-                predictions = np.empty((0, self.output_dim))
+                self.predictions_valid = np.empty((0, self.output_dim))
                 for X_num_batch, X_cat_batch, y_batch in self.dataloader_valid:
                     X_num_batch = X_num_batch.to(self.device)
                     X_cat_batch = X_cat_batch.to(self.device)
@@ -291,8 +366,8 @@ class Model(object):
                         output = torch.sigmoid(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
                     else:
                         output = F.softmax(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
-                    predictions = np.concatenate([predictions, output], axis=0)
-                valid_score = 2 * roc_auc_score(self.y_valid, predictions, average="macro") - 1
+                    self.predictions_valid = np.concatenate([self.predictions_valid, output], axis=0)
+                valid_score = 2 * roc_auc_score(self.y_valid, self.predictions_valid, average="macro") - 1
                 print("loss : ", running_loss)
                 print("auc : ", valid_score)
                 self.epoch_num += 1
@@ -317,6 +392,7 @@ class Model(object):
                         max_depth=5,
                         learning_rate=0.01,
                         n_estimators=1000,
+                        colsample_bytree=0.8,
                         subsample=0.8,
                         subsample_freq=1
                     )
@@ -341,6 +417,7 @@ class Model(object):
                         max_depth=5,
                         learning_rate=0.01,
                         n_estimators=1000,
+                        colsample_bytree=0.8,
                         subsample=0.8,
                         subsample_freq=1,
                         )
@@ -360,6 +437,7 @@ class Model(object):
                         max_depth=5,
                         learning_rate=0.01,
                         n_estimators=1000,
+                        colsample_bytree=0.8,
                         subsample=0.8,
                         subsample_freq=1,
                         num_class=self.output_dim
@@ -375,7 +453,7 @@ class Model(object):
                 predictions_lgb = self.lgb_model.predict_proba(self.X_valid)
             valid_score_lgb = 2 * roc_auc_score(self.y_valid, predictions_lgb, average="macro") - 1
             print("lgb_auc: ", valid_score_lgb)
-            predictions_ensemble = (1-self.lgb_weight)*predictions + self.lgb_weight*predictions_lgb
+            predictions_ensemble = (1-self.lgb_weight)*self.predictions_valid + self.lgb_weight*predictions_lgb
             valid_score_ensemble = 2 * roc_auc_score(self.y_valid, predictions_ensemble, average="macro") - 1
             print("ensemble_auc: ", valid_score_ensemble)
             if valid_score_lgb > valid_score_ensemble:
@@ -418,7 +496,17 @@ class Model(object):
                 label_encoder=self.label_encoders
             )
             self.dataloader_test = DataLoader(self.dataset_test, self.batch_size, shuffle=False)
-        self.is_first = False
+            if self.is_multi_label:
+                self.predictions_rf_test = np.empty((self.X_test.shape[0], 0))
+                for rf_model in self.rf_models:
+                    pred_tmp = rf_model.predict_proba(self.X_test)[:,1].reshape(-1, 1)
+                    self.predictions_rf_test = np.concatenate([self.predictions_rf_test, pred_tmp], axis=1)
+            else:
+                self.predictions_rf_test = self.rf_model.predict_proba(self.X_test)
+            print(self.predictions_rf_test.shape)
+            print(self.X_test.shape)
+            self.is_first = False
+            return self.predictions_rf_test
         test_begin = time.time()
         self.test_begin_times.append(test_begin)
         logger.info("Begin testing...")
@@ -428,7 +516,7 @@ class Model(object):
         # Start testing (i.e. making prediction on test set)
         self.model.eval()
         if not self.done_training:
-            self.predictions = np.empty((0, self.output_dim))
+            self.predictions_test = np.empty((0, self.output_dim))
             for X_num_batch, X_cat_batch, in self.dataloader_test:
                 X_num_batch = X_num_batch.to(self.device)
                 X_cat_batch = X_cat_batch.to(self.device)
@@ -436,7 +524,7 @@ class Model(object):
                     output = torch.sigmoid(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
                 else:
                     output = F.softmax(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
-                self.predictions = np.concatenate([self.predictions, output], axis=0)
+                self.predictions_test = np.concatenate([self.predictions_test, output], axis=0)
         if self.using_model != "NN":
             if self.is_multi_label:
                 predictions_lgb = np.empty((self.X_test.shape[0], 0))
@@ -446,10 +534,24 @@ class Model(object):
             else:
                 predictions_lgb = self.lgb_model.predict_proba(self.X_test)
             if self.using_model == "lgb":
-                self.predictions = predictions_lgb
+                self.predictions_test = predictions_lgb
             elif self.using_model == "ensemble":
-                self.predictions = (1-self.lgb_weight)*self.predictions + self.lgb_weight*predictions_lgb
+                self.predictions_test = (1-self.lgb_weight)*self.predictions_test + self.lgb_weight*predictions_lgb
+
+        if self.max_score > self.valid_score_rf:
+            predictions_ensemble_rf = 0.8*self.predictions_valid + (1-0.8)*self.predictions_rf_valid
+            if self.max_score < 2 * roc_auc_score(self.y_valid, predictions_ensemble_rf, average="macro") - 1:
+                self.predictions_test = 0.8*self.predictions_test + (1-0.8)*self.predictions_rf_test
+                print("ensemble auc: ", 2 * roc_auc_score(self.y_valid, predictions_ensemble_rf, average="macro") - 1)
+        else:
+            predictions_ensemble_rf = 0.2*self.predictions_valid + (1-0.2)*self.predictions_rf_valid
+            if self.valid_score_rf < 2 * roc_auc_score(self.y_valid, predictions_ensemble_rf, average="macro") - 1:
+                self.predictions_test = 0.2*self.predictions_test + (1-0.2)*self.predictions_rf_test
+                print("ensemble auc: ", 2 * roc_auc_score(self.y_valid, predictions_ensemble_rf, average="macro") - 1)
+            else:
+                self.predictions_test = self.predictions_rf_test
         test_end = time.time()
+
         # Update some variables for time management
         test_duration = test_end - test_begin
         logger.info(
@@ -458,7 +560,7 @@ class Model(object):
             )
             + "Duration used for test: {:2f}".format(test_duration)
         )
-        return self.predictions
+        return self.predictions_test
 
     def get_steps_to_train(self, remaining_time_budget):
         """Get number of steps for training according to `remaining_time_budget`.
