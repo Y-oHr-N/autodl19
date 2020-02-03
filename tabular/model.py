@@ -525,7 +525,20 @@ class Model(object):
                 else:
                     output = F.softmax(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
                 self.predictions_test = np.concatenate([self.predictions_test, output], axis=0)
-        if self.using_model != "NN":
+        if self.using_model == "NN":
+            if self.max_score > self.valid_score_rf:
+                predictions_ensemble_rf = 0.8*self.predictions_valid + (1-0.8)*self.predictions_rf_valid
+                if self.max_score < 2 * roc_auc_score(self.y_valid, predictions_ensemble_rf, average="macro") - 1:
+                    self.predictions_test = 0.8*self.predictions_test + (1-0.8)*self.predictions_rf_test
+                    print("ensemble auc: ", 2 * roc_auc_score(self.y_valid, predictions_ensemble_rf, average="macro") - 1)
+            else:
+                predictions_ensemble_rf = 0.2*self.predictions_valid + (1-0.2)*self.predictions_rf_valid
+                if self.valid_score_rf < 2 * roc_auc_score(self.y_valid, predictions_ensemble_rf, average="macro") - 1:
+                    self.predictions_test = 0.2*self.predictions_test + (1-0.2)*self.predictions_rf_test
+                    print("ensemble auc: ", 2 * roc_auc_score(self.y_valid, predictions_ensemble_rf, average="macro") - 1)
+                else:
+                    self.predictions_test = self.predictions_rf_test
+        else:
             if self.is_multi_label:
                 predictions_lgb = np.empty((self.X_test.shape[0], 0))
                 for lgb_model in self.lgb_models:
@@ -538,18 +551,6 @@ class Model(object):
             elif self.using_model == "ensemble":
                 self.predictions_test = (1-self.lgb_weight)*self.predictions_test + self.lgb_weight*predictions_lgb
 
-        if self.max_score > self.valid_score_rf:
-            predictions_ensemble_rf = 0.8*self.predictions_valid + (1-0.8)*self.predictions_rf_valid
-            if self.max_score < 2 * roc_auc_score(self.y_valid, predictions_ensemble_rf, average="macro") - 1:
-                self.predictions_test = 0.8*self.predictions_test + (1-0.8)*self.predictions_rf_test
-                print("ensemble auc: ", 2 * roc_auc_score(self.y_valid, predictions_ensemble_rf, average="macro") - 1)
-        else:
-            predictions_ensemble_rf = 0.2*self.predictions_valid + (1-0.2)*self.predictions_rf_valid
-            if self.valid_score_rf < 2 * roc_auc_score(self.y_valid, predictions_ensemble_rf, average="macro") - 1:
-                self.predictions_test = 0.2*self.predictions_test + (1-0.2)*self.predictions_rf_test
-                print("ensemble auc: ", 2 * roc_auc_score(self.y_valid, predictions_ensemble_rf, average="macro") - 1)
-            else:
-                self.predictions_test = self.predictions_rf_test
         test_end = time.time()
 
         # Update some variables for time management
