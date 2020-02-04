@@ -208,12 +208,12 @@ class Model(object):
                     rf_model = lgb.LGBMClassifier(
                         boosting_type="rf",
                         objective="binary",
-                        num_leaves=2**10-1,
-                        max_depth=10,
+                        num_leaves=2**5-1,
+                        max_depth=5,
                         # learning_rate=0.1,
                         n_estimators=100,
-                        colsample_bytree=0.8,
-                        subsample=0.8,
+                        colsample_bytree=0.5,
+                        subsample=0.5,
                         subsample_freq=1,
                     )
                     rf_model.fit(
@@ -233,14 +233,13 @@ class Model(object):
                     self.rf_model = lgb.LGBMClassifier(
                         boosting_type="rf",
                         objective="binary",
-                        num_leaves=2**10-1,
-                        max_depth=10,
+                        num_leaves=2**5-1,
+                        max_depth=5,
                         # learning_rate=0.1,
                         n_estimators=100,
-                        colsample_bytree=0.8,
-                        subsample=0.8,
+                        colsample_bytree=0.5,
+                        subsample=0.5,
                         subsample_freq=1,
-                        n_jobs=4
                         )
                     self.rf_model.fit(
                         self.X_train,
@@ -254,12 +253,12 @@ class Model(object):
                     self.rf_model = lgb.LGBMClassifier(
                         boosting_type="rf",
                         objective="multiclass",
-                        num_leaves=2**10-1,
-                        max_depth=10,
+                        num_leaves=2**5-1,
+                        max_depth=5,
                         # learning_rate=0.1,
                         n_estimators=100,
-                        colsample_bytree=0.8,
-                        subsample=0.8,
+                        colsample_bytree=0.5,
+                        subsample=0.5,
                         subsample_freq=1,
                         num_class=self.output_dim
                         )
