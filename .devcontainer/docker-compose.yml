@@ -1,0 +1,38 @@
+#-------------------------------------------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
+#-------------------------------------------------------------------------------------------------------------
+
+version: '3'
+services:
+  autodl:
+    # Using a Dockerfile is optional, but included for completeness.
+    build: 
+      context: ./
+      dockerfile: ./Dockerfile  
+
+    # Uncomment to expose one or more ports
+    # ports:
+    #  - "3000:3000"
+    #  - "5000:5000" 
+     
+    volumes:
+      # This is where VS Code should expect to find your project's source code
+      # and the value of "workspaceFolder" in .devcontainer/devcontainer.json
+      - ..:/app/codalab/autodl_starting_kit_stable/AutoDL_sample_code_submission
+
+      # This lets you avoid setting up Git again in the container
+      # - ~/.gitconfig:/home/vscode/.gitconfig
+
+      # Uncomment the next line if you plan to install the Docker CLI. See the docker-in-docker-compose definition for details.
+      # - /var/run/docker.sock:/var/run/docker.sock 
+
+    # Uncomment the next four lines if you will use a ptrace-based debugger like C++, Go, and Rust.
+    # cap_add:
+    #   - SYS_PTRACE
+    # security_opt:
+    #   - seccomp:unconfined
+
+    # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity  
+    

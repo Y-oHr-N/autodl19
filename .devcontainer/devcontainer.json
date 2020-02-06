@@ -1,0 +1,21 @@
+{
+	"name": "AutoDL Remote Container",
+	"dockerComposeFile": [
+		"docker-compose.yml"
+	],
+	"workspaceFolder": "/app/codalab/autodl_starting_kit_stable/AutoDL_sample_code_submission",
+	"settings": { 
+		"terminal.integrated.shell.linux": "/bin/bash",
+		"python.pythonPath": "/usr/local/bin/python",
+		"python.linting.enabled": true,
+		"python.linting.pylintEnabled": true,
+		"python.linting.pylintPath": "/usr/local/bin/pylint"
+	},
+	"extensions": [
+		"ms-python.python",
+		"njpwerner.autodocstring"
+	],
+	"service": "autodl",
+	"remoteUser": "vscode",
+	"shutdownAction": "stopCompose"
+}
