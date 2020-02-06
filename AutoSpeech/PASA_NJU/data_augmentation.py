@@ -13,7 +13,9 @@ def noise(data):
     # https://docs.scipy.org/doc/numpy-1.13.0/reference/routines.random.html
     # more noise reduce the value to 0.5
     noise_amp = 0.05 * np.random.uniform() * np.amax(data)
-    data = data.astype("float64") + noise_amp * np.random.normal(size=data.shape[0])
+    data = data.astype("float64") + noise_amp * np.random.normal(
+        size=data.shape[0]
+    )
     return data
 
 
@@ -54,7 +56,9 @@ def dyn_change(data):
     """
     Random Value Change.
     """
-    dyn_change = np.random.uniform(low=-0.5, high=7)  # default low = 1.5, high = 3
+    dyn_change = np.random.uniform(
+        low=-0.5, high=7
+    )  # default low = 1.5, high = 3
     return data * dyn_change
 
 
@@ -65,7 +69,9 @@ def speed_npitch(data):
     # you can change low and high here
     length_change = np.random.uniform(low=0.8, high=1)
     speed_fac = 1.2 / length_change  # try changing 1.0 to 2.0 ... =D
-    tmp = np.interp(np.arange(0, len(data), speed_fac), np.arange(0, len(data)), data)
+    tmp = np.interp(
+        np.arange(0, len(data), speed_fac), np.arange(0, len(data)), data
+    )
     minlen = min(data.shape[0], tmp.shape[0])
     data *= 0
     data[0:minlen] = tmp[0:minlen]

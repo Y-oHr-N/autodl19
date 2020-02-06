@@ -41,10 +41,15 @@ class CnnFeatures(Classifier):
     @timeit
     def preprocess_data(self, x):
         if IS_CUT_AUDIO:
-            x = [sample[0 : MAX_AUDIO_DURATION * AUDIO_SAMPLE_RATE] for sample in x]
+            x = [
+                sample[0 : MAX_AUDIO_DURATION * AUDIO_SAMPLE_RATE]
+                for sample in x
+            ]
         # extract mfcc
         x_mfcc = extract_mfcc_parallel(x, n_mfcc=64)
-        x_mel = extract_melspectrogram_parallel(x, n_mels=64, use_power_db=True)
+        x_mel = extract_melspectrogram_parallel(
+            x, n_mels=64, use_power_db=True
+        )
         if self.max_length is None:
             self.max_length = get_max_length(x_mfcc)
             self.max_length = min(MAX_FRAME_NUM, self.max_length)
@@ -104,7 +109,9 @@ class CnnFeatures(Classifier):
         self.is_init = True
         self._model = model
 
-    def fit(self, train_x, train_y, validation_data_fit, train_loop_num, **kwargs):
+    def fit(
+        self, train_x, train_y, validation_data_fit, train_loop_num, **kwargs
+    ):
         val_x, val_y = validation_data_fit
         epochs = 5
         patience = 2
@@ -115,7 +122,9 @@ class CnnFeatures(Classifier):
         # train_y = np.concatenate([train_y, train_y[append_idx]], axis=0)
 
         callbacks = [
-            tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience)
+            tf.keras.callbacks.EarlyStopping(
+                monitor="val_loss", patience=patience
+            )
         ]
 
         self._model.fit(

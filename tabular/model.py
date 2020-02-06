@@ -57,7 +57,9 @@ class Model(object):
         model_fn = self.model_fn
         # Change to True if you want to show device info at each operation
         log_device_placement = False
-        session_config = tf.ConfigProto(log_device_placement=log_device_placement)
+        session_config = tf.ConfigProto(
+            log_device_placement=log_device_placement
+        )
         # Classifier using model_fn (see below)
         self.classifier = tf.estimator.Estimator(
             model_fn=model_fn,
@@ -135,7 +137,9 @@ class Model(object):
             iterator = dataset.make_one_shot_iterator()
             example, labels = iterator.get_next()
             sample_count = 0
-            with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
+            with tf.Session(
+                config=tf.ConfigProto(log_device_placement=False)
+            ) as sess:
                 while True:
                     try:
                         sess.run(labels)
@@ -151,7 +155,9 @@ class Model(object):
 
         self.train_begin_times.append(time.time())
         if len(self.train_begin_times) >= 2:
-            cycle_length = self.train_begin_times[-1] - self.train_begin_times[-2]
+            cycle_length = (
+                self.train_begin_times[-1] - self.train_begin_times[-2]
+            )
             self.li_cycle_length.append(cycle_length)
 
         # Get number of steps to train according to some strategy
@@ -175,12 +181,16 @@ class Model(object):
             msg_est = ""
             if len(self.li_estimated_time) > 0:
                 estimated_duration = self.li_estimated_time[-1]
-                estimated_end_time = time.ctime(int(time.time() + estimated_duration))
+                estimated_end_time = time.ctime(
+                    int(time.time() + estimated_duration)
+                )
                 msg_est = (
                     "estimated time for training + test: "
                     + "{:.2f} sec, ".format(estimated_duration)
                 )
-                msg_est += "and should finish around {}.".format(estimated_end_time)
+                msg_est += "and should finish around {}.".format(
+                    estimated_end_time
+                )
             logger.info(
                 "Begin training for another {} steps...{}".format(
                     steps_to_train, msg_est
@@ -188,11 +198,15 @@ class Model(object):
             )
 
             # Prepare input function for training
-            train_input_fn = lambda: self.input_function(dataset, is_training=True)
+            train_input_fn = lambda: self.input_function(
+                dataset, is_training=True
+            )
 
             # Start training
             train_start = time.time()
-            self.classifier.train(input_fn=train_input_fn, steps=steps_to_train)
+            self.classifier.train(
+                input_fn=train_input_fn, steps=steps_to_train
+            )
             train_end = time.time()
 
             # Update for time budget managing
@@ -202,7 +216,9 @@ class Model(object):
                 "{} steps trained. {:.2f} sec used. ".format(
                     steps_to_train, train_duration
                 )
-                + "Now total steps trained: {}. ".format(sum(self.li_steps_to_train))
+                + "Now total steps trained: {}. ".format(
+                    sum(self.li_steps_to_train)
+                )
                 + "Total time used for training + test: {:.2f} sec. ".format(
                     sum(self.li_cycle_length)
                 )
@@ -225,7 +241,9 @@ class Model(object):
             iterator = dataset.make_one_shot_iterator()
             example, labels = iterator.get_next()
             sample_count = 0
-            with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
+            with tf.Session(
+                config=tf.ConfigProto(log_device_placement=False)
+            ) as sess:
                 while True:
                     try:
                         sess.run(labels)
@@ -313,7 +331,8 @@ class Model(object):
 
         predictions = {
             # Generate predictions (for PREDICT and EVAL mode)
-            "classes": sigmoid_tensor > 0.5,  # tf.argmax(input=logits, axis=1),
+            "classes": sigmoid_tensor
+            > 0.5,  # tf.argmax(input=logits, axis=1),
             # "classes": binary_predictions,
             # Add `sigmoid_tensor` to the graph. It is used for PREDICT and by the
             # `logging_hook`.
@@ -321,7 +340,9 @@ class Model(object):
         }
 
         if mode == tf.estimator.ModeKeys.PREDICT:
-            return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
+            return tf.estimator.EstimatorSpec(
+                mode=mode, predictions=predictions
+            )
 
         # Calculate Loss (for both TRAIN and EVAL modes)
         # For multi-label classification, a correct loss is sigmoid cross entropy
@@ -331,7 +352,9 @@ class Model(object):
         loss_labels = tf.reduce_sum(
             sigmoid_cross_entropy_with_logits(labels=labels, logits=logits)
         )
-        loss_reconst = tf.reduce_sum(mask * tf.abs(tf.subtract(input_layer, x_mid)))
+        loss_reconst = tf.reduce_sum(
+            mask * tf.abs(tf.subtract(input_layer, x_mid))
+        )
         loss = loss_labels + loss_reconst
 
         # Configure the Training Op (for TRAIN mode)
@@ -342,7 +365,9 @@ class Model(object):
                 train_op = optimizer.minimize(
                     loss=loss, global_step=tf.train.get_global_step()
                 )
-            return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
+            return tf.estimator.EstimatorSpec(
+                mode=mode, loss=loss, train_op=train_op
+            )
 
         # Add evaluation metrics (for EVAL mode)
         assert mode == tf.estimator.ModeKeys.EVAL
@@ -368,7 +393,9 @@ class Model(object):
     For more information on how to write an input function, see:
       https://www.tensorflow.org/guide/custom_estimators#write_an_input_function
     """
-        dataset = dataset.map(lambda *x: (self.preprocess_tensor_4d(x[0]), x[1]))
+        dataset = dataset.map(
+            lambda *x: (self.preprocess_tensor_4d(x[0]), x[1])
+        )
 
         if is_training:
             # Shuffle input examples
@@ -401,7 +428,9 @@ class Model(object):
       A 4-D Tensor with fixed, known shape.
     """
         tensor_4d_shape = tensor_4d.shape
-        logger.info("Tensor shape before preprocessing: {}".format(tensor_4d_shape))
+        logger.info(
+            "Tensor shape before preprocessing: {}".format(tensor_4d_shape)
+        )
 
         if tensor_4d_shape[0] > 0 and tensor_4d_shape[0] < 10:
             num_frames = tensor_4d_shape[0]
@@ -430,9 +459,13 @@ class Model(object):
                 + "{}".format((new_row_count, new_col_count))
             )
             tensor_4d = resize_space_axes(
-                tensor_4d, new_row_count=new_row_count, new_col_count=new_col_count
+                tensor_4d,
+                new_row_count=new_row_count,
+                new_col_count=new_col_count,
             )
-        logger.info("Tensor shape after preprocessing: {}".format(tensor_4d.shape))
+        logger.info(
+            "Tensor shape after preprocessing: {}".format(tensor_4d.shape)
+        )
         return tensor_4d
 
     def get_steps_to_train(self, remaining_time_budget):
@@ -448,7 +481,9 @@ class Model(object):
         if (
             remaining_time_budget is None
         ):  # This is never true in the competition anyway
-            remaining_time_budget = 1200  # if no time limit is given, set to 20min
+            remaining_time_budget = (
+                1200  # if no time limit is given, set to 20min
+            )
 
         # for more conservative estimation
         remaining_time_budget = min(
@@ -485,7 +520,9 @@ class Model(object):
         batch_size = self.batch_size
         num_examples = self.num_examples_train
         num_epochs = sum(self.li_steps_to_train) * batch_size / num_examples
-        logger.info("Model already trained for {:.4f} epochs.".format(num_epochs))
+        logger.info(
+            "Model already trained for {:.4f} epochs.".format(num_epochs)
+        )
         return (
             num_epochs > self.num_epochs_we_want_to_train
         )  # Train for at least certain number of epochs then stop
@@ -544,7 +581,9 @@ def crop_time_axis(tensor_4d, num_frames, begin_index=None):
     # If not given, randomly choose the beginning index of frames
     if not begin_index:
         maxval = tf.shape(padded_tensor)[0] - num_frames + 1
-        begin_index = tf.random.uniform([1], minval=0, maxval=maxval, dtype=tf.int32)
+        begin_index = tf.random.uniform(
+            [1], minval=0, maxval=maxval, dtype=tf.int32
+        )
         begin_index = tf.stack([begin_index[0], 0, 0, 0], name="begin_index")
 
     sliced_tensor = tf.slice(

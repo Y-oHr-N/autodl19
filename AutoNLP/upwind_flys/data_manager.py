@@ -117,7 +117,9 @@ class DataGenerator(object):
 
         all_index = []
         for i in range(self.num_classes):
-            all_index.append(list(np.where((self.meta_data_y[:, i] == 1) == True)[0]))
+            all_index.append(
+                list(np.where((self.meta_data_y[:, i] == 1) == True)[0])
+            )
         val_index = []
         for i in range(self.num_classes):
             tmp = random.sample(all_index[i], int(len(all_index[i]) * 0.2))
@@ -133,7 +135,9 @@ class DataGenerator(object):
 
         train_label_distribution = np.sum(np.array(self.meta_data_y), 0)
         print("train_distribution: ", train_label_distribution)
-        self.max_sample_num_per_class = int(np.max(train_label_distribution) * 4 / 5)
+        self.max_sample_num_per_class = int(
+            np.max(train_label_distribution) * 4 / 5
+        )
 
         if self.sample_num_per_class is None:
             if self.num_samples_train < MAX_SAMPLE_TRIAN:
@@ -145,8 +149,12 @@ class DataGenerator(object):
         meta_train_index = []
         for i in range(self.num_classes):
             if len(all_index[i]) < self.sample_num_per_class:
-                tmp = all_index[i] * int(self.sample_num_per_class / len(all_index[i]))
-                tmp += random.sample(all_index[i], self.sample_num_per_class - len(tmp))
+                tmp = all_index[i] * int(
+                    self.sample_num_per_class / len(all_index[i])
+                )
+                tmp += random.sample(
+                    all_index[i], self.sample_num_per_class - len(tmp)
+                )
                 meta_train_index += tmp
             else:
                 meta_train_index += random.sample(
@@ -164,7 +172,9 @@ class DataGenerator(object):
         print("length of sample_index", len(self.meta_train_index))
         print("length of val_index", len(self.val_index))
 
-        train_x = [self.meta_data_x[i] for i in self.meta_train_index + self.val_index]
+        train_x = [
+            self.meta_data_x[i] for i in self.meta_train_index + self.val_index
+        ]
         train_y = self.meta_data_y[self.meta_train_index + self.val_index, :]
         return train_x, train_y
 
@@ -174,7 +184,9 @@ class DataGenerator(object):
             x_train = clean_zh_text(x_train)
             word_avr = np.mean([len(i) for i in x_train])
             test_num = self.metadata["test_num"]
-            chi_num_chars_train = int(word_avr * len(x_train) / CHI_WORD_LENGTH)
+            chi_num_chars_train = int(
+                word_avr * len(x_train) / CHI_WORD_LENGTH
+            )
             chi_num_chars_test = int(word_avr * test_num / CHI_WORD_LENGTH)
 
             self.meta_data_feature = {
@@ -317,6 +329,13 @@ class DataGenerator(object):
         num_features = min(len(word_index) + 1, MAX_VOCAB_SIZE)
         print("vacab_word:", len(word_index))
         if val_contents:
-            return x_train, x_val, word_index, num_features, tokenizer, max_length
+            return (
+                x_train,
+                x_val,
+                word_index,
+                num_features,
+                tokenizer,
+                max_length,
+            )
         else:
             return x_train, word_index, num_features, tokenizer, max_length

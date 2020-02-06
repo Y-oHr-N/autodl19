@@ -15,7 +15,9 @@ class Timer:
         self.total_time = 0.0
         self.step_time = 0.0
 
-    def __call__(self, name, exclude_total=False, exclude_step=False, reset_step=False):
+    def __call__(
+        self, name, exclude_total=False, exclude_step=False, reset_step=False
+    ):
         self.times.append(time.time())
         delta = self.times[-1] - self.times[-2]
 

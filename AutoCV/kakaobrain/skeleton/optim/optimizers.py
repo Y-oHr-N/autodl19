@@ -29,7 +29,9 @@ class ScheduledOptimizer:
 
     def update_params(self, epoch=None, **kwargs):
         return {
-            k: v(self.epoch if epoch is None else epoch, **kwargs) if callable(v) else v
+            k: v(self.epoch if epoch is None else epoch, **kwargs)
+            if callable(v)
+            else v
             for k, v in self._opt_params.items()
         }
 
@@ -47,10 +49,15 @@ class ScheduledOptimizer:
 
     def step(self, epoch=None):
         self.epoch = (
-            self.epoch + (1.0 / self.steps_per_epoch) if epoch is None else epoch
+            self.epoch + (1.0 / self.steps_per_epoch)
+            if epoch is None
+            else epoch
         )
         # self.update(self.epoch)
-        if self.clip_grad_max_norm is not None and self.clip_grad_max_norm > 0.0:
+        if (
+            self.clip_grad_max_norm is not None
+            and self.clip_grad_max_norm > 0.0
+        ):
             torch.nn.utils.clip_grad_norm_(
                 self._parameters, self.clip_grad_max_norm, norm_type=1
             )

@@ -9,7 +9,14 @@ from sklearn.preprocessing import StandardScaler
 
 from CONSTANT import *
 from CONSTANT import MAX_VALID_PERCLASS_SAMPLE
-from data_augmentation import noise, shift, stretch, pitch, dyn_change, speed_npitch
+from data_augmentation import (
+    noise,
+    shift,
+    stretch,
+    pitch,
+    dyn_change,
+    speed_npitch,
+)
 from data_process import (
     extract_mfcc_parallel,
     get_max_length,
@@ -55,7 +62,9 @@ class DataManager:
             int(np.min(each_class_count)),
         )
         log(
-            "Raw train data: train_num(without val) {}; ".format(len(self._train_y))
+            "Raw train data: train_num(without val) {}; ".format(
+                len(self._train_y)
+            )
             + "class_num {} ; max_class_num {}; min_class_num {}; ".format(
                 self._num_classes, self._max_class_num, self._min_class_num
             )
@@ -63,7 +72,9 @@ class DataManager:
 
         self._each_class_index = []
         for i in range(self._num_classes):
-            self._each_class_index.append(list(np.where(self._train_y[:, i] == 1)[0]))
+            self._each_class_index.append(
+                list(np.where(self._train_y[:, i] == 1)[0])
+            )
 
     def _init_even_class_index(self):
         self._even_class_index = []
@@ -72,12 +83,16 @@ class DataManager:
             class_cnt = len(self._each_class_index[i])
             tmp = []
             if class_cnt < sample_per_class:
-                tmp = self._each_class_index[i] * int(sample_per_class / class_cnt)
+                tmp = self._each_class_index[i] * int(
+                    sample_per_class / class_cnt
+                )
                 tmp += random.sample(
                     self._each_class_index[i], sample_per_class - len(tmp)
                 )
             else:
-                tmp += random.sample(self._each_class_index[i], sample_per_class)
+                tmp += random.sample(
+                    self._each_class_index[i], sample_per_class
+                )
             random.shuffle(tmp)
             self._even_class_index.append(tmp)
 
@@ -132,7 +147,9 @@ class DataManager:
             class_cnt = len(self._each_class_index[i])
             tmp = []
             if class_cnt < per_class_num:
-                tmp = self._each_class_index[i] * int(per_class_num / class_cnt)
+                tmp = self._each_class_index[i] * int(
+                    per_class_num / class_cnt
+                )
                 tmp += random.sample(
                     self._each_class_index[i], per_class_num - len(tmp)
                 )
@@ -162,7 +179,12 @@ class DataManager:
 
     @timeit
     def get_train_data(
-        self, train_loop_num, model_num, round_num, use_new_train=False, use_mfcc=False
+        self,
+        train_loop_num,
+        model_num,
+        round_num,
+        use_new_train=False,
+        use_mfcc=False,
     ):
         # split the valid dataset
         if self._val_x is None:
@@ -202,10 +224,14 @@ class DataManager:
                 )
             else:
                 lr_sample_num = 500
-            train_samples = self._get_samples_from_even_class(sample_num=lr_sample_num)
+            train_samples = self._get_samples_from_even_class(
+                sample_num=lr_sample_num
+            )
             if len(train_samples) > 0:
                 pre_func = partial(self.lr_preprocess)
-                train_x, train_y = self._get_preprocess_train(train_samples, pre_func)
+                train_x, train_y = self._get_preprocess_train(
+                    train_samples, pre_func
+                )
                 if self._lr_train_x is None:
                     self._lr_train_x = np.asarray(train_x)
                     self._lr_train_y = np.asarray(train_y)
@@ -235,7 +261,10 @@ class DataManager:
                 sample_num = int(self._metadata[TRAIN_NUM] * 0.15)
             elif train_loop_num == 10:
                 sample_num = sum(
-                    [len(self._even_class_index[i]) for i in range(self._num_classes)]
+                    [
+                        len(self._even_class_index[i])
+                        for i in range(self._num_classes)
+                    ]
                 )
             else:
                 sample_num = len(self._train_y)
@@ -252,7 +281,9 @@ class DataManager:
                 is_mfcc=use_mfcc,
             )
             if len(train_samples) > 0:
-                train_x, train_y = self._get_preprocess_train(train_samples, pre_func)
+                train_x, train_y = self._get_preprocess_train(
+                    train_samples, pre_func
+                )
                 if self._pre_train_x is None:
                     self._pre_train_x = np.array(train_x)
                     self._pre_train_y = np.array(train_y)
@@ -280,9 +311,10 @@ class DataManager:
                     is_mfcc=use_mfcc,
                 )
             if len(train_samples) > 0:
-                self._pre_train_x, self._pre_train_y = self._get_preprocess_train(
-                    train_samples, pre_func
-                )
+                (
+                    self._pre_train_x,
+                    self._pre_train_y,
+                ) = self._get_preprocess_train(train_samples, pre_func)
 
         if self._pre_val_x is None:
             if round_num < 2:
@@ -337,7 +369,9 @@ class DataManager:
             # extract mfcc
             x = extract_mfcc_parallel(x, n_mfcc=n_mfcc)
         else:
-            x = extract_melspectrogram_parallel(x, n_mels=128, use_power_db=True)
+            x = extract_melspectrogram_parallel(
+                x, n_mels=128, use_power_db=True
+            )
         if self.fea_max_length is None:
             self.fea_max_length = get_max_length(x)
             self.fea_max_length = min(MAX_FRAME_NUM, self.fea_max_length)
@@ -346,8 +380,12 @@ class DataManager:
         return x
 
     def lr_preprocess(self, x):
-        x = [sample[0 : MAX_AUDIO_DURATION * AUDIO_SAMPLE_RATE] for sample in x]
-        x_mel = extract_melspectrogram_parallel(x, n_mels=30, use_power_db=True)
+        x = [
+            sample[0 : MAX_AUDIO_DURATION * AUDIO_SAMPLE_RATE] for sample in x
+        ]
+        x_mel = extract_melspectrogram_parallel(
+            x, n_mels=30, use_power_db=True
+        )
         # x_contrast = extract_bandwidth_parallel(x)
 
         x_feas = []

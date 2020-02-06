@@ -46,7 +46,9 @@ class CnnModel2D(Classifier):
         min_size = min(input_shape[:2])
         for i in range(max_layer_num):
             if i == 0:
-                model.add(Conv2D(64, 3, input_shape=input_shape, padding="same"))
+                model.add(
+                    Conv2D(64, 3, input_shape=input_shape, padding="same")
+                )
             else:
                 model.add(Conv2D(64, 3, padding="same"))
             model.add(Activation("relu"))
@@ -78,7 +80,10 @@ class CnnModel2D(Classifier):
 
     def preprocess_data(self, x):
         if IS_CUT_AUDIO:
-            x = [sample[0 : MAX_AUDIO_DURATION * AUDIO_SAMPLE_RATE] for sample in x]
+            x = [
+                sample[0 : MAX_AUDIO_DURATION * AUDIO_SAMPLE_RATE]
+                for sample in x
+            ]
         # extract mfcc
         x = extract_mfcc_parallel(x, n_mfcc=96)
         if self.max_length is None:
@@ -115,7 +120,9 @@ class CnnModel2D(Classifier):
         x = x[:, :, :, np.newaxis]
         return x
 
-    def fit(self, train_x, train_y, validation_data_fit, train_loop_num, **kwargs):
+    def fit(
+        self, train_x, train_y, validation_data_fit, train_loop_num, **kwargs
+    ):
         val_x, val_y = validation_data_fit
 
         # if train_loop_num == 1:
@@ -138,7 +145,9 @@ class CnnModel2D(Classifier):
         patience = 2
 
         callbacks = [
-            tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience)
+            tf.keras.callbacks.EarlyStopping(
+                monitor="val_loss", patience=patience
+            )
         ]
 
         self._model.fit(
@@ -218,15 +227,21 @@ class CnnModel1D(Classifier):
         # opt = keras.optimizers.Adam(lr=0.0001)
         opt = optimizers.rmsprop(lr=0.0001, decay=1e-6)
         model.compile(
-            optimizer=opt, loss="sparse_categorical_crossentropy", metrics=["acc"]
+            optimizer=opt,
+            loss="sparse_categorical_crossentropy",
+            metrics=["acc"],
         )
         model.summary()
         self._model = model
         self.is_init = True
 
-    def fit(self, train_x, train_y, validation_data_fit, train_loop_num, **kwargs):
+    def fit(
+        self, train_x, train_y, validation_data_fit, train_loop_num, **kwargs
+    ):
         val_x, val_y = validation_data_fit
-        callbacks = [tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=3)]
+        callbacks = [
+            tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=3)
+        ]
         epochs = 10 if train_loop_num == 1 else 30
         self._model.fit(
             train_x,
@@ -291,7 +306,9 @@ class CnnModelRawData(Classifier):
         model.add(Dense(512, activation="relu"))
         model.add(Dense(num_classes))
         model.add(Activation("softmax"))
-        optimizer = optimizers.SGD(lr=1e-4, decay=5e-5, momentum=0.9, clipnorm=4)
+        optimizer = optimizers.SGD(
+            lr=1e-4, decay=5e-5, momentum=0.9, clipnorm=4
+        )
         model.compile(
             loss="sparse_categorical_crossentropy",
             optimizer=optimizer,
@@ -315,7 +332,9 @@ class CnnModelRawData(Classifier):
                 embedded_data = data[: self.max_length]
             elif len(data) < self.max_length:
                 embedded_data = np.zeros(self.max_length)
-                offset = np.random.randint(low=0, high=self.max_length - len(data))
+                offset = np.random.randint(
+                    low=0, high=self.max_length - len(data)
+                )
                 embedded_data[offset : offset + len(data)] = data
             else:
                 # nothing to do here
@@ -326,9 +345,13 @@ class CnnModelRawData(Classifier):
         x_resample = np.array(x_resample)[:, :, np.newaxis, np.newaxis]
         return x_resample
 
-    def fit(self, train_x, train_y, validation_data_fit, train_loop_num, **kwargs):
+    def fit(
+        self, train_x, train_y, validation_data_fit, train_loop_num, **kwargs
+    ):
         val_x, val_y = validation_data_fit
-        callbacks = [tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=3)]
+        callbacks = [
+            tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=3)
+        ]
         epochs = 10 if train_loop_num == 1 else 30
         log("train_x: {}; train_y: {}".format(train_x.shape, train_y.shape))
         self._model.fit(

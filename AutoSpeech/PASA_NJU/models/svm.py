@@ -39,10 +39,15 @@ class SvmModel(Classifier):
     @timeit
     def preprocess_data(self, x):
         if IS_CUT_AUDIO:
-            x = [sample[0 : MAX_AUDIO_DURATION * AUDIO_SAMPLE_RATE] for sample in x]
+            x = [
+                sample[0 : MAX_AUDIO_DURATION * AUDIO_SAMPLE_RATE]
+                for sample in x
+            ]
         # extract mfcc
         x_mfcc = extract_mfcc_parallel(x, n_mfcc=20)
-        x_mel = extract_melspectrogram_parallel(x, n_mels=20, use_power_db=True)
+        x_mel = extract_melspectrogram_parallel(
+            x, n_mels=20, use_power_db=True
+        )
         x_chroma_stft = extract_chroma_stft_parallel(x, n_chroma=12)
         # x_rms = extract_rms_parallel(x)
         x_contrast = extract_spectral_contrast_parallel(x, n_bands=6)

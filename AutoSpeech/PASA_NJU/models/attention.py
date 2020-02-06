@@ -25,7 +25,9 @@ class PositionEmbedding(keras.layers.Layer):
         position_i = K.cumsum(K.ones_like(x[:, :, 0]), 1) - 1
         position_i = K.expand_dims(position_i, 2)
         position_ij = K.dot(position_i, position_j)
-        position_ij = K.concatenate([K.cos(position_ij), K.sin(position_ij)], 2)
+        position_ij = K.concatenate(
+            [K.cos(position_ij), K.sin(position_ij)], 2
+        )
         if self.mode == "sum":
             return position_ij + x
         elif self.mode == "concat":

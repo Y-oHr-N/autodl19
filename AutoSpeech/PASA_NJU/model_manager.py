@@ -95,7 +95,12 @@ class ModelManager(Classifier):
             SVM_MODEL: SvmModel,
             ATTGRU: AttentionGru,
         }
-        self._model_sequences = [LR_MODEL, LSTM_MODEL, CRNN_MODEL, BILSTM_MODEL]
+        self._model_sequences = [
+            LR_MODEL,
+            LSTM_MODEL,
+            CRNN_MODEL,
+            BILSTM_MODEL,
+        ]
         self._max_first_model_run_loop = MODEL_FIRST_MAX_RUN_LOOP
         self._max_model_run_loop = 12
 
@@ -171,7 +176,9 @@ class ModelManager(Classifier):
                     self._patience = 4
                 # sort model sequences by auc, desc
                 if not self._data_manager.crnn_first:
-                    self._model_sequences = [self._model_sequences[0]] + sorted(
+                    self._model_sequences = [
+                        self._model_sequences[0]
+                    ] + sorted(
                         self._model_sequences[1:],
                         key=lambda x: self._each_model_best_auc[x][-1],
                         reverse=True,
@@ -189,7 +196,8 @@ class ModelManager(Classifier):
                     )
                 log(
                     "round {} start, model sequences {}".format(
-                        self._round_num, self._model_sequences[self._model_idx :]
+                        self._round_num,
+                        self._model_sequences[self._model_idx :],
                     )
                 )
             self._model_name = self._model_sequences[self._model_idx]
@@ -197,7 +205,9 @@ class ModelManager(Classifier):
             self._not_rise_num = 0
             log(
                 "change model from {} to {}, loop_num: {}".format(
-                    self._last_model_name, self._model_name, self._cur_model_run_loop
+                    self._last_model_name,
+                    self._model_name,
+                    self._cur_model_run_loop,
                 )
             )
 
@@ -223,9 +233,9 @@ class ModelManager(Classifier):
                 self._each_model_best_predict[self._model_name] = [-1]
                 self._cur_model_max_auc = -1
             elif self._round_num == 1 and self._cur_model_run_loop == 0:
-                self._cur_model_max_auc = self._each_model_best_auc[self._model_name][
-                    -1
-                ]
+                self._cur_model_max_auc = self._each_model_best_auc[
+                    self._model_name
+                ][-1]
             elif self._round_num >= 2 and self._cur_model_run_loop == 0:
                 self._each_model_best_auc[self._model_name] += [-1]
                 self._each_model_best_predict[self._model_name] += [-1]
@@ -279,7 +289,9 @@ class ModelManager(Classifier):
 
     def _blending_ensemble(self):
         selected_k_best = [
-            self._k_best_predicts[i] for i, a in enumerate(self._k_best_auc) if a > 0.0
+            self._k_best_predicts[i]
+            for i, a in enumerate(self._k_best_auc)
+            if a > 0.0
         ]
         (
             each_model_k_aucs,
@@ -300,7 +312,10 @@ class ModelManager(Classifier):
             )
             + "and each previous model's best predict which have auc "
             + "{} ".format(
-                ["({}:{})".format(k, v) for k, v in self._each_model_best_auc.items()]
+                [
+                    "({}:{})".format(k, v)
+                    for k, v in self._each_model_best_auc.items()
+                ]
             )
         )
 
@@ -313,7 +328,11 @@ class ModelManager(Classifier):
     def fit(self, train_loop_num=1, **kwargs):
         # select model first, inorder to use preprocess data method
         self._pre_select_model(train_loop_num)
-        log("fit {} for {} times".format(self._model_name, self._cur_model_run_loop))
+        log(
+            "fit {} for {} times".format(
+                self._model_name, self._cur_model_run_loop
+            )
+        )
         self._cur_model_run_loop += 1
 
         # get data
@@ -353,7 +372,9 @@ class ModelManager(Classifier):
 
         # init model really
         self._get_or_create_model()
-        self._model.fit(train_x, train_y, (val_x, val_y), self._round_num, **kwargs)
+        self._model.fit(
+            train_x, train_y, (val_x, val_y), self._round_num, **kwargs
+        )
 
     def predict(self, test_x, is_final_test_x=False):
         x_val, y_val = self._val_set
@@ -379,12 +400,18 @@ class ModelManager(Classifier):
             self._not_rise_num += 1
             log(
                 "cur_max_auc {}; cur_auc {}; {} auc not rise for {} times".format(
-                    self._cur_model_max_auc, auc, self._model_name, self._not_rise_num
+                    self._cur_model_max_auc,
+                    auc,
+                    self._model_name,
+                    self._not_rise_num,
                 )
             )
 
         if (
-            max(self._k_best_auc[-1], self._each_model_best_auc[LR_MODEL][-1] - 0.1)
+            max(
+                self._k_best_auc[-1],
+                self._each_model_best_auc[LR_MODEL][-1] - 0.1,
+            )
             >= auc
             and not need_predict
         ):
