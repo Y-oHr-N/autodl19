@@ -14,6 +14,7 @@ from architectures.resnet import ResNet18
 from skeleton.projects import LogicModel, get_logger
 from skeleton.projects.others import NBAC, AUC
 
+from skeleton.optim.adabound import AdaBound, AdaBoundW
 
 torch.backends.cudnn.benchmark = True
 threads = [
@@ -42,7 +43,7 @@ class Model(LogicModel):
     def __init__(self, metadata):
         # set_random_seed_all(0xC0FFEE)
         super(Model, self).__init__(metadata)
-        self.use_test_time_augmentation = False
+        self.use_test_time_augmentation = True
         self.update_transforms = False
 
     def build(self):
@@ -89,8 +90,11 @@ class Model(LogicModel):
 
         epsilon = min(0.1, max(0.001, 0.001 * pow(num_class / 10, 2)))
         if self.is_multiclass():
-            self.model.loss_fn = torch.nn.BCEWithLogitsLoss(reduction="none")
-            # self.model.loss_fn = skeleton.nn.BinaryCrossEntropyLabelSmooth(num_class, epsilon=epsilon, reduction='none')
+            #self.model.loss_fn = torch.nn.BCEWithLogitsLoss(reduction="none")
+            if self.is_video():
+                self.model.loss_fn = skeleton.nn.BinaryCrossEntropyLabelSmooth(num_class, epsilon=epsilon * 1000, reduction='none')
+            else:
+                self.model.loss_fn = torch.nn.BCEWithLogitsLoss(reduction="none")
             self.tau = 8.0
             LOGGER.info(
                 "[update_model] %s (tau:%f, epsilon:%f)",
@@ -147,6 +151,7 @@ class Model(LogicModel):
             ),
             init_scale=1.0,
         )
+        '''
         self.optimizer_fc = skeleton.optim.ScheduledOptimizer(
             params_fc,
             torch.optim.SGD,
@@ -168,6 +173,25 @@ class Model(LogicModel):
             momentum=0.9,
             weight_decay=0.00025,
             nesterov=True,
+        )
+        '''
+        self.optimizer_fc = skeleton.optim.ScheduledOptimizer(
+            params_fc,
+            #torch.optim.Adam,
+            AdaBound,
+            # skeleton.optim.SGDW,
+            steps_per_epoch=steps_per_epoch,
+            clip_grad_max_norm=None,
+            lr=scheduler_lr
+        )
+        self.optimizer = skeleton.optim.ScheduledOptimizer(
+            params,
+            #torch.optim.Adam,
+            AdaBound,
+            # skeleton.optim.SGDW,
+            steps_per_epoch=steps_per_epoch,
+            clip_grad_max_norm=None,
+            lr=scheduler_lr,
         )
         LOGGER.info(
             "[optimizer] %s (batch_size:%d)",
