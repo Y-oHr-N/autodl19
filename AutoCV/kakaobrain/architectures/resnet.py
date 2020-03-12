@@ -106,6 +106,7 @@ class ResNet18(models.ResNet):
         self._half = False
         self._class_normalize = True
         self._is_video = False
+        #self._dropout = torch.nn.Dropout(0.3)
 
     def set_video(self, is_video=True, times=False):
         self._is_video = is_video
@@ -165,6 +166,7 @@ class ResNet18(models.ResNet):
             x = self.conv1d_post(x)
 
         x = x.view(x.size(0), -1)
+        #x = self._dropout(x)
         x = self.fc(x)
         return x
 
