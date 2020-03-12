@@ -20,9 +20,7 @@ class FixedSizeDataLoader:
         drop_last=False,
         sampler=None,
     ):
-        sampler = (
-            InfiniteSampler(dataset, shuffle) if sampler is None else sampler
-        )
+        sampler = InfiniteSampler(dataset, shuffle) if sampler is None else sampler
         self.batch_size = batch_size
         batch_size = 1 if batch_size is None else batch_size
 
@@ -43,14 +41,10 @@ class FixedSizeDataLoader:
     def __iter__(self):
         if self.steps is not None:
             for _, data in zip(range(self.steps), self.dataloader):
-                yield (
-                    [t[0] for t in data] if self.batch_size is None else data
-                )
+                yield ([t[0] for t in data] if self.batch_size is None else data)
         else:
             for data in self.dataloader:
-                yield (
-                    [t[0] for t in data] if self.batch_size is None else data
-                )
+                yield ([t[0] for t in data] if self.batch_size is None else data)
 
 
 class InfiniteSampler(torch.utils.data.sampler.Sampler):
@@ -61,9 +55,7 @@ class InfiniteSampler(torch.utils.data.sampler.Sampler):
     def __iter__(self):
         n = len(self.data_source)
         while True:
-            index_list = (
-                torch.randperm(n).tolist() if self.shuffle else list(range(n))
-            )
+            index_list = torch.randperm(n).tolist() if self.shuffle else list(range(n))
             for idx in index_list:
                 yield idx
 
@@ -97,9 +89,7 @@ class PrefetchDataLoader:
                 )
             elif isinstance(self.next_data, (list, tuple)):
                 self.next_data = [
-                    t.to(
-                        dtype=self.dtype, device=self.device, non_blocking=True
-                    )
+                    t.to(dtype=self.dtype, device=self.device, non_blocking=True)
                     if t.is_floating_point()
                     else t.to(device=self.device, non_blocking=True)
                     for t in self.next_data

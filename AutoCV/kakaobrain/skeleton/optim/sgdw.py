@@ -34,9 +34,7 @@ class SGDW(torch.optim.SGD):
                 if momentum != 0:
                     param_state = self.state[p]
                     if "momentum_buffer" not in param_state:
-                        buf = param_state[
-                            "momentum_buffer"
-                        ] = torch.zeros_like(p.data)
+                        buf = param_state["momentum_buffer"] = torch.zeros_like(p.data)
                         buf.mul_(momentum).add_(d_p)
                     else:
                         buf = param_state["momentum_buffer"]

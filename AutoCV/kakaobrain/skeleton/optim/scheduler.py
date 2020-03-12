@@ -10,9 +10,7 @@ LOGGER = logging.getLogger(__name__)
 def gradual_warm_up(scheduler, warm_up_epoch, multiplier):
     def schedule(e, **kwargs):
         lr = scheduler(e, **kwargs)
-        lr = lr * (
-            (multiplier - 1.0) * min(e, warm_up_epoch) / warm_up_epoch + 1
-        )
+        lr = lr * ((multiplier - 1.0) * min(e, warm_up_epoch) / warm_up_epoch + 1)
         return lr
 
     return schedule
@@ -44,14 +42,9 @@ def get_step_scheduler(init_lr, step_size, gamma=0.1):
 def get_cosine_scheduler(init_lr, maximum_epoch, eta_min=0):
     def schedule(e, **kwargs):
         maximum = (
-            kwargs["maximum_epoch"]
-            if "maximum_epoch" in kwargs
-            else maximum_epoch
+            kwargs["maximum_epoch"] if "maximum_epoch" in kwargs else maximum_epoch
         )
-        lr = (
-            eta_min
-            + (init_lr - eta_min) * (1 + math.cos(math.pi * e / maximum)) / 2
-        )
+        lr = eta_min + (init_lr - eta_min) * (1 + math.cos(math.pi * e / maximum)) / 2
         return lr
 
     return schedule
@@ -88,12 +81,7 @@ class PlateauScheduler:
 
 
 def get_reduce_on_plateau_scheduler(
-    init_lr,
-    factor=0.1,
-    patience=10,
-    threshold=1e-4,
-    min_lr=0,
-    metric_name="metric",
+    init_lr, factor=0.1, patience=10, threshold=1e-4, min_lr=0, metric_name="metric"
 ):
     class Schedule:
         def __init__(self):
@@ -127,10 +115,7 @@ def get_reduce_on_plateau_scheduler(
                 self.num_bad_epochs = 0
                 lr = max(min_lr, self.lr * factor)
                 LOGGER.debug(
-                    "[%s] reduce lr %f -> %f",
-                    "get_reduce_on_plateau",
-                    self.lr,
-                    lr,
+                    "[%s] reduce lr %f -> %f", "get_reduce_on_plateau", self.lr, lr
                 )
                 self.lr = lr
             return self.lr

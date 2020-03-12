@@ -18,12 +18,7 @@ from tensorflow.python.keras.layers import (
 )
 from tensorflow.python.keras.models import Model as TFModel
 
-from CONSTANT import (
-    MAX_FRAME_NUM,
-    IS_CUT_AUDIO,
-    MAX_AUDIO_DURATION,
-    AUDIO_SAMPLE_RATE,
-)
+from CONSTANT import MAX_FRAME_NUM, IS_CUT_AUDIO, MAX_AUDIO_DURATION, AUDIO_SAMPLE_RATE
 from data_process import extract_mfcc_parallel
 from data_process import ohe2cat, get_max_length, pad_seq
 from models.attention import Attention
@@ -46,10 +41,7 @@ class LstmAttention(Classifier):
 
     def preprocess_data(self, x):
         if IS_CUT_AUDIO:
-            x = [
-                sample[0 : MAX_AUDIO_DURATION * AUDIO_SAMPLE_RATE]
-                for sample in x
-            ]
+            x = [sample[0 : MAX_AUDIO_DURATION * AUDIO_SAMPLE_RATE] for sample in x]
         # extract mfcc
         x_mfcc = extract_mfcc_parallel(x, n_mfcc=96)
         if self.max_length is None:
@@ -76,9 +68,7 @@ class LstmAttention(Classifier):
             k_num = 10
             kmaxpool_l = Lambda(
                 lambda x: tf.reshape(
-                    tf.nn.top_k(
-                        tf.transpose(x, [0, 2, 1]), k=k_num, sorted=True
-                    )[0],
+                    tf.nn.top_k(tf.transpose(x, [0, 2, 1]), k=k_num, sorted=True)[0],
                     shape=[-1, k_num, 128],
                 )
             )(attention_1)
@@ -94,11 +84,7 @@ class LstmAttention(Classifier):
 
         model = TFModel(inputs=inputs, outputs=outputs)
         optimizer = optimizers.Nadam(
-            lr=0.002,
-            beta_1=0.9,
-            beta_2=0.999,
-            epsilon=None,
-            schedule_decay=0.004,
+            lr=0.002, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004
         )
         model.compile(
             optimizer=optimizer,
@@ -132,9 +118,7 @@ class LstmAttention(Classifier):
         # epochs = self.epoch_cnt + 3
         epochs = 10
         callbacks = [
-            tf.keras.callbacks.EarlyStopping(
-                monitor="val_loss", patience=patience
-            )
+            tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience)
         ]
 
         self._model.fit(

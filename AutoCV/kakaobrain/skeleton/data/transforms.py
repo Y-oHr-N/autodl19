@@ -64,10 +64,7 @@ class Cutout:
         self.height = height
         self.width = width
         LOGGER.debug(
-            "[%s] height:%d, width:%d",
-            self.__class__.__name__,
-            self.height,
-            self.width,
+            "[%s] height:%d, width:%d", self.__class__.__name__, self.height, self.width
         )
 
     def __call__(self, image):

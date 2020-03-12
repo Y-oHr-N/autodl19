@@ -44,12 +44,10 @@ class Normalize(torch.nn.Module):
     def __init__(self, mean, std, inplace=False):
         super(Normalize, self).__init__()
         self.register_buffer(
-            "mean",
-            torch.tensor([mean], dtype=torch.float32)[None, :, None, None],
+            "mean", torch.tensor([mean], dtype=torch.float32)[None, :, None, None]
         )
         self.register_buffer(
-            "std",
-            torch.tensor([std], dtype=torch.float32)[None, :, None, None],
+            "std", torch.tensor([std], dtype=torch.float32)[None, :, None, None]
         )
         self.inplace = inplace
 

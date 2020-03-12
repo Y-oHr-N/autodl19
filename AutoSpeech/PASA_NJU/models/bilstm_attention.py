@@ -17,12 +17,7 @@ from tensorflow.python.keras.layers import (
 from tensorflow.python.keras.models import Model as TFModel
 
 from CONSTANT import IS_CUT_AUDIO, MAX_AUDIO_DURATION, AUDIO_SAMPLE_RATE
-from data_process import (
-    ohe2cat,
-    extract_mfcc_parallel,
-    get_max_length,
-    pad_seq,
-)
+from data_process import ohe2cat, extract_mfcc_parallel, get_max_length, pad_seq
 from models.attention import Attention
 from models.my_classifier import Classifier
 from tools import log
@@ -38,10 +33,7 @@ class BilstmAttention(Classifier):
 
     def preprocess_data(self, x):
         if IS_CUT_AUDIO:
-            x = [
-                sample[0 : MAX_AUDIO_DURATION * AUDIO_SAMPLE_RATE]
-                for sample in x
-            ]
+            x = [sample[0 : MAX_AUDIO_DURATION * AUDIO_SAMPLE_RATE] for sample in x]
         # extract mfcc
         x = extract_mfcc_parallel(x, n_mfcc=96)
         if self.max_length is None:
@@ -54,8 +46,7 @@ class BilstmAttention(Classifier):
         inputs = Input(shape=input_shape)
         # bnorm_1 = BatchNormalization(axis=2)(inputs)
         lstm_1 = Bidirectional(
-            CuDNNLSTM(64, name="blstm_1", return_sequences=True),
-            merge_mode="concat",
+            CuDNNLSTM(64, name="blstm_1", return_sequences=True), merge_mode="concat"
         )(inputs)
         activation_1 = Activation("tanh")(lstm_1)
         dropout1 = SpatialDropout1D(0.5)(activation_1)
@@ -93,9 +84,7 @@ class BilstmAttention(Classifier):
         patience = 2
 
         callbacks = [
-            tf.keras.callbacks.EarlyStopping(
-                monitor="val_loss", patience=patience
-            )
+            tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience)
         ]
 
         self._model.fit(

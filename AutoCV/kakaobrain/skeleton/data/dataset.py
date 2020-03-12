@@ -146,9 +146,7 @@ class TransformDataset(Dataset):
         return len(self.dataset)
 
 
-def prefetch_dataset(
-    dataset, num_workers=4, batch_size=32, device=None, half=False
-):
+def prefetch_dataset(dataset, num_workers=4, batch_size=32, device=None, half=False):
     if isinstance(dataset, list) and isinstance(dataset[0], torch.Tensor):
         tensors = dataset
     else:

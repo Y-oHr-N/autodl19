@@ -17,10 +17,7 @@ def timeit(method, start_log=None):
     def wrapper(*args, **kw):
         global nesting_level
 
-        log(
-            "Start [{}]:"
-            + (start_log if start_log else "").format(method.__name__)
-        )
+        log("Start [{}]:" + (start_log if start_log else "").format(method.__name__))
         nesting_level += 1
 
         start_time = time.time()

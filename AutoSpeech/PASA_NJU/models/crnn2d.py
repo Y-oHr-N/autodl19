@@ -18,18 +18,8 @@ from tensorflow.python.keras.layers import (
 from tensorflow.python.keras.layers.normalization import BatchNormalization
 from tensorflow.python.keras.models import Model as TFModel
 
-from CONSTANT import (
-    MAX_FRAME_NUM,
-    IS_CUT_AUDIO,
-    MAX_AUDIO_DURATION,
-    AUDIO_SAMPLE_RATE,
-)
-from data_process import (
-    ohe2cat,
-    get_max_length,
-    pad_seq,
-    extract_mfcc_parallel,
-)
+from CONSTANT import MAX_FRAME_NUM, IS_CUT_AUDIO, MAX_AUDIO_DURATION, AUDIO_SAMPLE_RATE
+from data_process import ohe2cat, get_max_length, pad_seq, extract_mfcc_parallel
 from models.my_classifier import Classifier
 
 
@@ -48,10 +38,7 @@ class Crnn2dModel(Classifier):
         HOP_LEN = 256
         DURA = 21.84  # to make it 1366 frame.
         if IS_CUT_AUDIO:
-            x = [
-                sample[0 : MAX_AUDIO_DURATION * AUDIO_SAMPLE_RATE]
-                for sample in x
-            ]
+            x = [sample[0 : MAX_AUDIO_DURATION * AUDIO_SAMPLE_RATE] for sample in x]
 
         # x_mel = extract_melspectrogram_parallel(x, n_mels=128, use_power_db=True)
         x_mfcc = extract_mfcc_parallel(x, n_mfcc=96)
@@ -95,9 +82,7 @@ class Crnn2dModel(Classifier):
 
         if min_size // 32 >= 4:
             # Conv block 4
-            x = Convolution2D(
-                channel_size, 3, 1, padding="same", name="conv4"
-            )(x)
+            x = Convolution2D(channel_size, 3, 1, padding="same", name="conv4")(x)
             x = ELU()(x)
             x = BatchNormalization(axis=channel_axis, name="bn4")(x)
             x = MaxPooling2D(pool_size=(4, 2), strides=(4, 2), name="pool4")(x)
@@ -133,16 +118,12 @@ class Crnn2dModel(Classifier):
         self._model = model
         self.is_init = True
 
-    def fit(
-        self, train_x, train_y, validation_data_fit, train_loop_num, **kwargs
-    ):
+    def fit(self, train_x, train_y, validation_data_fit, train_loop_num, **kwargs):
         val_x, val_y = validation_data_fit
         epochs = 5
         patience = 2
         callbacks = [
-            tf.keras.callbacks.EarlyStopping(
-                monitor="val_loss", patience=patience
-            )
+            tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience)
         ]
         self._model.fit(
             train_x,

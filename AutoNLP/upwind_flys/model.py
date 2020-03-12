@@ -137,10 +137,7 @@ def mvmean(R, axis=0):
     if len(R.shape) == 0:
         return R
     average = lambda x: reduce(
-        lambda i, j: (
-            0,
-            (j[0] / (j[0] + 1.0)) * i[1] + (1.0 / (j[0] + 1)) * j[1],
-        ),
+        lambda i, j: (0, (j[0] / (j[0] + 1.0)) * i[1] + (1.0 / (j[0] + 1)) * j[1]),
         enumerate(x),
     )[1]
     R = np.array(R)
@@ -223,9 +220,7 @@ def categorical_focal_loss_fixed(y_true, y_pred):
     return K.sum(loss, axis=1)
 
 
-def convert_data(
-    tokenizer, train_contents, max_length_fixed, val_contents=None
-):
+def convert_data(tokenizer, train_contents, max_length_fixed, val_contents=None):
 
     x_train = tokenizer.texts_to_sequences(train_contents)
 
@@ -322,13 +317,8 @@ class Model(object):
         if self.call_num == 0:
             self.data_generator = DataGenerator(train_dataset, self.metadata)
 
-        (
-            x_train,
-            y_train,
-        ) = self.data_generator.sample_dataset_from_metadataset()
-        x_train, feature_mode = self.data_generator.dataset_preporocess(
-            x_train
-        )
+        x_train, y_train = self.data_generator.sample_dataset_from_metadataset()
+        x_train, feature_mode = self.data_generator.dataset_preporocess(x_train)
 
         if self.call_num == 0:
             # self.data_generator.dataset_postprocess(x_train,y_train,'svm')
@@ -340,9 +330,7 @@ class Model(object):
 
         self.model_name = self.model_manager.model_pre_select(self.call_num)
         # self.svm_token = self.data_generator.svm_token
-        self.data_generator.dataset_postprocess(
-            x_train, y_train, self.model_name
-        )
+        self.data_generator.dataset_postprocess(x_train, y_train, self.model_name)
         if self.call_num <= 1:
             self.model = self.model_manager.build_model(
                 self.model_name, self.data_generator.data_feature
@@ -352,14 +340,11 @@ class Model(object):
 
         if self.model_name == "svm":
             self.model.fit(
-                self.data_generator.x_train,
-                ohe2cat(self.data_generator.y_train),
+                self.data_generator.x_train, ohe2cat(self.data_generator.y_train)
             )
             self.svm_token = self.data_generator.svm_token
             valid_auc = self._valid_auc(
-                self.data_generator.valid_x,
-                self.data_generator.valid_y,
-                svm=True,
+                self.data_generator.valid_x, self.data_generator.valid_y, svm=True
             )
             self.valid_auc_svm = valid_auc
             print("valid_auc_svm", self.valid_auc_svm)
@@ -428,11 +413,7 @@ class Model(object):
             r_ = tiedrank(prediction[:, k])
             s_ = solution[:, k]
             if sum(s_) == 0:
-                print(
-                    "WARNING: no positive class example in class {}".format(
-                        k + 1
-                    )
-                )
+                print("WARNING: no positive class example in class {}".format(k + 1))
             npos = sum(s_ == 1)
             nneg = sum(s_ < 1)
             auc[k] = (sum(r_[s_ == 1]) - npos * (npos + 1) / 2) / (nneg * npos)
@@ -460,10 +441,7 @@ class Model(object):
         """
         # model = models.load_model(self.test_input_path + 'model.h5')
 
-        train_num, self.test_num = (
-            self.metadata["train_num"],
-            self.metadata["test_num"],
-        )
+        train_num, self.test_num = self.metadata["train_num"], self.metadata["test_num"]
         self.class_num = self.metadata["class_num"]
         print("num_samples_test:", self.test_num)
         print("num_class_test:", self.class_num)
@@ -495,9 +473,7 @@ class Model(object):
             result = self.svm_result
             print("load svm again!!!")
         else:
-            result = self.model.predict(
-                self.x_test, batch_size=self.batch_size * 16
-            )
+            result = self.model.predict(self.x_test, batch_size=self.batch_size * 16)
 
         # Cumulative training times
         self.call_num = self.call_num + 1
@@ -530,9 +506,7 @@ class Model(object):
             coefs = np.asarray(values[1:], dtype="float32")
             fasttext_embeddings_index[word] = coefs
 
-        print(
-            "Found %s fastText word vectors." % len(fasttext_embeddings_index)
-        )
+        print("Found %s fastText word vectors." % len(fasttext_embeddings_index))
         self.fasttext_embeddings_index = fasttext_embeddings_index
 
         # embedding lookup
@@ -577,14 +551,10 @@ class Model(object):
         if early_stop_conditon1 or early_stop_conditon2:
             self.done_training = True
             if early_stop_conditon2:
-                self.model.set_weights(
-                    self.model_weights_list[self.call_num - 3]
-                )
+                self.model.set_weights(self.model_weights_list[self.call_num - 3])
                 print("load weight...")
             if self.call_num >= 1 and early_stop_conditon1:
-                self.model.set_weights(
-                    self.model_weights_list[self.call_num - 2]
-                )
+                self.model.set_weights(self.model_weights_list[self.call_num - 2])
                 print("load weight...")
 
         # print(str(type(self.x_train)) + " " + str(y_train.shape))

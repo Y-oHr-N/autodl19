@@ -21,15 +21,7 @@ except:
     os.system("pip3 install gzip")
 
 import keras
-from keras.layers import (
-    Dense,
-    Input,
-    LSTM,
-    Bidirectional,
-    Conv1D,
-    GRU,
-    Activation,
-)
+from keras.layers import Dense, Input, LSTM, Bidirectional, Conv1D, GRU, Activation
 from keras.layers import Dropout, Embedding, Dot, Concatenate, PReLU
 from keras.preprocessing import text, sequence
 from keras.layers import (
@@ -51,22 +43,18 @@ import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
 
 config = tf.ConfigProto()
-config.gpu_options.allow_growth = (
-    True  # dynamically grow the memory used on the GPU
+config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
+config.log_device_placement = (
+    False  # True  # to log device placement (on which device the operation ran)
 )
-config.log_device_placement = False  # True  # to log device placement (on which device the operation ran)
 
 # (nothing gets printed in Jupyter, only if you run it standalone)
 sess = tf.Session(config=config)
-set_session(
-    sess
-)  # set this TensorFlow session as the default session for Keras
+set_session(sess)  # set this TensorFlow session as the default session for Keras
 
 
 MAX_SEQ_LENGTH = 50
-MAX_VOCAB_SIZE = (
-    200000  # Limit on the number of features. We use the top 20K features
-)
+MAX_VOCAB_SIZE = 200000  # Limit on the number of features. We use the top 20K features
 
 
 from sklearn.metrics import roc_auc_score
@@ -112,10 +100,7 @@ def CNN_Model(seq_len, num_classes, num_features, embedding_matrix=None):
         )(in_text)
 
     x = Conv1D(
-        128,
-        kernel_size=5,
-        padding="valid",
-        kernel_initializer="glorot_uniform",
+        128, kernel_size=5, padding="valid", kernel_initializer="glorot_uniform"
     )(x)
     x = GlobalMaxPooling1D()(x)
 
@@ -159,9 +144,7 @@ def RNN_Model(seq_len, num_classes, num_features, embedding_matrix=None):
     return md
 
 
-def GRU_Attention_Model(
-    seq_len, num_classes, num_features, embedding_matrix=None
-):
+def GRU_Attention_Model(seq_len, num_classes, num_features, embedding_matrix=None):
 
     from attention import Attention
 
@@ -212,9 +195,7 @@ def ohe2cat(label):
 
 class Model(object):
     def __init__(self, metadata, train_output_path="./", test_input_path="./"):
-        print(
-            "************************Init Model************************************"
-        )
+        print("************************Init Model************************************")
         self.done_training = False
         self.metadata = metadata
         self.train_output_path = train_output_path
@@ -285,9 +266,7 @@ class Model(object):
         initial_lrate = self.lrs[self.model_id]  # 0.016 #0.0035 #
         drop = 0.65
         epochs_drop = 1.0  # 2.0
-        lrate = initial_lrate * math.pow(
-            drop, math.floor((1 + epoch) / epochs_drop)
-        )
+        lrate = initial_lrate * math.pow(drop, math.floor((1 + epoch) / epochs_drop))
         return lrate
 
     def is_done(self):
@@ -316,9 +295,7 @@ class Model(object):
 
             len_mean = len_sum // shape
             print(
-                "current len mean {} constraint {}".format(
-                    len_mean, self.SENTENCE_LEN
-                )
+                "current len mean {} constraint {}".format(len_mean, self.SENTENCE_LEN)
             )
             cut = 0
             if len_mean > self.FIRST_CUT:
@@ -367,10 +344,7 @@ class Model(object):
             print("Is Sample：", sample, " Is Cut：", cut)
             print("Language：", self.metadata["language"])
             print("Class Num:", self.metadata["class_num"])
-            print(
-                "Postive-Negtive Samples Portion：",
-                np.sum(train_dataset[1], axis=0),
-            )
+            print("Postive-Negtive Samples Portion：", np.sum(train_dataset[1], axis=0))
             print(
                 "****************************************************************************************"
             )
@@ -405,8 +379,7 @@ class Model(object):
 
         if self.START:
             print(
-                "When enter the system firstly, generate data for training:",
-                self.epoch,
+                "When enter the system firstly, generate data for training:", self.epoch
             )
             self.embedding_matrix = None
             x_train, y_train = train_dataset
@@ -445,12 +418,7 @@ class Model(object):
             num_classes = self.metadata["class_num"]
             self.word_index = word_index
             self.max_length = max_length
-            (
-                self.X_train,
-                self.X_val,
-                self.y_train,
-                self.y_val,
-            ) = train_test_split(
+            self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(
                 x_train, ohe2cat(y_train), test_size=0.2, random_state=666
             )
             print("*************************************", self.y_val[:20])
@@ -483,12 +451,7 @@ class Model(object):
                     sentence_len = self.SENTENCE_LEN
 
                     x_train = np.array(x_train, dtype="object")
-                    (
-                        x_train,
-                        word_index,
-                        num_features,
-                        max_length,
-                    ) = self.deal_data(
+                    x_train, word_index, num_features, max_length = self.deal_data(
                         x_train, data_lan, data_type, deal_seg, sentence_len
                     )
 
@@ -501,15 +464,9 @@ class Model(object):
                         self.y_train,
                         self.y_val,
                     ) = train_test_split(
-                        x_train,
-                        ohe2cat(y_train),
-                        test_size=0.2,
-                        random_state=666,
+                        x_train, ohe2cat(y_train), test_size=0.2, random_state=666
                     )
-                    print(
-                        "*************************************",
-                        self.y_val[:20],
-                    )
+                    print("*************************************", self.y_val[:20])
                     print("###")
                     te_y = np.eye(num_classes)[self.y_val]
                     self.te_y = te_y
@@ -520,8 +477,7 @@ class Model(object):
                 if self.data_id == 1:
                     self.emb_size = 300
                     self.embedding_matrix = self.get_embedding(
-                        num_features=self.num_features,
-                        word_index=self.word_index,
+                        num_features=self.num_features, word_index=self.word_index
                     )
                 elif self.data_id == 0 or self.data_id == 2:
                     self.emb_size = 64
@@ -544,11 +500,7 @@ class Model(object):
                 if ratio >= 0.01:
                     is_balance = True
 
-            if (
-                (self.START)
-                and (self.metadata["class_num"] == 2)
-                and (is_balance)
-            ):
+            if (self.START) and (self.metadata["class_num"] == 2) and (is_balance):
                 print("using tf model...")
                 config = {
                     "sequence_length": self.seq_len,
@@ -563,9 +515,7 @@ class Model(object):
 
                 start3 = time.time()
 
-                print(
-                    "Embedding Size of This Model: {}.".format(self.emb_size)
-                )
+                print("Embedding Size of This Model: {}.".format(self.emb_size))
 
                 if self.cand_models[self.model_id] == "CNN":
                     model = CNN_Model(
@@ -660,9 +610,7 @@ class Model(object):
 
             result = model.predict(self.X_val, batch_size=batch_size)
 
-            pred = self.trasf_res(
-                result, len(self.y_val), self.metadata["class_num"]
-            )
+            pred = self.trasf_res(result, len(self.y_val), self.metadata["class_num"])
             val_auc = auc_metric(self.te_y, pred)
 
         if val_auc > max_auc:
@@ -713,12 +661,7 @@ class Model(object):
 
         if self.LASTROUND:
             self.best_sco = 0.02
-        print(
-            "AFTER TRAIN best_sco:",
-            self.best_sco,
-            " his_scos :",
-            self.his_scos,
-        )
+        print("AFTER TRAIN best_sco:", self.best_sco, " his_scos :", self.his_scos)
 
     def ensemble(self):
 
@@ -778,10 +721,7 @@ class Model(object):
         word_index = self.word_index
         max_length = self.max_length
 
-        train_num, test_num = (
-            self.metadata["train_num"],
-            self.metadata["test_num"],
-        )
+        train_num, test_num = self.metadata["train_num"], self.metadata["test_num"]
         class_num = self.metadata["class_num"]
 
         start = time.time()
@@ -806,9 +746,7 @@ class Model(object):
             deal_seg = 1
             sentence_len = self.FIRST_CUT
             x_test = np.array(x_test, dtype="object")
-            x_test = self.deal_data(
-                x_test, data_lan, data_type, deal_seg, sentence_len
-            )
+            x_test = self.deal_data(x_test, data_lan, data_type, deal_seg, sentence_len)
 
             print("###initail:", time.time() - start)
 
@@ -917,12 +855,9 @@ class Model(object):
 
             num_sentence = len(data)
             t = np.array(data, dtype="object")
-            (
-                MAX_VOCAB_SIZE,
-                MAX_SEQ_LENGTH,
-                word2index,
-                text_lens,
-            ) = ac.bulid_index(t, num_sentence)
+            MAX_VOCAB_SIZE, MAX_SEQ_LENGTH, word2index, text_lens = ac.bulid_index(
+                t, num_sentence
+            )
 
             print("*****************************DataNum:", num_sentence)
             print("*****************************DataLen:", np.mean(text_lens))

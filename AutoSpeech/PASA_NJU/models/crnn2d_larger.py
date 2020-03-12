@@ -18,18 +18,8 @@ from tensorflow.python.keras.layers import (
 from tensorflow.python.keras.layers.normalization import BatchNormalization
 from tensorflow.python.keras.models import Model as TFModel
 
-from CONSTANT import (
-    MAX_FRAME_NUM,
-    IS_CUT_AUDIO,
-    MAX_AUDIO_DURATION,
-    AUDIO_SAMPLE_RATE,
-)
-from data_process import (
-    ohe2cat,
-    get_max_length,
-    pad_seq,
-    extract_mfcc_parallel,
-)
+from CONSTANT import MAX_FRAME_NUM, IS_CUT_AUDIO, MAX_AUDIO_DURATION, AUDIO_SAMPLE_RATE
+from data_process import ohe2cat, get_max_length, pad_seq, extract_mfcc_parallel
 from models.my_classifier import Classifier
 
 
@@ -48,10 +38,7 @@ class Crnn2dLargerModel(Classifier):
         HOP_LEN = 256
         DURA = 21.84  # to make it 1366 frame.
         if IS_CUT_AUDIO:
-            x = [
-                sample[0 : MAX_AUDIO_DURATION * AUDIO_SAMPLE_RATE]
-                for sample in x
-            ]
+            x = [sample[0 : MAX_AUDIO_DURATION * AUDIO_SAMPLE_RATE] for sample in x]
 
         # x_mel = extract_melspectrogram_parallel(x, n_mels=128, use_power_db=True)
         x_mfcc = extract_mfcc_parallel(x, n_mfcc=96)
@@ -88,9 +75,7 @@ class Crnn2dLargerModel(Classifier):
         )(x)
         x = ELU()(x)
         x = BatchNormalization(axis=channel_axis, name="bn1")(x)
-        x = MaxPooling2D(
-            pool_size=pool_size[0], strides=pool_size[0], name="pool1"
-        )(x)
+        x = MaxPooling2D(pool_size=pool_size[0], strides=pool_size[0], name="pool1")(x)
         x = Dropout(0.1, name="dropout1")(x)
 
         min_size = min_size // pool_size[0][0]
@@ -106,9 +91,7 @@ class Crnn2dLargerModel(Classifier):
                 name="conv{}".format(layer + 1),
             )(x)
             x = ELU()(x)
-            x = BatchNormalization(
-                axis=channel_axis, name="bn{}".format(layer + 1)
-            )(x)
+            x = BatchNormalization(axis=channel_axis, name="bn{}".format(layer + 1))(x)
             x = MaxPooling2D(
                 pool_size=pool_size[layer],
                 strides=pool_size[layer],
@@ -146,16 +129,12 @@ class Crnn2dLargerModel(Classifier):
         self._model = model
         self.is_init = True
 
-    def fit(
-        self, train_x, train_y, validation_data_fit, train_loop_num, **kwargs
-    ):
+    def fit(self, train_x, train_y, validation_data_fit, train_loop_num, **kwargs):
         val_x, val_y = validation_data_fit
         epochs = 10
         patience = 2
         callbacks = [
-            tf.keras.callbacks.EarlyStopping(
-                monitor="val_loss", patience=patience
-            )
+            tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience)
         ]
         self._model.fit(
             train_x,

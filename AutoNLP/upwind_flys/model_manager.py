@@ -176,9 +176,7 @@ class ModelGenerator(object):
         inputs = Input(name="inputs", shape=[max_length], tensor=input_tensor)
         if embedding_matrix is None:
             layer = Embedding(
-                input_dim=num_features,
-                output_dim=emb_size,
-                input_length=input_shape,
+                input_dim=num_features, output_dim=emb_size, input_length=input_shape
             )(inputs)
         else:
             num_features = MAX_VOCAB_SIZE
@@ -186,17 +184,15 @@ class ModelGenerator(object):
                 input_dim=num_features,
                 output_dim=emb_size,
                 input_length=input_shape,
-                embeddings_initializer=keras.initializers.Constant(
-                    embedding_matrix
-                ),
+                embeddings_initializer=keras.initializers.Constant(embedding_matrix),
             )(inputs)
 
         cnns = []
         filter_sizes = [2, 3, 4, 5]
         for size in filter_sizes:
-            cnn_l = Conv1D(
-                filters, size, padding="same", strides=1, activation="relu"
-            )(layer)
+            cnn_l = Conv1D(filters, size, padding="same", strides=1, activation="relu")(
+                layer
+            )
             pooling_l = MaxPooling1D(max_length - size + 1)(cnn_l)
             pooling_l = Flatten()(pooling_l)
             cnns.append(pooling_l)
@@ -221,17 +217,14 @@ class ModelGenerator(object):
         kernel_size=4,
         dropout_rate=0.25,
     ):
-        (
-            op_units,
-            op_activation,
-        ) = ModelGenerator._get_last_layer_units_and_activation(num_classes)
+        op_units, op_activation = ModelGenerator._get_last_layer_units_and_activation(
+            num_classes
+        )
 
         inputs = Input(name="inputs", shape=[max_length], tensor=input_tensor)
         if embedding_matrix is None:
             layer = Embedding(
-                input_dim=num_features,
-                output_dim=emb_size,
-                input_length=input_shape,
+                input_dim=num_features, output_dim=emb_size, input_length=input_shape
             )(inputs)
         else:
             num_features = MAX_VOCAB_SIZE
@@ -239,9 +232,7 @@ class ModelGenerator(object):
                 input_dim=num_features,
                 output_dim=emb_size,
                 input_length=input_shape,
-                embeddings_initializer=keras.initializers.Constant(
-                    embedding_matrix
-                ),
+                embeddings_initializer=keras.initializers.Constant(embedding_matrix),
             )(inputs)
 
         for _ in range(blocks - 1):
@@ -299,9 +290,9 @@ class ModelGenerator(object):
         dropout_rate=0.15,
     ):
         inputs = Input(name="inputs", shape=[max_length])
-        layer = Embedding(
-            num_features, hidden_state_size, input_length=max_length
-        )(inputs)
+        layer = Embedding(num_features, hidden_state_size, input_length=max_length)(
+            inputs
+        )
         # layer = LSTM(hidden_state_size, return_sequences=True)(layer)
         layer = LSTM(hidden_state_size)(layer)
         layer = Dense(fc1_size, activation="relu", name="FC1")(layer)

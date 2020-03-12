@@ -46,9 +46,7 @@ class Model:
         self.metadata = metadata
         self.domain = infer_domain(metadata)
         logger.info(
-            "The inferred domain of current dataset is: {}.".format(
-                self.domain
-            )
+            "The inferred domain of current dataset is: {}.".format(self.domain)
         )
         self.domain_metadata = get_domain_metadata(metadata, self.domain)
         DomainModel = DOMAIN_TO_MODEL[self.domain]
@@ -62,8 +60,7 @@ class Model:
 
         # Train the model
         self.domain_model.train(
-            self.domain_dataset_train,
-            remaining_time_budget=remaining_time_budget,
+            self.domain_dataset_train, remaining_time_budget=remaining_time_budget
         )
 
         # Update self.done_training
@@ -84,8 +81,7 @@ class Model:
 
         # Make predictions
         Y_pred = self.domain_model.test(
-            self.domain_dataset_test,
-            remaining_time_budget=remaining_time_budget,
+            self.domain_dataset_test, remaining_time_budget=remaining_time_budget
         )
 
         # Update self.done_training
@@ -140,9 +136,7 @@ class Model:
             next_element = iterator.get_next()
             X = []
             Y = []
-            with tf.Session(
-                config=tf.ConfigProto(log_device_placement=False)
-            ) as sess:
+            with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
                 while True:
                     try:
                         example, labels = sess.run(next_element)
@@ -229,9 +223,7 @@ class Model:
             elif self.domain in ["image", "video", "tabular"]:
                 setattr(self, attr_dataset, dataset)
             else:
-                raise ValueError(
-                    "The domain {} doesn't exist.".format(self.domain)
-                )
+                raise ValueError("The domain {} doesn't exist.".format(self.domain))
 
 
 def infer_domain(metadata):

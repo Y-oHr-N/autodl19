@@ -19,12 +19,7 @@ from tensorflow.python.keras.layers import (
 from tensorflow.python.keras.layers.normalization import BatchNormalization
 from tensorflow.python.keras.models import Model as TFModel
 
-from CONSTANT import (
-    MAX_FRAME_NUM,
-    IS_CUT_AUDIO,
-    MAX_AUDIO_DURATION,
-    AUDIO_SAMPLE_RATE,
-)
+from CONSTANT import MAX_FRAME_NUM, IS_CUT_AUDIO, MAX_AUDIO_DURATION, AUDIO_SAMPLE_RATE
 from data_process import (
     ohe2cat,
     get_max_length,
@@ -43,14 +38,9 @@ class CrnnModel(Classifier):
 
     def preprocess_data(self, x):
         if IS_CUT_AUDIO:
-            x = [
-                sample[0 : MAX_AUDIO_DURATION * AUDIO_SAMPLE_RATE]
-                for sample in x
-            ]
+            x = [sample[0 : MAX_AUDIO_DURATION * AUDIO_SAMPLE_RATE] for sample in x]
 
-        x_mel = extract_melspectrogram_parallel(
-            x, n_mels=128, use_power_db=True
-        )
+        x_mel = extract_melspectrogram_parallel(x, n_mels=128, use_power_db=True)
         # x_mel = extract_mfcc_parallel(x, n_mfcc=96)
         if self.max_length is None:
             self.max_length = get_max_length(x_mel)
@@ -92,9 +82,7 @@ class CrnnModel(Classifier):
 
         if min_size // 24 >= 4:
             # Conv block 4
-            x = Convolution2D(
-                channel_size, 3, 1, padding="same", name="conv4"
-            )(x)
+            x = Convolution2D(channel_size, 3, 1, padding="same", name="conv4")(x)
             x = BatchNormalization(axis=channel_axis, name="bn4")(x)
             x = ELU()(x)
             x = MaxPooling2D(pool_size=(4, 4), strides=(4, 4), name="pool4")(x)
@@ -139,9 +127,7 @@ class CrnnModel(Classifier):
             epochs = 8
         patience = 2
         callbacks = [
-            tf.keras.callbacks.EarlyStopping(
-                monitor="val_loss", patience=patience
-            )
+            tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience)
         ]
         self._model.fit(
             train_x,

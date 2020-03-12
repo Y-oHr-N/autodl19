@@ -10,9 +10,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class CrossEntropyLabelSmooth(torch.nn.Module):
-    def __init__(
-        self, num_classes, epsilon=0.1, sparse_target=True, reduction="avg"
-    ):
+    def __init__(self, num_classes, epsilon=0.1, sparse_target=True, reduction="avg"):
         super(CrossEntropyLabelSmooth, self).__init__()
         self.num_classes = num_classes
         self.epsilon = epsilon
@@ -23,14 +21,10 @@ class CrossEntropyLabelSmooth(torch.nn.Module):
     def forward(self, input, target):  # pylint: disable=redefined-builtin
         log_probs = self.logsoftmax(input)
         if self.sparse_target:
-            targets = torch.zeros_like(log_probs).scatter_(
-                1, target.unsqueeze(1), 1
-            )
+            targets = torch.zeros_like(log_probs).scatter_(1, target.unsqueeze(1), 1)
         else:
             targets = target
-        targets = (1 - self.epsilon) * targets + (
-            self.epsilon / self.num_classes
-        )
+        targets = (1 - self.epsilon) * targets + (self.epsilon / self.num_classes)
         loss = -targets * log_probs
         if self.reduction == "avg":
             loss = loss.mean(0).sum()
@@ -59,6 +53,4 @@ class BinaryCrossEntropyLabelSmooth(torch.nn.BCEWithLogitsLoss):
 
     def forward(self, input, target):  # pylint: disable=redefined-builtin
         target = (1 - self.epsilon) * target + self.epsilon
-        return super(BinaryCrossEntropyLabelSmooth, self).forward(
-            input, target
-        )
+        return super(BinaryCrossEntropyLabelSmooth, self).forward(input, target)
