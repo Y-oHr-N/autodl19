@@ -53,7 +53,7 @@ class LogicModel(Model):
 
         # TODO: adaptive logic for hyper parameter
         self.hyper_params = {
-            "optimizer": {"lr": 0.025,},
+            "optimizer": {"lr": 0.00025,},#0.025
             "dataset": {
                 "train_info_sample": 256,
                 "cv_valid_ratio": 0.1,
