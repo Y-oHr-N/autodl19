@@ -8,6 +8,8 @@ import os
 import sys
 import tensorflow as tf
 
+os.system('pip3 install -q kapre')
+
 here = os.path.dirname(os.path.abspath(__file__))
 model_dirs = [
     "",  # current directory
