@@ -55,8 +55,8 @@ class Model(LogicModel):
         LOGGER.info("[init] session")
         [t.join() for t in threads]
 
-        #self.device = torch.device("cuda", 0)
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        # self.device = torch.device("cuda", 0)
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.session = tf.Session()
 
         LOGGER.info("[init] Model")
@@ -76,7 +76,9 @@ class Model(LogicModel):
         # torch.cuda.synchronize()
 
         LOGGER.info("[init] copy to device")
-        self.model = self.model.to(device=self.device, non_blocking=True)  # .half()
+        self.model = self.model.to(
+            device=self.device, non_blocking=True
+        )  # .half()
         self.model_pred = self.model_pred.to(
             device=self.device, non_blocking=True
         )  # .half()
@@ -90,11 +92,15 @@ class Model(LogicModel):
 
         epsilon = min(0.1, max(0.001, 0.001 * pow(num_class / 10, 2)))
         if self.is_multiclass():
-            #self.model.loss_fn = torch.nn.BCEWithLogitsLoss(reduction="none")
+            # self.model.loss_fn = torch.nn.BCEWithLogitsLoss(reduction="none")
             if self.is_video():
-                self.model.loss_fn = skeleton.nn.BinaryCrossEntropyLabelSmooth(num_class, epsilon=epsilon * 1000, reduction='none')
+                self.model.loss_fn = skeleton.nn.BinaryCrossEntropyLabelSmooth(
+                    num_class, epsilon=epsilon * 1000, reduction="none"
+                )
             else:
-                self.model.loss_fn = torch.nn.BCEWithLogitsLoss(reduction="none")
+                self.model.loss_fn = torch.nn.BCEWithLogitsLoss(
+                    reduction="none"
+                )
             self.tau = 8.0
             LOGGER.info(
                 "[update_model] %s (tau:%f, epsilon:%f)",
@@ -151,7 +157,7 @@ class Model(LogicModel):
             ),
             init_scale=1.0,
         )
-        '''
+        """
         self.optimizer_fc = skeleton.optim.ScheduledOptimizer(
             params_fc,
             torch.optim.SGD,
@@ -174,19 +180,19 @@ class Model(LogicModel):
             weight_decay=0.00025,
             nesterov=True,
         )
-        '''
+        """
         self.optimizer_fc = skeleton.optim.ScheduledOptimizer(
             params_fc,
-            #torch.optim.Adam,
+            # torch.optim.Adam,
             AdaBound,
             # skeleton.optim.SGDW,
             steps_per_epoch=steps_per_epoch,
             clip_grad_max_norm=None,
-            lr=scheduler_lr
+            lr=scheduler_lr,
         )
         self.optimizer = skeleton.optim.ScheduledOptimizer(
             params,
-            #torch.optim.Adam,
+            # torch.optim.Adam,
             AdaBound,
             # skeleton.optim.SGDW,
             steps_per_epoch=steps_per_epoch,
@@ -205,8 +211,12 @@ class Model(LogicModel):
         height, width = input_shape[:2]
         batch_size = self.hyper_params["dataset"]["batch_size"]
 
-        train_score = np.average([c["train"]["score"] for c in self.checkpoints[-5:]])
-        valid_score = np.average([c["valid"]["score"] for c in self.checkpoints[-5:]])
+        train_score = np.average(
+            [c["train"]["score"] for c in self.checkpoints[-5:]]
+        )
+        valid_score = np.average(
+            [c["valid"]["score"] for c in self.checkpoints[-5:]]
+        )
         LOGGER.info(
             "[adapt] [%04d/%04d] train:%.3f valid:%.3f",
             epoch,
@@ -218,7 +228,9 @@ class Model(LogicModel):
         self.use_test_time_augmentation = self.info["loop"]["test"] > 1
 
         if self.hyper_params["conditions"]["use_fast_auto_aug"]:
-            self.hyper_params["conditions"]["use_fast_auto_aug"] = valid_score < 0.995
+            self.hyper_params["conditions"]["use_fast_auto_aug"] = (
+                valid_score < 0.995
+            )
 
         # Adapt Apply Fast auto aug
         if (
@@ -255,7 +267,9 @@ class Model(LogicModel):
                         if isinstance(t, torch.Tensor)
                         else torch.Tensor(t),
                         tv.transforms.ToPILImage(),
-                        skeleton.data.augmentations.Augmentation(selected_policy),
+                        skeleton.data.augmentations.Augmentation(
+                            selected_policy
+                        ),
                         tv.transforms.ToTensor(),
                         lambda t: t.to(device=self.device),  # .half()
                     ]
@@ -264,13 +278,17 @@ class Model(LogicModel):
                 metrics = []
                 for policy_eval in range(num_sub_policy * 2):
                     valid_dataloader = self.build_or_get_dataloader(
-                        "valid", self.datasets["valid"], self.datasets["num_valids"]
+                        "valid",
+                        self.datasets["valid"],
+                        self.datasets["num_valids"],
                     )
                     # original_valid_batch_size = valid_dataloader.batch_sampler.batch_size
                     # valid_dataloader.batch_sampler.batch_size = batch_size
 
                     valid_metrics = self.epoch_valid(
-                        self.info["loop"]["epoch"], valid_dataloader, reduction="max"
+                        self.info["loop"]["epoch"],
+                        valid_dataloader,
+                        reduction="max",
                     )
 
                     # valid_dataloader.batch_sampler.batch_size = original_valid_batch_size
@@ -293,21 +311,29 @@ class Model(LogicModel):
             flatten = lambda l: [item for sublist in l for item in sublist]
 
             # filtered valid score
-            searched_policy = [p for p in searched_policy if p["score"] > valid_score]
+            searched_policy = [
+                p for p in searched_policy if p["score"] > valid_score
+            ]
 
             if len(searched_policy) > 0:
-                policy_sorted_index = np.argsort([p["score"] for p in searched_policy])[
-                    ::-1
-                ][:num_select_policy]
+                policy_sorted_index = np.argsort(
+                    [p["score"] for p in searched_policy]
+                )[::-1][:num_select_policy]
                 # policy_sorted_index = np.argsort([p['loss'] for p in searched_policy])[:num_select_policy]
                 policy = flatten(
-                    [searched_policy[idx]["policy"] for idx in policy_sorted_index]
+                    [
+                        searched_policy[idx]["policy"]
+                        for idx in policy_sorted_index
+                    ]
                 )
                 policy = skeleton.data.augmentations.remove_duplicates(policy)
 
                 LOGGER.info(
                     "[adapt] [FAA] scores: %s",
-                    [searched_policy[idx]["score"] for idx in policy_sorted_index],
+                    [
+                        searched_policy[idx]["score"]
+                        for idx in policy_sorted_index
+                    ],
                 )
 
                 original_train_policy = self.dataloaders[
@@ -335,7 +361,9 @@ class Model(LogicModel):
             self.hyper_params["optimizer"]["lr"] /= 2.0
             self.init_opt()
             self.hyper_params["conditions"]["max_inner_loop_ratio"] *= 3
-            self.hyper_params["conditions"]["threshold_valid_score_diff"] = 0.00001
+            self.hyper_params["conditions"][
+                "threshold_valid_score_diff"
+            ] = 0.00001
             self.hyper_params["conditions"]["min_lr"] = 1e-8
 
     def activation(self, logits):
@@ -353,7 +381,9 @@ class Model(LogicModel):
     def epoch_train(self, epoch, train, model=None, optimizer=None):
         model = model if model is not None else self.model
         if epoch < 0:
-            optimizer = optimizer if optimizer is not None else self.optimizer_fc
+            optimizer = (
+                optimizer if optimizer is not None else self.optimizer_fc
+            )
         else:
             optimizer = optimizer if optimizer is not None else self.optimizer
         # optimizer = optimizer if optimizer is not None else self.optimizer
@@ -372,8 +402,12 @@ class Model(LogicModel):
             if not self.is_multiclass():
                 labels = labels.argmax(dim=-1)
 
-            skeleton.nn.MoveToHook.to((examples, labels), self.device, self.is_half)
-            logits, loss = model(examples, labels, tau=self.tau, reduction="avg")
+            skeleton.nn.MoveToHook.to(
+                (examples, labels), self.device, self.is_half
+            )
+            logits, loss = model(
+                examples, labels, tau=self.tau, reduction="avg"
+            )
             loss = loss.sum()
             loss.backward()
 
@@ -456,7 +490,10 @@ class Model(LogicModel):
                 else:
                     auc = max(
                         [
-                            AUC(logits[i : i + 16], original_labels[i : i + 16].float())
+                            AUC(
+                                logits[i : i + 16],
+                                original_labels[i : i + 16].float(),
+                            )
                             for i in range(int(len(logits)) // 16)
                         ]
                     )
@@ -563,7 +600,9 @@ class Model(LogicModel):
                     predictions.append(logits)
 
             if detach:
-                predictions = np.concatenate(predictions, axis=0).astype(np.float)
+                predictions = np.concatenate(predictions, axis=0).astype(
+                    np.float
+                )
             else:
                 predictions = torch.cat(predictions, dim=0)
         return predictions

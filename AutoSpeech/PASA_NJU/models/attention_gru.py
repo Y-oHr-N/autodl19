@@ -19,7 +19,12 @@ from tensorflow.python.keras.layers import (
 from tensorflow.python.keras.models import Model as TFModel
 
 from CONSTANT import MAX_FRAME_NUM
-from data_process import ohe2cat, extract_mfcc_parallel, get_max_length, pad_seq
+from data_process import (
+    ohe2cat,
+    extract_mfcc_parallel,
+    get_max_length,
+    pad_seq,
+)
 from models.attention import Attention
 from models.my_classifier import Classifier
 from tools import log
@@ -48,7 +53,8 @@ class AttentionGru(Classifier):
         inputs = Input(shape=input_shape)
         # bnorm_1 = BatchNormalization(axis=-1)(inputs)
         x = Bidirectional(
-            CuDNNLSTM(96, name="blstm1", return_sequences=True), merge_mode="concat"
+            CuDNNLSTM(96, name="blstm1", return_sequences=True),
+            merge_mode="concat",
         )(inputs)
         # activation_1 = Activation('tanh')(lstm_1)
         x = SpatialDropout1D(0.1)(x)
@@ -88,7 +94,9 @@ class AttentionGru(Classifier):
             epochs = 5
         patience = 2
         callbacks = [
-            tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience)
+            tf.keras.callbacks.EarlyStopping(
+                monitor="val_loss", patience=patience
+            )
         ]
 
         self._model.fit(

@@ -422,6 +422,8 @@ def autoaug_policy():
     ]
     exp0s = exp0_0 + exp0_1 + exp0_2 + exp0_3
     exp1s = exp1_0 + exp1_1 + exp1_2 + exp1_3 + exp1_4 + exp1_5 + exp1_6
-    exp2s = exp2_0 + exp2_1 + exp2_2 + exp2_3 + exp2_4 + exp2_5 + exp2_6 + exp2_7
+    exp2s = (
+        exp2_0 + exp2_1 + exp2_2 + exp2_3 + exp2_4 + exp2_5 + exp2_6 + exp2_7
+    )
 
     return exp0s + exp1s + exp2s

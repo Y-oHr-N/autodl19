@@ -46,7 +46,12 @@ class ResNet18(models.ResNet):
                 # skeleton.nn.Permute(0, 3, 1, 2),
                 skeleton.nn.Normalize(0.5, 0.25, inplace=False),
                 torch.nn.Conv2d(
-                    in_channels, 3, kernel_size=3, stride=1, padding=1, bias=False
+                    in_channels,
+                    3,
+                    kernel_size=3,
+                    stride=1,
+                    padding=1,
+                    bias=False,
                 ),
                 torch.nn.BatchNorm2d(3),
             )
@@ -106,13 +111,14 @@ class ResNet18(models.ResNet):
         self._half = False
         self._class_normalize = True
         self._is_video = False
-        #self._dropout = torch.nn.Dropout(0.3)
+        # self._dropout = torch.nn.Dropout(0.3)
 
     def set_video(self, is_video=True, times=False):
         self._is_video = is_video
         if is_video:
             self.conv1d_prev = torch.nn.Sequential(
-                skeleton.nn.SplitTime(times), skeleton.nn.Permute(0, 2, 1, 3, 4),
+                skeleton.nn.SplitTime(times),
+                skeleton.nn.Permute(0, 2, 1, 3, 4),
             )
 
             self.conv1d_post = torch.nn.Sequential()
@@ -122,7 +128,9 @@ class ResNet18(models.ResNet):
 
     def init(self, model_dir=None, gain=1.0):
         self.model_dir = model_dir if model_dir is not None else self.model_dir
-        sd = model_zoo.load_url(model_urls["resnet18"], model_dir=self.model_dir)
+        sd = model_zoo.load_url(
+            model_urls["resnet18"], model_dir=self.model_dir
+        )
         # sd = model_zoo.load_url(model_urls['resnet34'], model_dir='./models/')
         del sd["fc.weight"]
         del sd["fc.bias"]
@@ -166,7 +174,7 @@ class ResNet18(models.ResNet):
             x = self.conv1d_post(x)
 
         x = x.view(x.size(0), -1)
-        #x = self._dropout(x)
+        # x = self._dropout(x)
         x = self.fc(x)
         return x
 
@@ -192,7 +200,10 @@ class ResNet18(models.ResNet):
 
         if self._class_normalize and isinstance(
             self.loss_fn,
-            (torch.nn.BCEWithLogitsLoss, skeleton.nn.BinaryCrossEntropyLabelSmooth),
+            (
+                torch.nn.BCEWithLogitsLoss,
+                skeleton.nn.BinaryCrossEntropyLabelSmooth,
+            ),
         ):
             pos = (targets == 1).to(logits.dtype)
             neg = (targets < 1).to(logits.dtype)
@@ -226,7 +237,9 @@ class ResNet18(models.ResNet):
             if len([c for c in module.children()]) > 0:
                 continue
 
-            if not isinstance(module, (torch.nn.BatchNorm1d, torch.nn.BatchNorm2d)):
+            if not isinstance(
+                module, (torch.nn.BatchNorm1d, torch.nn.BatchNorm2d)
+            ):
                 module.half()
             else:
                 module.float()

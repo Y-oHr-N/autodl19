@@ -21,7 +21,10 @@ class FT_tf_model(object):
         )
 
         self.ft_w_embed = self.get_token_embeddings(
-            self.vocabulary_size, self.embedding_size, zero_pad=False, name="w_embed"
+            self.vocabulary_size,
+            self.embedding_size,
+            zero_pad=False,
+            name="w_embed",
         )
 
         with tf.variable_scope("FT", reuse=tf.AUTO_REUSE):
@@ -51,7 +54,12 @@ class FT_tf_model(object):
                     # Maxpooling over the outputs
                     pooled = tf.nn.max_pool(
                         h,
-                        ksize=[1, self.sequence_length - filter_size + 1, 1, 1],
+                        ksize=[
+                            1,
+                            self.sequence_length - filter_size + 1,
+                            1,
+                            1,
+                        ],
                         strides=[1, 1, 1, 1],
                         padding="VALID",
                         name="pool",
@@ -152,7 +160,10 @@ class FT_tf_model(object):
         if batch_size >= len(X):
             batch_size = int(len(X) / 2)
 
-        print("TF model---------- batch_size:%d, X length: %d" % (batch_size, len(X)))
+        print(
+            "TF model---------- batch_size:%d, X length: %d"
+            % (batch_size, len(X))
+        )
         train_step = tf.train.AdamOptimizer(0.0025).minimize(self.losses)
         init_global = tf.global_variables_initializer()
         init_local = tf.local_variables_initializer()
@@ -191,9 +202,13 @@ class FT_tf_model(object):
                 start = i * batch_size
                 end = (i + 1) * batch_size
                 if i == 0:
-                    probs = sess.run(self.probs, feed_dict={self.input_x: X[start:end]})
+                    probs = sess.run(
+                        self.probs, feed_dict={self.input_x: X[start:end]}
+                    )
                 else:
-                    p = sess.run(self.probs, feed_dict={self.input_x: X[start:end]})
+                    p = sess.run(
+                        self.probs, feed_dict={self.input_x: X[start:end]}
+                    )
                     probs = np.concatenate((probs, p), axis=0)
             if rounds * batch_size < len(X):
                 start = rounds * batch_size

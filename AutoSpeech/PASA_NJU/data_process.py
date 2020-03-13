@@ -40,7 +40,11 @@ def get_max_length(x, ratio=0.95):
 
 def pad_seq(data, pad_len):
     return sequence.pad_sequences(
-        data, maxlen=pad_len, dtype="float32", padding="post", truncating="post"
+        data,
+        maxlen=pad_len,
+        dtype="float32",
+        padding="post",
+        truncating="post",
     )
 
 
@@ -81,7 +85,9 @@ def extract_for_one_sample(tuple, extract, use_power_db=False, **kwargs):
 
 
 @timeit
-def extract_mfcc_parallel(data, sr=16000, n_fft=None, hop_length=None, n_mfcc=NUM_MFCC):
+def extract_mfcc_parallel(
+    data, sr=16000, n_fft=None, hop_length=None, n_mfcc=NUM_MFCC
+):
     if n_fft is None:
         n_fft = int(sr * FFT_DURATION)
     if hop_length is None:
@@ -106,7 +112,9 @@ def extract_mfcc_parallel(data, sr=16000, n_fft=None, hop_length=None, n_mfcc=NU
 @timeit
 def extract_zero_crossing_rate_parallel(data):
     extract = partial(
-        extract_for_one_sample, extract=librosa.feature.zero_crossing_rate, pad=False
+        extract_for_one_sample,
+        extract=librosa.feature.zero_crossing_rate,
+        pad=False,
     )
     results = extract_parallel(data, extract)
 
@@ -117,7 +125,9 @@ def extract_zero_crossing_rate_parallel(data):
 
 
 @timeit
-def extract_spectral_centroid_parallel(data, sr=16000, n_fft=None, hop_length=None):
+def extract_spectral_centroid_parallel(
+    data, sr=16000, n_fft=None, hop_length=None
+):
     if n_fft is None:
         n_fft = int(sr * FFT_DURATION)
     if hop_length is None:
@@ -158,7 +168,9 @@ def extract_melspectrogram_parallel(
 
 # spectral rolloff
 @timeit
-def extract_spectral_rolloff_parallel(data, sr=16000, n_fft=None, hop_length=None):
+def extract_spectral_rolloff_parallel(
+    data, sr=16000, n_fft=None, hop_length=None
+):
     if n_fft is None:
         n_fft = int(sr * FFT_DURATION)
     if hop_length is None:
@@ -239,7 +251,9 @@ def extract_spectral_contrast_parallel(
 
 
 @timeit
-def extract_spectral_flatness_parallel(data, sr=16000, n_fft=None, hop_length=None):
+def extract_spectral_flatness_parallel(
+    data, sr=16000, n_fft=None, hop_length=None
+):
     if n_fft is None:
         n_fft = int(sr * FFT_DURATION)
     if hop_length is None:
@@ -258,7 +272,9 @@ def extract_spectral_flatness_parallel(data, sr=16000, n_fft=None, hop_length=No
 
 @timeit
 def extract_tonnetz_parallel(data, sr=16000):
-    extract = partial(extract_for_one_sample, extract=librosa.feature.tonnetz, sr=sr)
+    extract = partial(
+        extract_for_one_sample, extract=librosa.feature.tonnetz, sr=sr
+    )
     results = extract_parallel(data, extract)
     return results
 

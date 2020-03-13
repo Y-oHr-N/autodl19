@@ -54,7 +54,9 @@ class Profile:
 
         handles = []
         for name, module in self.module.named_modules():
-            if len(list(module.children())) > 0:  # pylint: disable=len-as-condition
+            if (
+                len(list(module.children())) > 0
+            ):  # pylint: disable=len-as-condition
                 continue
             handle = module.register_forward_hook(get_hook(name))
             handles.append(handle)
@@ -65,7 +67,11 @@ class Profile:
         _ = [h.remove() for h in handles]
 
         return np.sum(
-            [data["flops"] for data in operation_flops if name_filter(data["name"])]
+            [
+                data["flops"]
+                for data in operation_flops
+                if name_filter(data["name"])
+            ]
         )
 
 

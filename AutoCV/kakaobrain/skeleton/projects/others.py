@@ -20,7 +20,9 @@ def get_logger(name, stream=sys.stderr):
 
     logger = logging.getLogger(name)
     level = (
-        logging.INFO if os.environ.get("LOG_LEVEL", "INFO") == "INFO" else logging.DEBUG
+        logging.INFO
+        if os.environ.get("LOG_LEVEL", "INFO") == "INFO"
+        else logging.DEBUG
     )
     logger.setLevel(level)
     logger.addHandler(handler)
@@ -34,7 +36,8 @@ def get_tf_resize(height, width, times=1, min_value=0.0, max_value=1.0):
     def preprocessor(tensor):
         in_times, in_height, in_width, in_channels = tensor.get_shape()
         LOGGER.info(
-            "[get_tf_resize] shape:%s", (in_times, in_height, in_width, in_channels)
+            "[get_tf_resize] shape:%s",
+            (in_times, in_height, in_width, in_channels),
         )
 
         if width == in_width and height == in_height:
@@ -126,7 +129,9 @@ def tiedrank(a):
             newval = sa[k]
             if newval == oldval:
                 # moving average
-                R[k0 : k + 1] = R[k - 1] * (k - k0) / (k - k0 + 1) + R[k] / (k - k0 + 1)
+                R[k0 : k + 1] = R[k - 1] * (k - k0) / (k - k0 + 1) + R[k] / (
+                    k - k0 + 1
+                )
             else:
                 k0 = k
                 oldval = newval
@@ -143,7 +148,10 @@ def mvmean(R, axis=0):
     if len(R.shape) == 0:
         return R
     average = lambda x: reduce(
-        lambda i, j: (0, (j[0] / (j[0] + 1.0)) * i[1] + (1.0 / (j[0] + 1)) * j[1]),
+        lambda i, j: (
+            0,
+            (j[0] / (j[0] + 1.0)) * i[1] + (1.0 / (j[0] + 1)) * j[1],
+        ),
         enumerate(x),
     )[1]
     R = np.array(R)

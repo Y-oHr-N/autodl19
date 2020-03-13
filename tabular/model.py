@@ -65,7 +65,9 @@ class Model(object):
         self.batch_size = 128
         # Change to True if you want to show device info at each operation
         log_device_placement = False
-        session_config = tf.ConfigProto(log_device_placement=log_device_placement)
+        session_config = tf.ConfigProto(
+            log_device_placement=log_device_placement
+        )
         # Attributes for preprocessing
         self.default_image_size = (112, 112)
         self.default_num_frames = 10
@@ -149,16 +151,16 @@ class Model(object):
                     self.is_multi_label = False
             if not hasattr(self, "cat_cols"):
                 self.cat_cols = self.get_cat_cols(X)
-                logger.info(
-                "category estimate"
-                )
+                logger.info("category estimate")
                 print(self.cat_cols)
                 self.emb_dims = []
                 self.label_encoders = []
                 for i in self.cat_cols:
                     emb_dim = len(np.unique(X[:, i]))
                     # self.emb_dims.append(((emb_dim, int(6*(emb_dim**(1/4)))  )))
-                    self.emb_dims.append((emb_dim, int(max(2, min(emb_dim / 2, 50)))))
+                    self.emb_dims.append(
+                        (emb_dim, int(max(2, min(emb_dim / 2, 50))))
+                    )
                     label_encoder = LabelEncoder()
                     label_encoder.fit(X[:, i])
                     self.label_encoders.append(label_encoder)
@@ -169,17 +171,22 @@ class Model(object):
                 self.emb_dropout = 0.5
                 self.lin_layer_dropouts = [0.5, 0.5]
 
-            #TODO fill na
-            #TODO feature engineering
-            #TODO estimate type (categorical or numerical)
+            # TODO fill na
+            # TODO feature engineering
+            # TODO estimate type (categorical or numerical)
 
-            self.X_train, self.X_valid, self.y_train, self.y_valid = train_test_split(
+            (
+                self.X_train,
+                self.X_valid,
+                self.y_train,
+                self.y_valid,
+            ) = train_test_split(
                 X,
                 y,
                 random_state=42,
                 shuffle=True,
                 stratify=np.argmax(y, axis=1),
-                train_size=0.9
+                train_size=0.9,
             )
             # define dataset and dataloader
             # dataset_train = TabularDataset(X_train, y_train)
@@ -189,26 +196,32 @@ class Model(object):
                 self.y_train,
                 cat_cols=self.cat_cols,
                 standard_scaler=self.standard_scaler,
-                label_encoder=self.label_encoders
+                label_encoder=self.label_encoders,
             )
             self.dataset_valid = TabularEmbeddingDataset(
                 self.X_valid,
                 self.y_valid,
                 cat_cols=self.cat_cols,
                 standard_scaler=self.standard_scaler,
-                label_encoder=self.label_encoders
+                label_encoder=self.label_encoders,
             )
 
-            self.dataloader_train = DataLoader(self.dataset_train, self.batch_size, shuffle=True)
-            self.dataloader_valid = DataLoader(self.dataset_valid, self.batch_size, shuffle=False)
+            self.dataloader_train = DataLoader(
+                self.dataset_train, self.batch_size, shuffle=True
+            )
+            self.dataloader_valid = DataLoader(
+                self.dataset_valid, self.batch_size, shuffle=False
+            )
             if self.is_multi_label:
                 self.rf_models = []
-                self.predictions_rf_valid = np.empty((self.X_valid.shape[0], 0))
+                self.predictions_rf_valid = np.empty(
+                    (self.X_valid.shape[0], 0)
+                )
                 for i in range(self.output_dim):
                     rf_model = lgb.LGBMClassifier(
                         boosting_type="rf",
                         objective="binary",
-                        num_leaves=2**5-1,
+                        num_leaves=2 ** 5 - 1,
                         max_depth=5,
                         # learning_rate=0.1,
                         n_estimators=100,
@@ -218,66 +231,84 @@ class Model(object):
                     )
                     rf_model.fit(
                         self.X_train,
-                        self.y_train[:,i],
-                        eval_set=[(self.X_valid, self.y_valid[:,i])],
+                        self.y_train[:, i],
+                        eval_set=[(self.X_valid, self.y_valid[:, i])],
                         eval_metric="logloss",
                         early_stopping_rounds=10,
                         verbose=100,
                     )
 
-                    pred_tmp = rf_model.predict_proba(self.X_valid)[:,1].reshape(-1, 1)
-                    self.predictions_rf_valid = np.concatenate([self.predictions_rf_valid, pred_tmp], axis=1)
+                    pred_tmp = rf_model.predict_proba(self.X_valid)[
+                        :, 1
+                    ].reshape(-1, 1)
+                    self.predictions_rf_valid = np.concatenate(
+                        [self.predictions_rf_valid, pred_tmp], axis=1
+                    )
                     self.rf_models.append(rf_model)
             else:
                 if self.output_dim == 2:
                     self.rf_model = lgb.LGBMClassifier(
                         boosting_type="rf",
                         objective="binary",
-                        num_leaves=2**5-1,
+                        num_leaves=2 ** 5 - 1,
                         max_depth=5,
                         # learning_rate=0.1,
                         n_estimators=100,
                         colsample_bytree=0.5,
                         subsample=0.5,
                         subsample_freq=1,
-                        )
+                    )
                     self.rf_model.fit(
                         self.X_train,
                         np.argmax(self.y_train, axis=1),
-                        eval_set=[(self.X_valid, np.argmax(self.y_valid, axis=1))],
+                        eval_set=[
+                            (self.X_valid, np.argmax(self.y_valid, axis=1))
+                        ],
                         eval_metric="logloss",
                         early_stopping_rounds=10,
-                        verbose=100
-                        )
+                        verbose=100,
+                    )
                 else:
                     self.rf_model = lgb.LGBMClassifier(
                         boosting_type="rf",
                         objective="multiclass",
-                        num_leaves=2**5-1,
+                        num_leaves=2 ** 5 - 1,
                         max_depth=5,
                         # learning_rate=0.1,
                         n_estimators=100,
                         colsample_bytree=0.5,
                         subsample=0.5,
                         subsample_freq=1,
-                        num_class=self.output_dim
-                        )
+                        num_class=self.output_dim,
+                    )
                     self.rf_model.fit(
                         self.X_train,
                         np.argmax(self.y_train, axis=1),
-                        eval_set=[(self.X_valid, np.argmax(self.y_valid, axis=1))],
+                        eval_set=[
+                            (self.X_valid, np.argmax(self.y_valid, axis=1))
+                        ],
                         eval_metric="multi_logloss",
                         early_stopping_rounds=10,
-                        verbose=100
-                        )
-                self.predictions_rf_valid = self.rf_model.predict_proba(self.X_valid)
-            self.valid_score_rf = 2 * roc_auc_score(self.y_valid, self.predictions_rf_valid, average="macro") - 1
+                        verbose=100,
+                    )
+                self.predictions_rf_valid = self.rf_model.predict_proba(
+                    self.X_valid
+                )
+            self.valid_score_rf = (
+                2
+                * roc_auc_score(
+                    self.y_valid, self.predictions_rf_valid, average="macro"
+                )
+                - 1
+            )
             print("rf_auc: ", self.valid_score_rf)
             return self
 
         # define model
         if not hasattr(self, "model"):
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            self.device = torch.device(
+                "cuda" if torch.cuda.is_available() else "cpu"
+            )
             """
             self.model = TabularNN(
                 feature_num=X.shape[1],
@@ -290,7 +321,7 @@ class Model(object):
                 lin_layer_sizes=self.lin_layer_sizes,
                 output_size=self.output_dim,
                 emb_dropout=self.emb_dropout,
-                lin_layer_dropouts=self.lin_layer_dropouts
+                lin_layer_dropouts=self.lin_layer_dropouts,
             ).to(self.device)
             if self.is_multi_label:
                 self.criterion = nn.BCEWithLogitsLoss()
@@ -298,14 +329,16 @@ class Model(object):
                 self.criterion = nn.CrossEntropyLoss()
             self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
         self.train_begin_times.append(time.time())
-        #TODO time management
+        # TODO time management
         if len(self.train_begin_times) >= 2:
-            cycle_length = self.train_begin_times[-1] - self.train_begin_times[-2]
+            cycle_length = (
+                self.train_begin_times[-1] - self.train_begin_times[-2]
+            )
             self.li_cycle_length.append(cycle_length)
 
         # Get number of steps to train according to some strategy
         steps_to_train = self.get_steps_to_train(remaining_time_budget)
-        #TODO time management and early stopping
+        # TODO time management and early stopping
         if steps_to_train <= 0:
             logger.info(
                 "Not enough time remaining for training + test. "
@@ -324,12 +357,16 @@ class Model(object):
             msg_est = ""
             if len(self.li_estimated_time) > 0:
                 estimated_duration = self.li_estimated_time[-1]
-                estimated_end_time = time.ctime(int(time.time() + estimated_duration))
+                estimated_end_time = time.ctime(
+                    int(time.time() + estimated_duration)
+                )
                 msg_est = (
                     "estimated time for training + test: "
                     + "{:.2f} sec, ".format(estimated_duration)
                 )
-                msg_est += "and should finish around {}.".format(estimated_end_time)
+                msg_est += "and should finish around {}.".format(
+                    estimated_end_time
+                )
             logger.info(
                 "Begin training for another {} steps...{}".format(
                     steps_to_train, msg_est
@@ -338,7 +375,7 @@ class Model(object):
 
             # Start training
             train_start = time.time()
-            #TODO corresponding multi class
+            # TODO corresponding multi class
             for i in range(self.early_stopping_rounds):
                 running_loss = 0.0
                 auc = []
@@ -351,7 +388,9 @@ class Model(object):
                     if self.is_multi_label:
                         loss = self.criterion(preds, y_batch)
                     else:
-                        loss = self.criterion(preds, torch.argmax(y_batch, dim=1))
+                        loss = self.criterion(
+                            preds, torch.argmax(y_batch, dim=1)
+                        )
                     self.optimizer.zero_grad()
                     loss.backward()
                     self.optimizer.step()
@@ -363,11 +402,27 @@ class Model(object):
                     X_num_batch = X_num_batch.to(self.device)
                     X_cat_batch = X_cat_batch.to(self.device)
                     if self.is_multi_label:
-                        output = torch.sigmoid(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
+                        output = (
+                            torch.sigmoid(self.model(X_num_batch, X_cat_batch))
+                            .data.cpu()
+                            .numpy()
+                        )
                     else:
-                        output = F.softmax(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
-                    self.predictions_valid = np.concatenate([self.predictions_valid, output], axis=0)
-                valid_score = 2 * roc_auc_score(self.y_valid, self.predictions_valid, average="macro") - 1
+                        output = (
+                            F.softmax(self.model(X_num_batch, X_cat_batch))
+                            .data.cpu()
+                            .numpy()
+                        )
+                    self.predictions_valid = np.concatenate(
+                        [self.predictions_valid, output], axis=0
+                    )
+                valid_score = (
+                    2
+                    * roc_auc_score(
+                        self.y_valid, self.predictions_valid, average="macro"
+                    )
+                    - 1
+                )
                 print("loss : ", running_loss)
                 print("auc : ", valid_score)
                 self.epoch_num += 1
@@ -388,73 +443,93 @@ class Model(object):
                     lgb_model = lgb.LGBMClassifier(
                         boosting_type="gbdt",
                         objective="binary",
-                        num_leaves=2**5-1,
+                        num_leaves=2 ** 5 - 1,
                         max_depth=5,
                         learning_rate=0.1,
                         n_estimators=1000,
                         colsample_bytree=0.8,
                         subsample=0.8,
-                        subsample_freq=1
+                        subsample_freq=1,
                     )
                     lgb_model.fit(
                         self.X_train,
-                        self.y_train[:,i],
-                        eval_set=[(self.X_valid, self.y_valid[:,i])],
+                        self.y_train[:, i],
+                        eval_set=[(self.X_valid, self.y_valid[:, i])],
                         eval_metric="logloss",
                         early_stopping_rounds=10,
-                        verbose=100
+                        verbose=100,
                     )
 
-                    pred_tmp = lgb_model.predict_proba(self.X_valid)[:,1].reshape(-1, 1)
-                    predictions_lgb = np.concatenate([predictions_lgb, pred_tmp], axis=1)
+                    pred_tmp = lgb_model.predict_proba(self.X_valid)[
+                        :, 1
+                    ].reshape(-1, 1)
+                    predictions_lgb = np.concatenate(
+                        [predictions_lgb, pred_tmp], axis=1
+                    )
                     self.lgb_models.append(lgb_model)
             else:
                 if self.output_dim == 2:
                     self.lgb_model = lgb.LGBMClassifier(
                         boosting_type="gbdt",
                         objective="binary",
-                        num_leaves=2**5-1,
+                        num_leaves=2 ** 5 - 1,
                         max_depth=5,
                         learning_rate=0.1,
                         n_estimators=1000,
                         colsample_bytree=0.8,
                         subsample=0.8,
                         subsample_freq=1,
-                        )
+                    )
                     self.lgb_model.fit(
                         self.X_train,
                         np.argmax(self.y_train, axis=1),
-                        eval_set=[(self.X_valid, np.argmax(self.y_valid, axis=1))],
+                        eval_set=[
+                            (self.X_valid, np.argmax(self.y_valid, axis=1))
+                        ],
                         eval_metric="logloss",
                         early_stopping_rounds=10,
-                        verbose=100
-                        )
+                        verbose=100,
+                    )
                 else:
                     self.lgb_model = lgb.LGBMClassifier(
                         boosting_type="gbdt",
                         objective="multiclass",
-                        num_leaves=2**5-1,
+                        num_leaves=2 ** 5 - 1,
                         max_depth=5,
                         learning_rate=0.1,
                         n_estimators=1000,
                         colsample_bytree=0.8,
                         subsample=0.8,
                         subsample_freq=1,
-                        num_class=self.output_dim
-                        )
+                        num_class=self.output_dim,
+                    )
                     self.lgb_model.fit(
                         self.X_train,
                         np.argmax(self.y_train, axis=1),
-                        eval_set=[(self.X_valid, np.argmax(self.y_valid, axis=1))],
+                        eval_set=[
+                            (self.X_valid, np.argmax(self.y_valid, axis=1))
+                        ],
                         eval_metric="multi_logloss",
                         early_stopping_rounds=10,
-                        verbose=100
-                        )
+                        verbose=100,
+                    )
                 predictions_lgb = self.lgb_model.predict_proba(self.X_valid)
-            valid_score_lgb = 2 * roc_auc_score(self.y_valid, predictions_lgb, average="macro") - 1
+            valid_score_lgb = (
+                2
+                * roc_auc_score(self.y_valid, predictions_lgb, average="macro")
+                - 1
+            )
             print("lgb_auc: ", valid_score_lgb)
-            predictions_ensemble = (1-self.lgb_weight)*self.predictions_valid + self.lgb_weight*predictions_lgb
-            valid_score_ensemble = 2 * roc_auc_score(self.y_valid, predictions_ensemble, average="macro") - 1
+            predictions_ensemble = (
+                1 - self.lgb_weight
+            ) * self.predictions_valid + self.lgb_weight * predictions_lgb
+            valid_score_ensemble = (
+                2
+                * roc_auc_score(
+                    self.y_valid, predictions_ensemble, average="macro"
+                )
+                - 1
+            )
             print("ensemble_auc: ", valid_score_ensemble)
             if valid_score_lgb > valid_score_ensemble:
                 self.using_model = "lgb"
@@ -467,7 +542,9 @@ class Model(object):
                 "{} steps trained. {:.2f} sec used. ".format(
                     steps_to_train, train_duration
                 )
-                + "Now total steps trained: {}. ".format(sum(self.li_steps_to_train))
+                + "Now total steps trained: {}. ".format(
+                    sum(self.li_steps_to_train)
+                )
                 + "Total time used for training + test: {:.2f} sec. ".format(
                     sum(self.li_cycle_length)
                 )
@@ -493,16 +570,24 @@ class Model(object):
                 None,
                 cat_cols=self.cat_cols,
                 standard_scaler=self.standard_scaler,
-                label_encoder=self.label_encoders
+                label_encoder=self.label_encoders,
             )
-            self.dataloader_test = DataLoader(self.dataset_test, self.batch_size, shuffle=False)
+            self.dataloader_test = DataLoader(
+                self.dataset_test, self.batch_size, shuffle=False
+            )
             if self.is_multi_label:
                 self.predictions_rf_test = np.empty((self.X_test.shape[0], 0))
                 for rf_model in self.rf_models:
-                    pred_tmp = rf_model.predict_proba(self.X_test)[:,1].reshape(-1, 1)
-                    self.predictions_rf_test = np.concatenate([self.predictions_rf_test, pred_tmp], axis=1)
+                    pred_tmp = rf_model.predict_proba(self.X_test)[
+                        :, 1
+                    ].reshape(-1, 1)
+                    self.predictions_rf_test = np.concatenate(
+                        [self.predictions_rf_test, pred_tmp], axis=1
+                    )
             else:
-                self.predictions_rf_test = self.rf_model.predict_proba(self.X_test)
+                self.predictions_rf_test = self.rf_model.predict_proba(
+                    self.X_test
+                )
             print(self.predictions_rf_test.shape)
             print(self.X_test.shape)
             self.is_first = False
@@ -521,35 +606,96 @@ class Model(object):
                 X_num_batch = X_num_batch.to(self.device)
                 X_cat_batch = X_cat_batch.to(self.device)
                 if self.is_multi_label:
-                    output = torch.sigmoid(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
+                    output = (
+                        torch.sigmoid(self.model(X_num_batch, X_cat_batch))
+                        .data.cpu()
+                        .numpy()
+                    )
                 else:
-                    output = F.softmax(self.model(X_num_batch, X_cat_batch)).data.cpu().numpy()
-                self.predictions_test = np.concatenate([self.predictions_test, output], axis=0)
+                    output = (
+                        F.softmax(self.model(X_num_batch, X_cat_batch))
+                        .data.cpu()
+                        .numpy()
+                    )
+                self.predictions_test = np.concatenate(
+                    [self.predictions_test, output], axis=0
+                )
         if self.using_model == "NN":
             if self.max_score > self.valid_score_rf:
-                predictions_ensemble_rf = 0.8*self.predictions_valid + (1-0.8)*self.predictions_rf_valid
-                if self.max_score < 2 * roc_auc_score(self.y_valid, predictions_ensemble_rf, average="macro") - 1:
-                    self.predictions_test = 0.8*self.predictions_test + (1-0.8)*self.predictions_rf_test
-                    print("ensemble auc: ", 2 * roc_auc_score(self.y_valid, predictions_ensemble_rf, average="macro") - 1)
+                predictions_ensemble_rf = (
+                    0.8 * self.predictions_valid
+                    + (1 - 0.8) * self.predictions_rf_valid
+                )
+                if (
+                    self.max_score
+                    < 2
+                    * roc_auc_score(
+                        self.y_valid, predictions_ensemble_rf, average="macro"
+                    )
+                    - 1
+                ):
+                    self.predictions_test = (
+                        0.8 * self.predictions_test
+                        + (1 - 0.8) * self.predictions_rf_test
+                    )
+                    print(
+                        "ensemble auc: ",
+                        2
+                        * roc_auc_score(
+                            self.y_valid,
+                            predictions_ensemble_rf,
+                            average="macro",
+                        )
+                        - 1,
+                    )
             else:
-                predictions_ensemble_rf = 0.2*self.predictions_valid + (1-0.2)*self.predictions_rf_valid
-                if self.valid_score_rf < 2 * roc_auc_score(self.y_valid, predictions_ensemble_rf, average="macro") - 1:
-                    self.predictions_test = 0.2*self.predictions_test + (1-0.2)*self.predictions_rf_test
-                    print("ensemble auc: ", 2 * roc_auc_score(self.y_valid, predictions_ensemble_rf, average="macro") - 1)
+                predictions_ensemble_rf = (
+                    0.2 * self.predictions_valid
+                    + (1 - 0.2) * self.predictions_rf_valid
+                )
+                if (
+                    self.valid_score_rf
+                    < 2
+                    * roc_auc_score(
+                        self.y_valid, predictions_ensemble_rf, average="macro"
+                    )
+                    - 1
+                ):
+                    self.predictions_test = (
+                        0.2 * self.predictions_test
+                        + (1 - 0.2) * self.predictions_rf_test
+                    )
+                    print(
+                        "ensemble auc: ",
+                        2
+                        * roc_auc_score(
+                            self.y_valid,
+                            predictions_ensemble_rf,
+                            average="macro",
+                        )
+                        - 1,
+                    )
                 else:
                     self.predictions_test = self.predictions_rf_test
         else:
             if self.is_multi_label:
                 predictions_lgb = np.empty((self.X_test.shape[0], 0))
                 for lgb_model in self.lgb_models:
-                    pred_tmp = lgb_model.predict_proba(self.X_test)[:,1].reshape(-1, 1)
-                    predictions_lgb = np.concatenate([predictions_lgb, pred_tmp], axis=1)
+                    pred_tmp = lgb_model.predict_proba(self.X_test)[
+                        :, 1
+                    ].reshape(-1, 1)
+                    predictions_lgb = np.concatenate(
+                        [predictions_lgb, pred_tmp], axis=1
+                    )
             else:
                 predictions_lgb = self.lgb_model.predict_proba(self.X_test)
             if self.using_model == "lgb":
                 self.predictions_test = predictions_lgb
             elif self.using_model == "ensemble":
-                self.predictions_test = (1-self.lgb_weight)*self.predictions_test + self.lgb_weight*predictions_lgb
+                self.predictions_test = (
+                    (1 - self.lgb_weight) * self.predictions_test
+                    + self.lgb_weight * predictions_lgb
+                )
 
         test_end = time.time()
 
@@ -576,7 +722,9 @@ class Model(object):
         if (
             remaining_time_budget is None
         ):  # This is never true in the competition anyway
-            remaining_time_budget = 1200  # if no time limit is given, set to 20min
+            remaining_time_budget = (
+                1200  # if no time limit is given, set to 20min
+            )
         if remaining_time_budget < 600:
             return 0
         # for more conservative estimation
@@ -590,16 +738,19 @@ class Model(object):
             steps_to_train = self.li_steps_to_train[-1] + 1
 
             # Estimate required time using linear regression
-            #X = np.array(self.li_steps_to_train).reshape(-1, 1)
-            #Y = np.array(self.li_cycle_length)
-            #self.time_estimator.fit(X, Y)
-            #X_test = np.array([steps_to_train]).reshape(-1, 1)
-            #Y_pred = self.time_estimator.predict(X_test)
+            # X = np.array(self.li_steps_to_train).reshape(-1, 1)
+            # Y = np.array(self.li_cycle_length)
+            # self.time_estimator.fit(X, Y)
+            # X_test = np.array([steps_to_train]).reshape(-1, 1)
+            # Y_pred = self.time_estimator.predict(X_test)
 
-            #estimated_time = Y_pred[0]
+            # estimated_time = Y_pred[0]
             estimated_time = self.li_cycle_length[0]
             self.li_estimated_time.append(estimated_time)
-            if self.early_stopping_rounds*estimated_time >= remaining_time_budget:
+            if (
+                self.early_stopping_rounds * estimated_time
+                >= remaining_time_budget
+            ):
                 return 0
             else:
                 return steps_to_train
@@ -614,7 +765,9 @@ class Model(object):
         batch_size = self.batch_size
         num_examples = self.num_examples_train
         num_epochs = sum(self.li_steps_to_train) * batch_size / num_examples
-        logger.info("Model already trained for {:.4f} epochs.".format(num_epochs))
+        logger.info(
+            "Model already trained for {:.4f} epochs.".format(num_epochs)
+        )
         return (
             num_epochs > self.num_epochs_we_want_to_train
         )  # Train for at least certain number of epochs then stop
@@ -662,11 +815,12 @@ class Model(object):
             next_element = iterator.get_next()
             X = np.empty((0, self.feature_size))
             Y = np.empty((0, self.output_dim))
-            with tf.Session(config=tf.ConfigProto(log_device_placement=False,
-                gpu_options=tf.GPUOptions(
-                    allow_growth=True
+            with tf.Session(
+                config=tf.ConfigProto(
+                    log_device_placement=False,
+                    gpu_options=tf.GPUOptions(allow_growth=True),
                 )
-            )) as sess:
+            ) as sess:
                 while True:
                     try:
                         example, labels = sess.run(next_element)
@@ -686,10 +840,12 @@ class Model(object):
         cat_cols = []
         for i in range(X.shape[1]):
             unique_list = np.unique(X[:, i])
-            if ((np.min(unique_list) == 0) | (np.min(unique_list) == 1))\
-                & (np.all(np.diff(unique_list, n=1) == 1)):
+            if ((np.min(unique_list) == 0) | (np.min(unique_list) == 1)) & (
+                np.all(np.diff(unique_list, n=1) == 1)
+            ):
                 cat_cols.append(i)
         return cat_cols
+
 
 class TabularDataset(Dataset):
     def __init__(self, X, y):
@@ -701,13 +857,16 @@ class TabularDataset(Dataset):
         return self.n
 
     def __getitem__(self, idx):
-        if self.y  is not None:
+        if self.y is not None:
             return self.X[idx], self.y[idx]
         else:
             return self.X[idx]
 
+
 class TabularEmbeddingDataset(Dataset):
-    def __init__(self, X, y, cat_cols=None, standard_scaler=None, label_encoder=None):
+    def __init__(
+        self, X, y, cat_cols=None, standard_scaler=None, label_encoder=None
+    ):
         self.n = X.shape[0]
         self.y = y
         self.cat_cols = cat_cols if cat_cols else []
@@ -722,7 +881,7 @@ class TabularEmbeddingDataset(Dataset):
         if self.cat_cols:
             self.cat_X = X[:, self.cat_cols]
             for i in range(self.cat_X.shape[1]):
-                self.cat_X[:,i] = label_encoder[i].transform(self.cat_X[:,i])
+                self.cat_X[:, i] = label_encoder[i].transform(self.cat_X[:, i])
         else:
             self.cat_X = np.zeros((self.n, 1))
         self.numerical_X = torch.Tensor(self.numerical_X)
@@ -743,12 +902,9 @@ class TabularEmbeddingDataset(Dataset):
         else:
             return [self.numerical_X[idx], self.cat_X[idx]]
 
+
 class FullyConnectedModule(nn.Module):
-    def __init__(
-        self,
-        input_dim,
-        output_dim
-    ):
+    def __init__(self, input_dim, output_dim):
         super(FullyConnectedModule, self).__init__()
         self.linear_layer = nn.Linear(input_dim, output_dim)
         self.bn_layer = nn.BatchNorm1d(output_dim)
@@ -760,10 +916,7 @@ class FullyConnectedModule(nn.Module):
 
 
 class SkipNN(nn.Module):
-    def __init__(
-        self,
-        input_dim
-    ):
+    def __init__(self, input_dim):
         super(SkipNN, self).__init__()
         # linear layers
         self.fc_layer1 = FullyConnectedModule(input_dim, 256)
@@ -774,22 +927,19 @@ class SkipNN(nn.Module):
 
         # dropout layers
         self.dropout_layer = nn.Dropout(0.5)
+
     def forward(self, X):
-        X_skip = self.fc_layer1(X) # input_dim -> 256
-        X = self.fc_layer2(X_skip) # 256 -> 256
-        X = self.dropout_layer(X) # 256
-        X = self.fc_layer3(X) + X_skip # 256 -> 256
-        X = self.fc_layer4(X) # 256 -> input_dim
+        X_skip = self.fc_layer1(X)  # input_dim -> 256
+        X = self.fc_layer2(X_skip)  # 256 -> 256
+        X = self.dropout_layer(X)  # 256
+        X = self.fc_layer3(X) + X_skip  # 256 -> 256
+        X = self.fc_layer4(X)  # 256 -> input_dim
         return X
 
 
 class TabularNN(nn.Module):
     def __init__(
-        self,
-        feature_num=None,
-        output_dim=None,
-        layer_size=3,
-        dropout_p=0.5
+        self, feature_num=None, output_dim=None, layer_size=3, dropout_p=0.5
     ):
         super(TabularNN, self).__init__()
         # Batch Norm layers
@@ -801,21 +951,20 @@ class TabularNN(nn.Module):
         # fully connected layers
         self.mid_FC_layer = FullyConnectedModule(feature_num, 256)
         self.FC_layers = nn.ModuleList(
-            [
-                FullyConnectedModule(256, 256) for i in range(layer_size)
-            ]
+            [FullyConnectedModule(256, 256) for i in range(layer_size)]
         )
         self.last_lin_layers = nn.Linear(256, output_dim)
 
     def forward(self, X):
-        X = self.first_bn_layer(X) # input_dim
-        X = self.dropout_layer(X) # input_dim
-        X = self.skip_layer(X) # input_dim -> input_dim
-        X = self.mid_FC_layer(X) # input_dim -> 256
+        X = self.first_bn_layer(X)  # input_dim
+        X = self.dropout_layer(X)  # input_dim
+        X = self.skip_layer(X)  # input_dim -> input_dim
+        X = self.mid_FC_layer(X)  # input_dim -> 256
         for FC_layer in self.FC_layers:
-            X = FC_layer(X) # 256 -> 256
-        X = self.last_lin_layers(X) # 256 -> output_dim
+            X = FC_layer(X)  # 256 -> 256
+        X = self.last_lin_layers(X)  # 256 -> output_dim
         return X
+
 
 class TabularEmbeddingNN(nn.Module):
     def __init__(
@@ -825,11 +974,13 @@ class TabularEmbeddingNN(nn.Module):
         lin_layer_sizes,
         output_size,
         emb_dropout,
-        lin_layer_dropouts
+        lin_layer_dropouts,
     ):
         super(TabularEmbeddingNN, self).__init__()
 
-        self.emb_layers = nn.ModuleList([nn.Embedding(x, y) for x, y in emb_dims])
+        self.emb_layers = nn.ModuleList(
+            [nn.Embedding(x, y) for x, y in emb_dims]
+        )
 
         self.no_of_embs = sum([y for x, y in emb_dims])
         self.no_of_numerical = no_of_numerical
@@ -838,8 +989,8 @@ class TabularEmbeddingNN(nn.Module):
             self.no_of_embs + self.no_of_numerical, lin_layer_sizes[0]
         )
         self.lin_layers = nn.ModuleList(
-            [first_lin_layer] +
-            [
+            [first_lin_layer]
+            + [
                 nn.Linear(lin_layer_sizes[i], lin_layer_sizes[i + 1])
                 for i in range(len(lin_layer_sizes) - 1)
             ]
@@ -862,7 +1013,8 @@ class TabularEmbeddingNN(nn.Module):
     def forward(self, numerical_data, cat_data):
         if self.no_of_embs != 0:
             X = [
-                emb_layer(cat_data[:, i]) for i, emb_layer in enumerate(self.emb_layers)
+                emb_layer(cat_data[:, i])
+                for i, emb_layer in enumerate(self.emb_layers)
             ]
             X = torch.cat(X, 1)
             X = self.emb_dropout_layer(X)
@@ -884,6 +1036,7 @@ class TabularEmbeddingNN(nn.Module):
         X = self.output_layer(X)
 
         return X
+
 
 def get_logger(verbosity_level):
     """Set logging format to something like:
