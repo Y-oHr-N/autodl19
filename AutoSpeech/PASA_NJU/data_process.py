@@ -78,7 +78,7 @@ def extract_mfcc(data, sr=16000, n_mfcc=NUM_MFCC):
 def extract_for_one_sample(tuple, extract, use_power_db=False, **kwargs):
     data, idx = tuple
 
-    len_sample = 5
+    len_sample = 6
     sr = 16000
 
     if len(data) < len_sample * sr:
@@ -157,7 +157,7 @@ def extract_spectral_centroid_parallel(
     return results
 
 
-def get_fixed_array(X_list, len_sample=5, sr=16000):
+def get_fixed_array(X_list, len_sample=6, sr=16000):
     for i in range(len(X_list)):
         if len(X_list[i]) < len_sample * sr:
             n_repeat = np.ceil(sr * len_sample / X_list[i].shape[0]).astype(
@@ -189,7 +189,7 @@ def extract_melspectrogram_parallel(
             n_mels=n_mels,
             name="melgram",
             image_data_format="channels_last",
-            input_shape=(1, 5 * sr),
+            input_shape=(1, 6 * sr),
             return_decibel_melgram=True,
             power_melgram=2.0,
             sr=sr,
