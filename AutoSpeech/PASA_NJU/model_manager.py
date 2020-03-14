@@ -524,7 +524,7 @@ class ModelManager(Classifier):
             def __init__(self, X, batch_size):
                 self.X = X
                 self.batch_size = batch_size
-                self.n_samples, _ = X.shape
+                self.n_samples, _, _ = X.shape
 
             def __call__(self):
                 while True:
@@ -535,8 +535,8 @@ class ModelManager(Classifier):
                         yield self.__data_generation(X_batch)
 
             def __data_generation(self, X_batch):
-                n, _, w, _ = X_batch.shape
-                X = np.zeros((n, w, w, 1))
+                n, _, w = X_batch.shape
+                X = np.zeros((n, w, w))
 
                 for i in range(n):
                     X[i] = crop_image(X_batch[i])
@@ -544,15 +544,6 @@ class ModelManager(Classifier):
                 return X, None
 
         x_val, y_val = self._val_set
-        log(
-            "shape of x_val: {}".format(
-                x_val.shape
-            )
-        )
-        valid_generator = TTAGenerator(
-            x_val,
-            batch_size=32
-        )()
 
         # valid_score = roc_auc_score(self.y_valid, probas, average='macro')
         # log(
@@ -562,17 +553,17 @@ class ModelManager(Classifier):
 
         if isinstance(self._model, (LogisticRegression, SvmModel)):
             predict = self._model.predict(x_val)
-            print("predict of naive models.")
-            print(predict)
         else:
+            valid_generator = TTAGenerator(
+                x_val,
+                batch_size=32
+            )()
             valid_size, _, w = x_val.shape
             batch_size = 32
             predict = self._model._model.predict_generator(
                 valid_generator,
-                steps=np.ceil(valid_size / batch_size)
+                steps=int(np.ceil(valid_size / batch_size))
             )
-            print("predict of nn models.")
-            print(predict)
 
         auc = auc_metric(y_val, predict)
 
@@ -633,10 +624,48 @@ class ModelManager(Classifier):
                             max_duration=SECOND_ROUND_DURATION,
                             is_mfcc=self._use_mfcc,
                         )
-            if self._round_num > 1:
-                y_pred = self._model.predict(self._test_x, batch_size=32)
+            if isinstance(self._model, (LogisticRegression, SvmModel)):
+                if self._round_num > 1:
+                    y_pred = self._model.predict(self._test_x, batch_size=32)
+                else:
+                    y_pred = self._model.predict(self._test_x, batch_size=32 * 8)
             else:
-                y_pred = self._model.predict(self._test_x, batch_size=32 * 8)
+                if self._round_num > 1:
+                    batch_size = 32
+                else:
+                    batch_size = 32 * 8
+
+                test_size, _, w = self._test_x.shape
+
+                # test_generator = TTAGenerator(
+                #     self._test_x,
+                #     batch_size=test_size
+                # )()
+
+                # y_pred = self._model._model.predict_generator(
+                #     test_generator,
+                #     steps=int(np.ceil(test_size / batch_size))
+                # )
+
+                y_pred = np.zeros(
+                    (self.metadata['test_num'], self.metadata['class_num'])
+                )
+
+                self.n_predictions = 10
+
+                for _ in range(self.n_predictions):
+                    test_generator = TTAGenerator(
+                        self._test_x,
+                        batch_size=batch_size
+                    )()
+
+                    y_pred += self._model._model.predict_generator(
+                        test_generator,
+                        steps=int(np.ceil(test_size / batch_size))
+                    )
+
+                y_pred /= self.n_predictions
+
             if (
                 self._k_best_auc[-1] < auc
                 and auc > self._each_model_best_auc[LR_MODEL][-1] - 0.1

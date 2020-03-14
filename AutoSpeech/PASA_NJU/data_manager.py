@@ -351,12 +351,6 @@ class DataManager:
         )
 
     def nn_preprocess(self, x, n_mfcc=96, max_duration=5, is_mfcc=True):
-        print("*" * 10)
-        print("*" * 10)
-        print("nn_preprocess is called")
-        print("*" * 10)
-        print("*" * 10)
-
         if self.raw_max_length is None:
             self.raw_max_length = get_max_length(x)
             if self.raw_max_length > (MIDDLE_DURATION * AUDIO_SAMPLE_RATE):
