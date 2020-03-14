@@ -77,6 +77,17 @@ def extract_mfcc(data, sr=16000, n_mfcc=NUM_MFCC):
 
 def extract_for_one_sample(tuple, extract, use_power_db=False, **kwargs):
     data, idx = tuple
+
+    len_sample = 5
+    sr = 16000
+
+    if len(data) < len_sample * sr:
+        n_repeat = np.ceil(
+            sr * len_sample / data.shape[0]
+        ).astype(np.int32)
+        data = np.tile(data, n_repeat)
+    data = data[:len_sample * sr]
+
     r = extract(data, **kwargs)
     # for melspectrogram
     if use_power_db:
