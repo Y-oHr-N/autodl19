@@ -552,18 +552,18 @@ class ModelManager(Classifier):
                 if self._test_x is None:
                     if self._model_num == 0:
                         self._test_x = self._data_manager.lr_preprocess(test_x)
-                    # elif self._round_num == 0:
-                    #     self._test_x = self._data_manager.nn_preprocess(
-                    #         test_x,
-                    #         n_mfcc=96,
-                    #         max_duration=FIRST_ROUND_DURATION,
-                    #         # is_mfcc=self._use_mfcc,
-                    #         is_mfcc=True
-                    #     )
-                    else:
+                    elif self._round_num == 0:
                         self._test_x = self._data_manager.nn_preprocess(
                             test_x,
                             n_mfcc=96,
+                            max_duration=FIRST_ROUND_DURATION,
+                            # is_mfcc=self._use_mfcc,
+                            is_mfcc=True
+                        )
+                    else:
+                        self._test_x = self._data_manager.nn_preprocess(
+                            test_x,
+                            n_mfcc=128,
                             max_duration=SECOND_ROUND_DURATION,
                             is_mfcc=self._use_mfcc,
                         )
