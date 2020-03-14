@@ -163,8 +163,9 @@ class Model(object):
                     rf_model.fit(
                         self.X_train,
                         self.y_train[:, i],
+                        categorical_feature=self.cat_cols,
                         eval_set=[(self.X_valid, self.y_valid[:, i])],
-                        eval_metric="logloss",
+                        eval_metric="auc",
                         early_stopping_rounds=10,
                         verbose=100,
                     )
@@ -195,10 +196,11 @@ class Model(object):
                     self.rf_model.fit(
                         self.X_train,
                         np.argmax(self.y_train, axis=1),
+                        categorical_feature=self.cat_cols,
                         eval_set=[
                             (self.X_valid, np.argmax(self.y_valid, axis=1))
                         ],
-                        eval_metric="logloss",
+                        eval_metric="auc",
                         early_stopping_rounds=10,
                         verbose=100,
                     )
@@ -219,6 +221,7 @@ class Model(object):
                     self.rf_model.fit(
                         self.X_train,
                         np.argmax(self.y_train, axis=1),
+                        categorical_feature=self.cat_cols,
                         eval_set=[
                             (self.X_valid, np.argmax(self.y_valid, axis=1))
                         ],
@@ -409,8 +412,9 @@ class Model(object):
                     lgb_model.fit(
                         self.X_train,
                         self.y_train[:, i],
+                        categorical_feature=self.cat_cols,
                         eval_set=[(self.X_valid, self.y_valid[:, i])],
-                        eval_metric="logloss",
+                        eval_metric="auc",
                         early_stopping_rounds=10,
                         verbose=100,
                     )
@@ -441,10 +445,11 @@ class Model(object):
                     self.lgb_model.fit(
                         self.X_train,
                         np.argmax(self.y_train, axis=1),
+                        categorical_feature=self.cat_cols,
                         eval_set=[
                             (self.X_valid, np.argmax(self.y_valid, axis=1))
                         ],
-                        eval_metric="logloss",
+                        eval_metric="auc",
                         early_stopping_rounds=10,
                         verbose=100,
                     )
@@ -466,6 +471,7 @@ class Model(object):
                     self.lgb_model.fit(
                         self.X_train,
                         np.argmax(self.y_train, axis=1),
+                        categorical_feature=self.cat_cols,
                         eval_set=[
                             (self.X_valid, np.argmax(self.y_valid, axis=1))
                         ],
