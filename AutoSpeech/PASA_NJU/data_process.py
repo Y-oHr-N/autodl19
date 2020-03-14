@@ -164,7 +164,7 @@ def get_fixed_array(X_list, len_sample=5, sr=16000):
 
 @timeit
 def extract_melspectrogram_parallel(
-    data, sr=16000, n_fft=1_024, hop_length=512, n_mels=40, use_power_db=False
+    data, sr=16000, n_fft=1024, hop_length=512, n_mels=40, use_power_db=False
 ):
     data = get_fixed_array(data)
     model = keras.models.Sequential()

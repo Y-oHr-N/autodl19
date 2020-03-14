@@ -557,8 +557,7 @@ class ModelManager(Classifier):
                             test_x,
                             n_mfcc=96,
                             max_duration=FIRST_ROUND_DURATION,
-                            # is_mfcc=self._use_mfcc,
-                            is_mfcc=True
+                            is_mfcc=self._use_mfcc,
                         )
                     else:
                         self._test_x = self._data_manager.nn_preprocess(
