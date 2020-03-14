@@ -90,12 +90,6 @@ def extract_for_one_sample(tuple, extract, use_power_db=False, **kwargs):
 def extract_mfcc_parallel(
     data, sr=16000, n_fft=None, hop_length=None, n_mfcc=NUM_MFCC
 ):
-    print("*" * 10)
-    print("*" * 10)
-    print("extract_mfcc_parallel")
-    print("*" * 10)
-    print("*" * 10)
-
     if n_fft is None:
         n_fft = int(sr * FFT_DURATION)
     if hop_length is None:
@@ -152,27 +146,6 @@ def extract_spectral_centroid_parallel(
     return results
 
 
-# @timeit
-# def extract_melspectrogram_parallel(
-#     data, sr=16000, n_fft=None, hop_length=None, n_mels=40, use_power_db=False
-# ):
-#     if n_fft is None:
-#         n_fft = int(sr * FFT_DURATION)
-#     if hop_length is None:
-#         hop_length = int(sr * HOP_DURATION)
-#     extract = partial(
-#         extract_for_one_sample,
-#         extract=librosa.feature.melspectrogram,
-#         sr=sr,
-#         n_fft=n_fft,
-#         hop_length=hop_length,
-#         n_mels=n_mels,
-#         use_power_db=use_power_db,
-#     )
-#     results = extract_parallel(data, extract)
-#
-#     return results
-
 def get_fixed_array(X_list, len_sample=5, sr=16000):
     for i in range(len(X_list)):
         if len(X_list[i]) < len_sample * sr:
@@ -218,7 +191,6 @@ def extract_melspectrogram_parallel(
     X = np.squeeze(X)
     print(X.shape)
     return X
-    # return results
 
 
 # spectral rolloff

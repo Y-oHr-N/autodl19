@@ -38,6 +38,7 @@ class CnnModel2D(Classifier):
 
         self._model = None
         self.is_init = False
+        self.n_iter = 0
 
     def init_model(self, input_shape, num_classes, max_layer_num=5, **kwargs):
         # FIXME: keras sequential model is better than keras functional api,

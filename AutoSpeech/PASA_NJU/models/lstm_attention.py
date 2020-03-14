@@ -43,6 +43,7 @@ class LstmAttention(Classifier):
         self.mel_mean, self.mel_std = None, None
         self.cent_mean, self.cent_std = None, None
         self.stft_mean, self.stft_std = None, None
+        self.n_iter = 0
 
     def preprocess_data(self, x):
         if IS_CUT_AUDIO:
