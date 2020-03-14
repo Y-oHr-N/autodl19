@@ -112,11 +112,13 @@ class ModelManager(Classifier):
     def _get_or_create_model(self):
         # use new model and not reset model, have to initialize the model
         if not self._model.is_init:
+            w = min(self._input_shape[1:])
+            shape = (w, w)
             log("get new model {}".format(self._model_name))
             # init model parameters
             if self._model_name == CNN_MODEL_2D:
                 kwargs = {
-                    "input_shape": self._input_shape[1:],
+                    "input_shape": shape,
                     "num_classes": self.metadata[CLASS_NUM],
                     "max_layer_num": 10,
                 }
@@ -130,7 +132,7 @@ class ModelManager(Classifier):
                 ATTGRU,
             ]:
                 kwargs = {
-                    "input_shape": self._input_shape[1:],
+                    "input_shape": shape,
                     "num_classes": self.metadata[CLASS_NUM],
                 }
             elif self._model_name == SVM_MODEL:
@@ -376,7 +378,7 @@ class ModelManager(Classifier):
         # init model really
         self._get_or_create_model()
 
-        # TODO: augmentation
+        # TODO: 外だし
         def crop_image(image):
             h, w = image.shape
             h0 = np.random.randint(0, h - w)
@@ -384,6 +386,7 @@ class ModelManager(Classifier):
 
             return image
 
+        # TODO: 外だし
         def frequency_masking(image, p=0.5, F=0.2):
             _, w = image.shape
             p_1 = np.random.rand()
@@ -398,6 +401,7 @@ class ModelManager(Classifier):
 
             return image
 
+        # TODO: 外だし
         class MixupGenerator(object):
             def __init__(
                     self,
@@ -445,17 +449,17 @@ class ModelManager(Classifier):
                 X_l = l.reshape(self.batch_size, 1, 1)
                 y_l = l.reshape(self.batch_size, 1)
 
-                # X1_tmp = safe_indexing(self.X, indices_head)
-                # X2_tmp = safe_indexing(self.X, indices_tail)
-                # n, h, w = X1_tmp.shape
-                # X1 = np.zeros((n, w, w))
-                # X2 = np.zeros((n, w, w))
-                #
-                # for i in range(self.batch_size):
-                #     X1[i] = crop_image(X1_tmp[i])
-                #     X2[i] = crop_image(X2_tmp[i])
-                X1 = safe_indexing(self.X, indices_head)
-                X2 = safe_indexing(self.X, indices_tail)
+                X1_tmp = safe_indexing(self.X, indices_head)
+                X2_tmp = safe_indexing(self.X, indices_tail)
+                n, h, w = X1_tmp.shape
+                X1 = np.zeros((n, w, w))
+                X2 = np.zeros((n, w, w))
+
+                for i in range(self.batch_size):
+                    X1[i] = crop_image(X1_tmp[i])
+                    X2[i] = crop_image(X2_tmp[i])
+                # X1 = safe_indexing(self.X, indices_head)
+                # X2 = safe_indexing(self.X, indices_tail)
 
                 X = X1 * X_l + X2 * (1.0 - X_l)
 
@@ -507,8 +511,71 @@ class ModelManager(Classifier):
             self._model.n_iter += 5
 
     def predict(self, test_x, is_final_test_x=False):
+        # TODO 外だし
+        def crop_image(image):
+            h, w = image.shape
+            h0 = np.random.randint(0, h - w)
+            image = image[h0:h0 + w]
+
+            return image
+
+        # TODO 外だし
+        class TTAGenerator(object):
+            def __init__(self, X, batch_size):
+                self.X = X
+                self.batch_size = batch_size
+                self.n_samples, _ = X.shape
+
+            def __call__(self):
+                while True:
+                    for start in range(0, self.n_samples, self.batch_size):
+                        end = min(start + self.batch_size, self.n_samples)
+                        X_batch = self.X[start:end]
+
+                        yield self.__data_generation(X_batch)
+
+            def __data_generation(self, X_batch):
+                n, _, w, _ = X_batch.shape
+                X = np.zeros((n, w, w, 1))
+
+                for i in range(n):
+                    X[i] = crop_image(X_batch[i])
+
+                return X, None
+
         x_val, y_val = self._val_set
-        auc = auc_metric(y_val, self._model.predict(x_val))
+        log(
+            "shape of x_val: {}".format(
+                x_val.shape
+            )
+        )
+        valid_generator = TTAGenerator(
+            x_val,
+            batch_size=32
+        )()
+
+        # valid_score = roc_auc_score(self.y_valid, probas, average='macro')
+        # log(
+        #     f'valid_auc={valid_score:.3f}, '
+        #     f'max_valid_auc={self.max_score:.3f}'
+        # )
+
+        if isinstance(self._model, (LogisticRegression, SvmModel)):
+            predict = self._model.predict(x_val)
+            print("predict of naive models.")
+            print(predict)
+        else:
+            valid_size, _, w = x_val.shape
+            batch_size = 32
+            predict = self._model._model.predict_generator(
+                valid_generator,
+                steps=np.ceil(valid_size / batch_size)
+            )
+            print("predict of nn models.")
+            print(predict)
+
+        auc = auc_metric(y_val, predict)
+
         need_predict = False
         if auc > self._cur_model_max_auc:
             log(
@@ -557,8 +624,7 @@ class ModelManager(Classifier):
                             test_x,
                             n_mfcc=96,
                             max_duration=FIRST_ROUND_DURATION,
-                            # is_mfcc=self._use_mfcc,
-                            is_mfcc=True
+                            is_mfcc=self._use_mfcc,
                         )
                     else:
                         self._test_x = self._data_manager.nn_preprocess(

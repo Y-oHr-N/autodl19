@@ -185,11 +185,8 @@ def extract_melspectrogram_parallel(
         )
     )
     X = model.predict(data)
-    print(X.shape)
     X = X.transpose(0, 2, 1, 3)
-    print(X.shape)
     X = np.squeeze(X)
-    print(X.shape)
     return X
 
 
