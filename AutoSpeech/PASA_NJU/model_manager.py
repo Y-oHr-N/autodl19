@@ -382,7 +382,7 @@ class ModelManager(Classifier):
         def crop_image(image):
             h, w = image.shape
             h0 = np.random.randint(0, h - w)
-            image = image[h0:h0 + w]
+            image = image[h0 : h0 + w]
 
             return image
 
@@ -397,20 +397,20 @@ class ModelManager(Classifier):
             f = np.random.randint(0, int(w * F))
             f0 = np.random.randint(0, w - f)
 
-            image[:, f0:f0 + f] = 0.0
+            image[:, f0 : f0 + f] = 0.0
 
             return image
 
         # TODO: 外だし
         class MixupGenerator(object):
             def __init__(
-                    self,
-                    X,
-                    y,
-                    alpha=0.2,
-                    batch_size=32,
-                    datagen=None,
-                    shuffle=True
+                self,
+                X,
+                y,
+                alpha=0.2,
+                batch_size=32,
+                datagen=None,
+                shuffle=True,
             ):
                 self.X = X
                 self.y = y
@@ -427,13 +427,20 @@ class ModelManager(Classifier):
 
                     for i in range(itr_num):
                         indices_head = indices[
-                                       2 * i * self.batch_size:(2 * i + 1) * self.batch_size
-                                       ]
+                            2
+                            * i
+                            * self.batch_size : (2 * i + 1)
+                            * self.batch_size
+                        ]
                         indices_tail = indices[
-                                       (2 * i + 1) * self.batch_size:(2 * i + 2) * self.batch_size
-                                       ]
+                            (2 * i + 1)
+                            * self.batch_size : (2 * i + 2)
+                            * self.batch_size
+                        ]
 
-                        yield self.__data_generation(indices_head, indices_tail)
+                        yield self.__data_generation(
+                            indices_head, indices_tail
+                        )
 
             def __get_exploration_order(self):
                 n_samples = len(self.X)
@@ -475,14 +482,9 @@ class ModelManager(Classifier):
                 # return X, y
                 return X, ohe2cat(y)
 
-        datagen = ImageDataGenerator(
-            preprocessing_function=frequency_masking
-        )
+        datagen = ImageDataGenerator(preprocessing_function=frequency_masking)
         training_generator = MixupGenerator(
-            train_x,
-            train_y,
-            batch_size=32,
-            datagen=datagen
+            train_x, train_y, batch_size=32, datagen=datagen
         )()
 
         if isinstance(self._model, (LogisticRegression, SvmModel)):
@@ -506,7 +508,7 @@ class ModelManager(Classifier):
                 epochs=self._model.n_iter + 5,
                 initial_epoch=self._model.n_iter,
                 shuffle=True,
-                verbose=1
+                verbose=1,
             )
             self._model.n_iter += 5
 
@@ -515,7 +517,7 @@ class ModelManager(Classifier):
         def crop_image(image):
             h, w = image.shape
             h0 = np.random.randint(0, h - w)
-            image = image[h0:h0 + w]
+            image = image[h0 : h0 + w]
 
             return image
 
@@ -554,15 +556,11 @@ class ModelManager(Classifier):
         if isinstance(self._model, (LogisticRegression, SvmModel)):
             predict = self._model.predict(x_val)
         else:
-            valid_generator = TTAGenerator(
-                x_val,
-                batch_size=32
-            )()
+            valid_generator = TTAGenerator(x_val, batch_size=32)()
             valid_size, _, w = x_val.shape
             batch_size = 32
             predict = self._model._model.predict_generator(
-                valid_generator,
-                steps=int(np.ceil(valid_size / batch_size))
+                valid_generator, steps=int(np.ceil(valid_size / batch_size))
             )
 
         auc = auc_metric(y_val, predict)
@@ -628,7 +626,9 @@ class ModelManager(Classifier):
                 if self._round_num > 1:
                     y_pred = self._model.predict(self._test_x, batch_size=32)
                 else:
-                    y_pred = self._model.predict(self._test_x, batch_size=32 * 8)
+                    y_pred = self._model.predict(
+                        self._test_x, batch_size=32 * 8
+                    )
             else:
                 if self._round_num > 1:
                     batch_size = 32
@@ -648,20 +648,19 @@ class ModelManager(Classifier):
                 # )
 
                 y_pred = np.zeros(
-                    (self.metadata['test_num'], self.metadata['class_num'])
+                    (self.metadata["test_num"], self.metadata["class_num"])
                 )
 
                 self.n_predictions = 10
 
                 for _ in range(self.n_predictions):
                     test_generator = TTAGenerator(
-                        self._test_x,
-                        batch_size=batch_size
+                        self._test_x, batch_size=batch_size
                     )()
 
                     y_pred += self._model._model.predict_generator(
                         test_generator,
-                        steps=int(np.ceil(test_size / batch_size))
+                        steps=int(np.ceil(test_size / batch_size)),
                     )
 
                 y_pred /= self.n_predictions

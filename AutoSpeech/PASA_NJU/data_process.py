@@ -149,18 +149,19 @@ def extract_spectral_centroid_parallel(
 def get_fixed_array(X_list, len_sample=5, sr=16000):
     for i in range(len(X_list)):
         if len(X_list[i]) < len_sample * sr:
-            n_repeat = np.ceil(
-                sr * len_sample / X_list[i].shape[0]
-            ).astype(np.int32)
+            n_repeat = np.ceil(sr * len_sample / X_list[i].shape[0]).astype(
+                np.int32
+            )
             X_list[i] = np.tile(X_list[i], n_repeat)
 
-        X_list[i] = X_list[i][:len_sample * sr]
+        X_list[i] = X_list[i][: len_sample * sr]
 
     X = np.asarray(X_list)
     X = X[:, :, np.newaxis]
     X = X.transpose(0, 2, 1)
 
     return X
+
 
 @timeit
 def extract_melspectrogram_parallel(
@@ -175,13 +176,13 @@ def extract_melspectrogram_parallel(
             n_dft=n_fft,
             n_hop=hop_length,
             n_mels=n_mels,
-            name='melgram',
-            image_data_format='channels_last',
-            input_shape=(1, 5*sr),
+            name="melgram",
+            image_data_format="channels_last",
+            input_shape=(1, 5 * sr),
             return_decibel_melgram=True,
             power_melgram=2.0,
             sr=sr,
-            trainable_kernel=False
+            trainable_kernel=False,
         )
     )
     X = model.predict(data)
