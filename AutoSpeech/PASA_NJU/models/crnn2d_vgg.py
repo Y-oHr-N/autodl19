@@ -39,6 +39,7 @@ class Crnn2dVggModel(Classifier):
 
         self._model = None
         self.is_init = False
+        self.n_iter = 0
 
     def preprocess_data(self, x):
         # mel-spectrogram parameters

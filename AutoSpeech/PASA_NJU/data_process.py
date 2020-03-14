@@ -8,9 +8,11 @@ from multiprocessing.pool import ThreadPool
 import librosa
 import numpy as np
 from tensorflow.python.keras.preprocessing import sequence
+import keras
 
 from CONSTANT import NUM_MFCC, FFT_DURATION, HOP_DURATION
 from tools import timeit, log
+from kapre.time_frequency import Melspectrogram
 
 pool = ThreadPool(os.cpu_count())
 
@@ -75,6 +77,17 @@ def extract_mfcc(data, sr=16000, n_mfcc=NUM_MFCC):
 
 def extract_for_one_sample(tuple, extract, use_power_db=False, **kwargs):
     data, idx = tuple
+
+    len_sample = 6
+    sr = 16000
+
+    if len(data) < len_sample * sr:
+        n_repeat = np.ceil(
+            sr * len_sample / data.shape[0]
+        ).astype(np.int32)
+        data = np.tile(data, n_repeat)
+    data = data[:len_sample * sr]
+
     r = extract(data, **kwargs)
     # for melspectrogram
     if use_power_db:
@@ -144,26 +157,49 @@ def extract_spectral_centroid_parallel(
     return results
 
 
+def get_fixed_array(X_list, len_sample=6, sr=16000):
+    for i in range(len(X_list)):
+        if len(X_list[i]) < len_sample * sr:
+            n_repeat = np.ceil(sr * len_sample / X_list[i].shape[0]).astype(
+                np.int32
+            )
+            X_list[i] = np.tile(X_list[i], n_repeat)
+
+        X_list[i] = X_list[i][: len_sample * sr]
+
+    X = np.asarray(X_list)
+    X = X[:, :, np.newaxis]
+    X = X.transpose(0, 2, 1)
+
+    return X
+
+
 @timeit
 def extract_melspectrogram_parallel(
-    data, sr=16000, n_fft=None, hop_length=None, n_mels=40, use_power_db=False
+    data, sr=16000, n_fft=1024, hop_length=512, n_mels=40, use_power_db=False
 ):
-    if n_fft is None:
-        n_fft = int(sr * FFT_DURATION)
-    if hop_length is None:
-        hop_length = int(sr * HOP_DURATION)
-    extract = partial(
-        extract_for_one_sample,
-        extract=librosa.feature.melspectrogram,
-        sr=sr,
-        n_fft=n_fft,
-        hop_length=hop_length,
-        n_mels=n_mels,
-        use_power_db=use_power_db,
+    data = get_fixed_array(data)
+    model = keras.models.Sequential()
+    model.add(
+        Melspectrogram(
+            fmax=8000,
+            fmin=20,
+            n_dft=n_fft,
+            n_hop=hop_length,
+            n_mels=n_mels,
+            name="melgram",
+            image_data_format="channels_last",
+            input_shape=(1, 6 * sr),
+            return_decibel_melgram=True,
+            power_melgram=2.0,
+            sr=sr,
+            trainable_kernel=False,
+        )
     )
-    results = extract_parallel(data, extract)
-
-    return results
+    X = model.predict(data)
+    X = X.transpose(0, 2, 1, 3)
+    X = np.squeeze(X)
+    return X
 
 
 # spectral rolloff

@@ -40,6 +40,7 @@ class CrnnModel(Classifier):
 
         self._model = None
         self.is_init = False
+        self.n_iter = 0
 
     def preprocess_data(self, x):
         if IS_CUT_AUDIO:

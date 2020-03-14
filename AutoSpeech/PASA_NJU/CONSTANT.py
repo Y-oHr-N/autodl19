@@ -28,7 +28,7 @@ MODEL_MAX_RUN_LOOP = 20
 
 # Modified by qmc
 NUM_MFCC = 96  # num of mfcc features, default value is 24
-MAX_AUDIO_DURATION = 5  # limited length of audio, like 20s
+MAX_AUDIO_DURATION = 6  # limited length of audio, like 20s
 
 FIRST_ROUND_DURATION = 10
 MIDDLE_DURATION = 15

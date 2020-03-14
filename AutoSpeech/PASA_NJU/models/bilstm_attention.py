@@ -34,6 +34,7 @@ class BilstmAttention(Classifier):
         log("init BilstmAttention")
         self.max_length = None
         self._model = None
+        self.n_iter = 0
         self.is_init = False
 
     def preprocess_data(self, x):
