@@ -42,14 +42,17 @@ class Model(object):
         self.time_cols = [info["primary_timestamp"]]
         self.update_interval = int(len(pred_timestamp) / 10)
         self.n_predict = 0
-        self.pred_time_diff = get_time_diff(pred_timestamp[info["primary_timestamp"]])
+        self.pred_time_diff = get_time_diff(
+            pred_timestamp[info["primary_timestamp"]]
+        )
         self.shift_range = get_shift_range(self.pred_time_diff)
 
     def train(self, train_data, time_info):
         start_time = time.perf_counter()
 
         self.astype_ = Astype(
-            categorical_cols=self.categorical_cols, numerical_cols=self.numerical_cols
+            categorical_cols=self.categorical_cols,
+            numerical_cols=self.numerical_cols,
         )
         self.clipped_features_ = ClippedFeatures()
         self.lag_features = LagFeatures(
@@ -58,7 +61,9 @@ class Model(object):
             primary_id=self.primary_id,
             time_col=self.time_cols[0],
         )
-        self.calendar_features_ = CalendarFeatures(dtype="float32", encode=True)
+        self.calendar_features_ = CalendarFeatures(
+            dtype="float32", encode=True
+        )
         self.selector_ = ModifiedSelectFromModel(
             lgb.LGBMRegressor(importance_type="gain", random_state=0),
             random_state=0,
@@ -155,17 +160,24 @@ class Model(object):
             pkl_list.append(attr)
 
             pickle.dump(
-                getattr(self, attr), open(os.path.join(model_dir, f"{attr}.pkl"), "wb")
+                getattr(self, attr),
+                open(os.path.join(model_dir, f"{attr}.pkl"), "wb"),
             )
 
-        pickle.dump(pkl_list, open(os.path.join(model_dir, f"pkl_list.pkl"), "wb"))
+        pickle.dump(
+            pkl_list, open(os.path.join(model_dir, f"pkl_list.pkl"), "wb")
+        )
 
     def load(self, model_dir, time_info):
-        pkl_list = pickle.load(open(os.path.join(model_dir, "pkl_list.pkl"), "rb"))
+        pkl_list = pickle.load(
+            open(os.path.join(model_dir, "pkl_list.pkl"), "rb")
+        )
 
         for attr in pkl_list:
             setattr(
                 self,
                 attr,
-                pickle.load(open(os.path.join(model_dir, f"{attr}.pkl"), "rb")),
+                pickle.load(
+                    open(os.path.join(model_dir, f"{attr}.pkl"), "rb")
+                ),
             )

@@ -1,0 +1,90 @@
+{
+    "time_budget": 600,
+    "time_col": "t_01",
+    "start_time": 1550654179,
+    "tables": {
+        "main": {
+            "t_01": "time",
+            "c_1": "cat",
+            "n_1": "num",
+            "c_2": "cat",
+            "n_2": "num",
+            "n_3": "num",
+            "c_3": "cat",
+            "t_1": "time",
+            "c_4": "cat",
+            "c_5": "cat",
+            "m_1": "multi-cat",
+            "c_02": "cat",
+            "c_01": "cat"
+        },
+        "table_1": {
+            "c_01": "cat",
+            "m_1": "multi-cat",
+            "m_2": "multi-cat",
+            "c_1": "cat",
+            "c_2": "cat",
+            "m_3": "multi-cat",
+            "t_1": "time",
+            "n_1": "num",
+            "c_3": "cat",
+            "n_2": "num",
+            "c_4": "cat",
+            "m_4": "multi-cat",
+            "c_5": "cat",
+            "c_6": "cat",
+            "m_5": "multi-cat",
+            "c_7": "cat",
+            "m_6": "multi-cat",
+            "c_8": "cat",
+            "c_9": "cat",
+            "n_3": "num"
+        },
+        "table_2": {
+            "c_02": "cat",
+            "n_1": "num",
+            "t_1": "time",
+            "n_2": "num",
+            "c_1": "cat",
+            "n_3": "num",
+            "n_4": "num",
+            "c_2": "cat",
+            "c_3": "cat",
+            "c_4": "cat",
+            "t_2": "time",
+            "n_5": "num",
+            "c_5": "cat",
+            "c_6": "cat",
+            "n_6": "num",
+            "c_7": "cat",
+            "n_7": "num",
+            "c_8": "cat",
+            "n_8": "num",
+            "c_9": "cat",
+            "c_10": "cat",
+            "m_1": "multi-cat",
+            "m_2": "multi-cat",
+            "c_11": "cat",
+            "n_9": "num",
+            "c_12": "cat",
+            "n_10": "num",
+            "c_13": "cat",
+            "c_14": "cat",
+            "n_11": "num"
+        }
+    },
+    "relations": [
+        {
+            "table_A": "main",
+            "table_B": "table_1",
+            "key": ["c_01"],
+            "type": "many_to_one"
+        },
+        {
+            "table_A": "main",
+            "table_B": "table_2",
+            "key": ["c_02"],
+            "type": "many_to_one"
+        }
+    ]
+}
