@@ -1,0 +1,68 @@
+{
+    "time_budget": 1200,
+    "time_col": "t_01",
+    "start_time": 1550654179,
+    "tables": {
+        "main": {
+            "c_02": "cat",
+            "c_01": "cat",
+            "n_1": "num",
+            "n_2": "num",
+            "t_01": "time"
+        },
+        "table_1": {
+            "c_1": "cat",
+            "c_2": "cat",
+            "c_3": "cat",
+            "m_1": "multi-cat",
+            "m_2": "multi-cat",
+            "m_3": "multi-cat",
+            "m_4": "multi-cat",
+            "m_5": "multi-cat",
+            "m_6": "multi-cat",
+            "c_01": "cat",
+            "t_01": "time"
+        },
+        "table_2": {
+            "c_02": "cat",
+            "c_1": "cat",
+            "m_1": "multi-cat",
+            "m_2": "multi-cat",
+            "m_3": "multi-cat",
+            "c_2": "cat",
+            "t_1": "time",
+            "n_1": "num",
+            "n_2": "num",
+            "n_3": "num",
+            "t_01": "time"
+        },
+        "table_3": {
+            "c_02": "cat",
+            "c_1": "cat",
+            "c_2": "cat",
+            "c_3": "cat",
+            "n_1": "num",
+            "t_01": "time"
+        }
+    },
+    "relations": [
+        {
+            "table_A": "main",
+            "table_B": "table_1",
+            "key": ["c_01"],
+            "type": "many_to_many"
+        },
+        {
+            "table_A": "main",
+            "table_B": "table_2",
+            "key": ["c_02"],
+            "type": "many_to_many"
+        },
+        {
+            "table_A": "main",
+            "table_B": "table_3",
+            "key": ["c_02"],
+            "type": "many_to_many"
+        }
+    ]
+}

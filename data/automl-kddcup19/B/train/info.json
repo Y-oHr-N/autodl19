@@ -1,0 +1,124 @@
+{
+    "time_budget": 2400,
+    "time_col": "t_01",
+    "start_time": 1550654179,
+    "tables": {
+        "main": {
+            "n_1": "num",
+            "n_2": "num",
+            "n_3": "num",
+            "n_4": "num",
+            "n_5": "num",
+            "c_1": "cat",
+            "c_2": "cat",
+            "c_3": "cat",
+            "c_4": "cat",
+            "c_5": "cat",
+            "c_6": "cat",
+            "c_7": "cat",
+            "c_8": "cat",
+            "c_9": "cat",
+            "c_10": "cat",
+            "c_11": "cat",
+            "c_12": "cat",
+            "c_13": "cat",
+            "c_14": "cat",
+            "c_15": "cat",
+            "t_01": "time",
+            "c_02": "cat",
+            "c_01": "cat"
+        },
+        "table_1": {
+            "c_01": "cat",
+            "c_1": "cat",
+            "c_2": "cat",
+            "m_1": "multi-cat",
+            "n_1": "num",
+            "n_2": "num",
+            "c_3": "cat",
+            "m_2": "multi-cat",
+            "n_3": "num",
+            "n_4": "num",
+            "t_1": "time",
+            "m_3": "multi-cat",
+            "t_01": "time"
+        },
+        "table_2": {
+            "c_01": "cat",
+            "n_1": "num",
+            "n_2": "num",
+            "n_3": "num",
+            "n_4": "num",
+            "n_5": "num",
+            "t_01": "time"
+        },
+        "table_3": {
+            "c_02": "cat",
+            "c_1": "cat",
+            "m_1": "multi-cat",
+            "c_2": "cat",
+            "c_3": "cat",
+            "n_1": "num",
+            "m_2": "multi-cat",
+            "n_2": "num",
+            "n_3": "num",
+            "n_4": "num",
+            "t_1": "time",
+            "m_3": "multi-cat",
+            "m_4": "multi-cat",
+            "c_03": "cat",
+            "t_01": "time"
+        },
+        "table_4": {
+            "c_03": "cat",
+            "n_1": "num",
+            "n_2": "num",
+            "n_3": "num",
+            "n_4": "num",
+            "n_5": "num",
+            "n_6": "num",
+            "n_7": "num",
+            "n_8": "num",
+            "n_9": "num",
+            "n_10": "num",
+            "m_1": "multi-cat",
+            "t_1": "time",
+            "c_1": "cat",
+            "m_2": "multi-cat",
+            "c_2": "cat",
+            "c_3": "cat",
+            "n_11": "num",
+            "n_12": "num",
+            "n_13": "num",
+            "n_14": "num",
+            "n_15": "num",
+            "n_16": "num"
+        }
+    },
+    "relations": [
+        {
+            "table_A": "main",
+            "table_B": "table_1",
+            "key": ["c_01"],
+            "type": "many_to_many"
+        },
+        {
+            "table_A": "main",
+            "table_B": "table_2",
+            "key": ["c_01"],
+            "type": "many_to_many"
+        },
+        {
+            "table_A": "main",
+            "table_B": "table_3",
+            "key": ["c_02"],
+            "type": "many_to_many"
+        },
+        {
+            "table_A": "table_3",
+            "table_B": "table_4",
+            "key": ["c_03"],
+            "type": "many_to_one"
+        }
+    ]
+}
